@@ -1,0 +1,43 @@
+//
+// Oya key shift keyboard input method for chrome OS
+//
+{
+  "name": "Oya shift KB",
+  "version": "5.0",
+  "manifest_version": 3,
+  "description": "Oya Key Shift keyboard",
+  "action": {
+    "default_popup": "dictdlg.html",
+    "default_icon": {
+      "16": "Niwaicon-b.png",
+      "48": "Niwaicon-s.png",
+      "128": "Niwaicon-l.png"
+    }
+  },
+  "background": {
+    "service_worker": "OyaShiftBG2026.js"
+  },
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "input",
+    "scripting",
+    "offscreen", 
+	  "storage"
+  ],
+  "icons": {
+    "16": "Niwaicon-b.png",
+    "48": "Niwaicon-s.png",
+    "128": "Niwaicon-l.png"
+  },
+  "input_components": [
+    {
+      "name": "Oya Shift KB",
+      "type": "ime",
+      "id": "OyaShift",
+      "description": "Oyakey Shift keyboard input",  // user visible description
+      "language": "OS",  // The primary language this IME is used for
+      "layouts": ["us"]  // The supported keyboard layouts for this IME
+    }
+  ]
+}

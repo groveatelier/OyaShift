@@ -1,5 +1,5 @@
 ﻿#Requires AutoHotKey v2.0
-; 1Fx key Space shift for win w/ AHK (1F1 & 1F2) 2026.3.23
+; 1Fx key Space shift for win w/ AHK (1F1 & 1F2) 2026.4.4
 ;  IntlYen sc7D, IntlRo sc73, JIS sc2b, 無変換 sc7b, 変換 sc079, かな sc070 
 ;  入力モード
 ;      1F1(07D) L-Oya : 1F2(073) R-Oya
@@ -11,7 +11,7 @@ InstallKeybdHook
 ;SetWinDelay 0
 SetStoreCapsLockMode False
 Script := "OneFx Key Shift ver. "
-Version := "2026.3.23"
+Version := "2026.4.4"
 
 ;  通常 左 右 NumPad 右英
 kanatbl := [
@@ -228,6 +228,7 @@ sc1F2 up::
 
 ~Enter::
 ~ESC::
+~BS::
 {
     global noCand
     noCand := True

@@ -45,8 +45,7 @@ chromeos/
 ├── dictdlg.html         # 辞書入力ダイアログ
 ├── offscreen.js         # パワーセーブ対策処理
 ├── offscreen.html       # パワーセーブ対策仮ダイアログ
-├── highdlg.js           # 高度設定ダイアログ（Mainversion2）
-├── Niwaicon-*.png       # アイコン画像
+├── rokuicon-*.png       # アイコン画像
 └── README.md            # このファイル
 ```
 

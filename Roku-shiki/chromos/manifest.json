@@ -9,9 +9,9 @@
   "action": {
     "default_popup": "dictdlg.html",
     "default_icon": {
-      "16": "Niwaicon-b.png",
-      "48": "Niwaicon-s.png",
-      "128": "Niwaicon-l.png"
+      "16": "rokuicon-b.png",
+      "48": "rokuicon-s.png",
+      "128": "rokuicon-l.png"
     }
   },
   "background": {
@@ -26,9 +26,9 @@
 	  "storage"
   ],
   "icons": {
-    "16": "Niwaicon-b.png",
-    "48": "Niwaicon-s.png",
-    "128": "Niwaicon-l.png"
+    "16": "rokuicon-b.png",
+    "48": "rokuicon-s.png",
+    "128": "rokuicon-l.png"
   },
   "input_components": [
     {

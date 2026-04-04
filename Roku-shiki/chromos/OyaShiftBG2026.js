@@ -1,5 +1,5 @@
-/*  2026.03.20 15:16
-  JIS Key shift keyboard ver 5.0 (自作キーボード用)
+/*  2026.04.04 23:00
+  Oya Key shift keyboard ver 5.0 (自作キーボード用)
     下鍵   : キー               (offset 1)
     上鍵   : IntlYen ＋ 同側キー (offset 2)
     上鍵   : IntlRo ＋ 同側キー  (offset 2)
@@ -491,7 +491,7 @@ function SSKeyDown(engineID, keyData){
                         if( insidebuf.length + compoinfo < 0 ) compoinfo = -insidebuf.length;
                     } else insidebuf = insidebuf.slice(0,-1);
                     henkanAri = false;
-                    if( insidebuf.length > 0 ) niwashiIME();
+                    if( insidebuf.length > 0 ) rokushikiIME();
                     else clearCompoAndCand();
                     break;
                 case "BrightnessUp":                // Brightness upの入力 (カタカナ変換) 
@@ -532,7 +532,7 @@ function OneLeCommit(){
         });
         insidebuf = insidebuf.slice(1);
         henkanAri = false;
-        if( insidebuf.length > 0 ) niwashiIME();
+        if( insidebuf.length > 0 ) rokushikiIME();
         else clearCompoAndCand();
     } 
 }
@@ -595,7 +595,7 @@ function keyValidiate(){
     } else if( insidebuf.length == 0 && "　 。、？―".indexOf( convKana[2] ) >= 0 ) CommitOne( convKana[2] );
     else {
         insidebuf += convKana[2];     // 確定済キー.
-        niwashiIME();
+        rokushikiIME();
     }
 }
 
@@ -683,7 +683,7 @@ function getCurDataTopLine(){
 function showCands(){
     var displines = henkanAri ? cCandidate.length : 2;  // 変換無
     var curpos    = displines <= candIndex ? displines-1 : candIndex;
-    var auxtext = "Niwashi IME";
+    var auxtext = "六式 IME";
     if( imemode == 0 ) auxtext = "google IME cgi";
     else if( imemode == 3 ) auxtext += " cahce";
     if( cCandidate.length > 0 ){
@@ -886,7 +886,7 @@ chrome.input.ime.onCandidateClicked.addListener(
 //  IME を呼ばれた際は cursole lineも作り直しとする。
 //  入力： insidebuf
 //  出力： imedata
-function niwashiIME(){
+function rokushikiIME(){
     if( henkanAri ) PrefixOne();    // 先頭が選択済ならFIXさせる.
     imemode = 4;                    // ime再起動状態に設定.
     SelectIME();
@@ -1160,7 +1160,7 @@ function GetNiwaDictEntry(){
     } else {
         var tagtext  = insidebuf;   // 変換対象文字列.
         var stoplimit = 64;         // 長文変換の制限.
-        imemode = 2;                // Niwashi IME 動作―早めに設定要.
+        imemode = 2;                // Rokushiki IME 動作―早めに設定要.
 
         // textの中に変換候補文字列があるか検索.
         while( tagtext.length > 0 ){
@@ -1235,7 +1235,7 @@ function googleIMEcgi(){
         }).catch(function(){
             console.log("error caught at fetch()!");
         }).then(function(data){
-            // 変換候補が無い場合、NiwashiIMEが起動済の場合は何もしない.
+            // 変換候補が無い場合、RokushikiIMEが起動済の場合は何もしない.
             if( data != undefined && imemode == 1 ){
                 imemode = 0;
                 googleData2MyIME( data );

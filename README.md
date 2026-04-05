@@ -10,12 +10,20 @@ OyaShiftKey は、quietgrove が育てている
 
 ---
 
+📦 最新版のダウンロードは Releases からどうぞ  
+https://github.com/quietgrove/OyaShiftKey/releases
+
+---
+
 ## 🌿 プロジェクト構成
 
 ```
 OyaShiftKey/
-├── Roku-shiki/     # 六式：ChromeOS / Windows 版の実装（完成）
-└── Nana-shiki/     # 七式：将来追加予定（未実装）
+├── Roku-shiki/      # 六式の実装（ChromeOS / Windows）
+│   ├── chromeos/
+│   ├── windowsos/
+│   └── hardware/    # 3Dプリンタ用モデル
+└── Nana-shiki/      # 七式（将来追加予定）
 ```
 
 ---
@@ -31,6 +39,10 @@ ChromeOS と Windows の両方で動作する
 - Windows 版：システム IME と連携し、かな生成のみ担当  
 - 自作キーボード向けに最適化  
 - quietgrove の世界観に基づく、長く使える設計
+
+
+六式は、ChromeOS と Windows の両環境で動作する形で初版が完成しています。  
+3D プリンター用のサンプルモデル（STL）は `Roku-shiki/hardware/` に含まれています。
 
 詳細は各 README を参照してください。
 

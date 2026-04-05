@@ -18,7 +18,6 @@ OyaShiftKey/
 └── Nana-shiki/     # 七式：将来追加予定（未実装）
 ```
 
-
 ---
 
 ## 🌳 六式（Roku-shiki）について

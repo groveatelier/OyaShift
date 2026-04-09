@@ -1,4 +1,4 @@
-/*  2026.04.04 23:00
+/*  2026.04.09 18:00
   Oya Key shift keyboard ver 5.0 (自作キーボード用)
     下鍵   : キー               (offset 1)
     上鍵   : IntlYen ＋ 同側キー (offset 2)
@@ -75,8 +75,6 @@ const kkeyTable = ["《》","：","；","””","’’","＜＞",      // Norm
 
 //  下のテーブルは小文字変換できない文字用. シフト判断は不要?
 const keyShiftKeyTable = [
-//    "!@#$%^&*()_+{}:<>?",
-//    "1234567890-=[];,./"
     "!@#$%^&*()_+{:<>?",
     "1234567890-=[;,./\'"
 ];
@@ -133,13 +131,6 @@ chrome.input.ime.onBlur.addListener(function(context) {
     console.log(`onBlur`);
 });
 
-//chrome.windows.onFocusChanged.addListener(function(winid) {
-//    console.log(`FocusChanged: id=${winid}`);
-//    chrome.windows.getCurrent(function(window){
-//    	onChrome = (window.type == "normal");
-//    });
-//});
-
 chrome.input.ime.onActivate.addListener(function(eng,scrtype){
     console.log(`onActivate:${eng}/${scrtype}`);
     menuItemRevise();   // menu item 更新.
@@ -183,12 +174,19 @@ function InitialCandidate( candword = "" ){
 function keyShiftOther( key ){
     var shiftcode = "";
     var lowconv   = keyShiftKeyTable[1].indexOf( key );
+//    console.log(`kso0:${lowconv}/${shiftcode}/${key}`);
     if( lowconv < 0 ){
         lowconv   = keyShiftKeyTable[0].indexOf( key );
         if( lowconv >= 0 ){
-            shiftcode = keyShiftKeyTable[1].substr( lowconv, 1 );
+            shiftcode = keyShiftKeyTable[1][lowconv]
+//            console.log(`kso1:${lowconv}/${shiftcode}/${key}`);
         }
-    } else shiftcode = key;
+//        console.log(`kso2:${lowconv}/${shiftcode}/${key}`);
+    } else {
+        shiftcode = key;
+//        console.log(`kso3:${lowconv}/${shiftcode}/${key}`);
+    }
+//    console.log(`kso3:${lowconv}/${shiftcode}/${key}`);
     return shiftcode;
 }
 
@@ -374,8 +372,7 @@ function SpecialKeys( keyData ){
         case "Esc":
             if( keyData.shiftKey ){
                 changeAndClear();           // Shift+Esc 入力モード切り替え.
-                enact = true;
-            }
+            } else enact = false;
             break;
         default:
             enact = false;
@@ -540,6 +537,7 @@ function OneLeCommit(){
 // 無変換処理.
 // 入力：false - ESC, true - 左shift
 function UndoConvert( mode ){
+//    console.log(`UC:(${mode}|${henkanAri})`);
     if( !mode && !henkanAri ){  // Escキー 
         clearCompoAndCand();    // 変換無状態なら 入力自体をクリア.
     }

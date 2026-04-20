@@ -1,5 +1,5 @@
 ﻿#Requires AutoHotKey v2.0
-; 1Fx key Space shift for win w/ AHK (1F1 & 1F2) 2026.4.4
+; 1Fx key Space shift for win w/ AHK (1F1 & 1F2) 2026.4.20
 ;  IntlYen sc7D, IntlRo sc73, JIS sc2b, 無変換 sc7b, 変換 sc079, かな sc070 
 ;  入力モード
 ;      1F1(07D) L-Oya : 1F2(073) R-Oya
@@ -11,7 +11,7 @@ InstallKeybdHook
 ;SetWinDelay 0
 SetStoreCapsLockMode False
 Script := "OneFx Key Shift ver. "
-Version := "2026.4.4"
+Version := "2026.4.20"
 
 ;  通常 左 右 NumPad 右英
 kanatbl := [
@@ -77,6 +77,216 @@ kanatbl := [
 MsgBox Script . Version,,"T2"
 preKey := -1
 noCand := True ; 変換候補があるかの仮判定
+
+; 特殊キー
+SpecialKey( key ){
+    global preKey
+    sskey := ["_","{+}","|",":","″","~","{Del}"]
+    Send sskey[key]
+    preKey := -1
+}
+
+; 看板関数
+ShowToast(text, duration) {
+    agui := Gui("-Caption +AlwaysOnTop +ToolWindow +E0x08000000") ; WS_EX_NOACTIVATE
+    agui.BackColor := "Black"
+    agui.SetFont("s12 cWhite")
+    agui.Add("Text", "Center", text)
+    ; WS_EX_NOACTIVATE を使うと Show() に NA を付ける必要がある
+    agui.Show("NA AutoSize x" (A_ScreenWidth - 200) " y" (A_ScreenHeight - 100))
+    SetTimer(() => agui.Destroy(), -duration)
+}
+
+; 英日切り替え
+ToUSMode()
+{
+    global noCand
+    if( IME_GET() ){
+;        if( IsComposing() ){
+;            Send "{Enter}" ; 変換候補を確定させておく
+;        }
+        ShowToast("A", 300) ; 0.3 秒
+        if( !noCand ){
+            noCand := True
+            Send "{Enter}"
+        }
+        IME_TOGGLE()
+    }
+    else{
+        SetTimer IME_LED, -333
+    }
+}
+
+ToJPMode()
+{
+    global noCand
+    noCand := True
+    if( !IME_GET() ){
+        ShowToast("あ", 300) ; 0.3 秒
+        IME_TOGGLE()
+    }
+}
+
+;-----------------------------------------------------------
+; Key down : moji key
+;-----------------------------------------------------------
+IsPreOya(){
+    global preKey
+    return ( preKey == 2 or preKey == 3 )
+}
+
+OnOyaDown( key ){
+    global preKey, kanaTbl
+    if( preKey < 0 ){ ; 先行キーなし
+        preKey := key
+    }
+    else{   ; 先行キーあり
+        Send kanaTbl[preKey][key] ; キー確定
+        preKey := -1
+    }
+}
+
+OnKeyDown( key ){
+    global preKey, kanatbl
+    if( preKey < 0 ){ ; 先行キーなし状態
+        preKey := key
+    }
+    else{   ; 先行キーあり状態
+        if( IsPreOya() ){ ; 親キー
+            Send  kanaTbl[key][preKey] ; 文字確定
+            preKey := -1
+        }
+        else{ ; 一般キー
+            Send kanaTbl[preKey][1] ; 1stキー確定
+            preKey := key ; 2ndキー保存
+        }
+    }
+}
+
+OnNumDown( key ){
+    global kanaTbl, preKey
+    if( GetKeyState("NumLock", "T") ){
+        Send kanaTbl[key][4] ; 10キーモード確定
+        preKey := -1
+    }
+    else{
+        if( IME_GET() ){
+            OnKeyDown( key ) ; かな入力
+        }
+        else{
+            if( IsPreOya() ){
+                Send kanaTbl[key][6] ; 親US
+            }
+            else{
+                Send kanaTbl[key][5] ; US入力
+                preKey := -1
+            }
+        }
+    }
+}
+
+;-----------------------------------------------------------
+; Key up 
+;-----------------------------------------------------------
+OnKeyUp(){
+    global preKey, kanaTbl, noCand
+    noCand := false
+    if( preKey > 0 ){      ; 未確定文字あり状態
+        Send kanatbl[preKey][1]
+        if( preKey == 2 ){ ;左親
+            noCand := True
+            ToUSMode()
+        }
+        else if( preKey == 3 ){ ;右親
+            ToJPMode()
+        }
+        preKey := -1
+    }
+}
+
+;-----------------------------------------------------------
+; IMEの状態の取得
+;   戻り値          1:ON / 0:OFF
+;-----------------------------------------------------------
+IME_GET(){
+    imehwnd := IME_GetImeHwnd()
+    if( !imehwnd )
+        return 0
+
+    return DllCall("user32\SendMessageW"
+          , "Ptr", imehwnd
+          , "UInt", 0x0283 ;Message : WM_IME_CONTROL
+          , "UPtr", 0x0005 ;wParam  : IMC_GETOPENSTATUS
+          , "Ptr", 0       ;lParam  : 0
+          , "Int" )
+}
+
+IME_GetImeHwnd(){
+    hwnd := 0
+
+    ; まずフォーカス中コントロールのHWNDを受け取る
+    try{
+        focusedCtrl := ControlGetFocus("A") ; これはClassNN文字列
+        if( focusedCtrl != "" )
+            hwnd := ControlGetHwnd(focusedCtrl, "A")
+    }
+
+    ; 取れなければアクティブウィンドウ
+    if( !hwnd )
+        hwnd := winActive("A")
+    if( !hwnd )
+        return 0
+    
+    ; GUIThreadInfoでfocis hwndを補正
+    if( WinActive("A") ){
+        ptrSize := A_PtrSize
+        cbSize  := 4 + 4 + (ptrSize * 6) + 16
+        stGTI   := Buffer( cbSize, 0 )
+        NumPut("UInt", cbSize, stGTI, 0)
+
+        if DllCall("user32\GetGUIThreadInfo", "UInt", 0, "Ptr", stGTI.Ptr, "Int"){
+            hwndFocus := NumGet(stGTI, 8 + ptrSize, "Ptr")
+            if( hwndFocus )
+                hwnd := hwndFocus
+        }
+    }
+    return DllCall("imm32\ImmGetDefaultIMEWnd", "Ptr", hwnd, "Ptr")
+}
+
+; 変換候補表示中か判断　←　これが上手く動いてくれないコメントアウト
+;IsComposing() {
+;    imehwnd := IME_GetImeHwnd()
+;    if !imehwnd
+;        return false
+;    hIMC := DllCall("imm32\ImmGetContext", "ptr", imehwnd, "ptr")
+;    if !hIMC
+;        return false
+;    size := DllCall("imm32\ImmGetCompositionStringW"
+;        , "ptr", hIMC
+;        , "uint", 0x0008  ; GCS_COMPSTR
+;        , "ptr", 0
+;        , "uint", 0)
+;    DllCall("imm32\ImmReleaseContext", "ptr", imehwnd, "ptr", hIMC)
+;    return size > 0 
+;}
+
+IME_LED(){
+    if( IME_GET() ){
+        SetScrollLockState True
+    }
+    else{
+        SetScrollLockState False
+    }
+}
+
+IME_TOGGLE(){
+    Send "!``"
+    SetTimer IME_LED, -555
+}
+
+IME_Hiragana(){
+    Send "^{sc03A}" ; Ctrl+CapsLock
+}
 
 ;-----------------------------------------------------------
 ; Hot key 
@@ -182,6 +392,8 @@ sc14B up::
 sc150 up::
 sc14D up:: OnKeyUp()
 
++sc1F1:: IME_Hiragana()
+
 ;----------------------
 ;   Spcial Key Event
 ;----------------------
@@ -217,15 +429,14 @@ sc025 up::
 sc026 up::
 sc027 up::
 sc033 up::
-sc035 up:: OnKeyUp()
+sc035 up::
 
+sc07D up::
+sc073 up::
 sc1F1 up::
-sc1F2 up::
-{
-    global preKey
-    preKey := -1
-}
+sc1F2 up:: OnKeyUp()
 
+~Delete::
 ~Enter::
 ~ESC::
 ~BS::
@@ -246,171 +457,4 @@ sc1F2 up::
 ;!sc14D:: MouseMove 16, 0, , "R"
 ;!sc150:: MouseMove 0, 16, , "R"
 ;!sc147:: MouseClick "Left"
-
-; 特殊キー
-SpecialKey( key ){
-    global preKey
-    sskey := ["_","{+}","|",":","″","~","{Del}"]
-    Send sskey[key]
-    preKey := -1
-}
-
-; 英日切り替え
-+sc1F1::
-{
-    global noCand
-    if( IME_GET() ){
-        if( !noCand ){
-            Send "{Enter}"
-        }
-        IME_TOGGLE()
-    }
-    noCand := True
-}
-
-+sc1F2::
-{
-    if( !IME_GET() ){
-        IME_TOGGLE()
-    }
-}
-
-;-----------------------------------------------------------
-; Key down : moji key
-;-----------------------------------------------------------
-IsPreOya(){
-    global preKey
-    return ( preKey == 2 or preKey == 3 )
-}
-
-OnOyaDown( key ){
-    global preKey, kanaTbl
-    if( preKey < 0 ){ ; 先行キーなし
-        preKey := key
-    }
-    else{   ; 先行キーあり
-        Send kanaTbl[preKey][key] ; キー確定
-        if( IsPreOya() ){ ; IME切替
-            SetTimer IME_LED, -555
-        }
-        preKey := -1
-    }
-}
-
-OnKeyDown( key ){
-    global preKey, kanatbl
-    if( preKey < 0 ){ ; 先行キーなし状態
-        preKey := key
-    }
-    else{   ; 先行キーあり状態
-        if( IsPreOya() ){ ; 親キー
-            Send  kanaTbl[key][preKey] ; 文字確定
-            preKey := -1
-        }
-        else{ ; 一般キー
-            Send kanaTbl[preKey][1] ; 1stキー確定
-            preKey := key ; 2ndキー保存
-        }
-    }
-}
-
-OnNumDown( key ){
-    global kanaTbl, preKey
-    if( GetKeyState("NumLock", "T") ){
-        Send kanaTbl[key][4] ; 10キーモード確定
-        preKey := -1
-    }
-    else{
-        if( IME_GET() ){
-            OnKeyDown( key ) ; かな入力
-        }
-        else{
-            if( IsPreOya() ){
-                Send kanaTbl[key][6] ; 親US
-            }
-            else{
-                Send kanaTbl[key][5] ; US入力
-                preKey := -1
-            }
-        }
-    }
-}
-
-;-----------------------------------------------------------
-; Key up 
-;-----------------------------------------------------------
-OnKeyUp(){
-    global preKey, kanaTbl, noCand
-    if( preKey > 0 ){      ; 未確定文字あり状態
-        Send kanatbl[preKey][1]
-        if( !IsPreOya() )   ; 親以外
-        {
-            preKey := -1
-        }
-    }
-    noCand := False
-}
-
-;-----------------------------------------------------------
-; IMEの状態の取得
-;   戻り値          1:ON / 0:OFF
-;-----------------------------------------------------------
-IME_GET(){
-    imehwnd := IME_GetImeHwnd()
-    if( !imehwnd )
-        return 0
-
-    return DllCall("user32\SendMessageW"
-          , "Ptr", imehwnd
-          , "UInt", 0x0283 ;Message : WM_IME_CONTROL
-          , "UPtr", 0x0005 ;wParam  : IMC_GETOPENSTATUS
-          , "Ptr", 0       ;lParam  : 0
-          , "Int" )
-}
-
-IME_GetImeHwnd(){
-    hwnd := 0
-
-    ; まずフォーカス中コントロールのHWNDを受け取る
-    try{
-        focusedCtrl := ControlGetFocus("A") ; これはClassNN文字列
-        if( focusedCtrl != "" )
-            hwnd := ControlGetHwnd(focusedCtrl, "A")
-    }
-
-    ; 取れなければアクティブウィンドウ
-    if( !hwnd )
-        hwnd := winActive("A")
-    if( !hwnd )
-        return 0
-    
-    ; GUIThreadInfoでfocis hwndを補正
-    if( WinActive("A") ){
-        ptrSize := A_PtrSize
-        cbSize  := 4 + 4 + (ptrSize * 6) + 16
-        stGTI   := Buffer( cbSize, 0 )
-        NumPut("UInt", cbSize, stGTI, 0)
-
-        if DllCall("user32\GetGUIThreadInfo", "UInt", 0, "Ptr", stGTI.Ptr, "Int"){
-            hwndFocus := NumGet(stGTI, 8 + ptrSize, "Ptr")
-            if( hwndFocus )
-                hwnd := hwndFocus
-        }
-    }
-    return DllCall("imm32\ImmGetDefaultIMEWnd", "Ptr", hwnd, "Ptr")
-}
-
-IME_LED(){
-    if( IME_GET() ){
-        SetScrollLockState True
-    }
-    else{
-        SetScrollLockState False
-    }
-}
-
-IME_TOGGLE(){
-    Send "!``"
-    SetTimer IME_LED, -555
-}
 

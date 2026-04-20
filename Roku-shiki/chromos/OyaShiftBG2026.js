@@ -1,4 +1,4 @@
-/*  2026.04.20 18:00
+/*  2026.04.21 18:00
   Oya Key shift keyboard ver 5.0 (自作キーボード用)
     下鍵   : キー               (offset 1)
     上鍵   : IntlYen ＋ 同側キー (offset 2)
@@ -20,37 +20,38 @@
             変換候補を表示する.    
 */
 const kanashifttable = [
-    /*Key nor   spc   sft  opsft*/
+   /*Key  単    左+   右+ */
     ["g", "せ", "も", "ぜ"],
-    ["h", "は", "み", "ば", "ぱ"],
-    ["b", "へ", "ぃ", "べ", "ぺ"],
-    ["n", "め", "ぬ", "ぷ"],
+    ["h", "は", "ば", "み"],
+    ["Lang2", "", "", ""],
+    ["Lang1", "", "", ""],
+    ["n", "め", "ぷ", "ぬ"],
     ["t", "さ", "れ", "ざ"],
-    ["y", "ら", "よ", "ぱ", "に"],
+    ["y", "ら", "ぱ", "よ"],
     ["f", "け", "ゅ", "げ"],
-    ["j", "と", "お", "ど"],
-    ["v", "ふ", "や", "ぶ", "ぷ"],
-    ["m", "そ", "ゆ", "ぞ"],
+    ["j", "と", "ど", "お"],
+    ["v", "ふ", "や", "ぶ"],
+    ["m", "そ", "ぞ", "ゆ"],
     ["r", "こ", "ゃ", "ご"],
-    ["u", "ち", "に", "ぢ"],
+    ["u", "ち", "ぢ", "に"],
     ["d", "て", "な", "で"],
-    ["k", "き", "の", "ぎ"],
+    ["k", "き", "ぎ", "の"],
     ["c", "す", "ろ", "ず"],
-    [",", "ね", "む", "ぺ"],
+    [",", "ね", "ぺ", "む"],
     ["e", "た", "り", "だ"],
-    ["i", "く", "る", "ぐ"],
+    ["i", "く", "ぐ", "る"],
     ["s", "し", "あ", "じ"],
-    ["l", "い", "ょ", "ぽ", "ゐ"],
-    ["x", "ひ", "ー", "び", "ぴ"],
-    [".", "ほ", "わ", "ぼ", "ぽ"],
-    ["w", "か", "え", "が", "ゑ"],
-    ["o", "つ", "ま", "づ"],
+    ["l", "い", "ぽ", "ょ"],
+    ["x", "ひ", "ー", "び"],
+    [".", "ほ", "ぼ", "わ"],
+    ["w", "か", "え", "が"],
+    ["o", "つ", "づ", "ま"],
     ["a", "う", "を", "ゔ"],
-    [";", "ん", "っ", "；"],
+    [";", "ん", "；", "っ"],
     ["z", "．", "ぅ", "."],
-    ["/", "・", "ぉ", "／"],
+    ["/", "・", "／", "ぉ"],
     ["q", "。", "ぁ", "ぁ゙"],
-    ["p", "，", "ぇ", "ぴ"],
+    ["p", "，", "ぴ", "ぇ"],
 
     ["1", "1",  "？", "１"],      /* US配列に合わせる*/
     ["6", "6",  "［］", "６"],
@@ -67,7 +68,13 @@ const kanashifttable = [
     ["[", "』", "『", "["],
     ["=", "｜", "＝", "￥"],
     ["'", "’", "”", "'"],
+    ["Ro","", " ",  " "],
+
+    ["!11!aAARo","", " ",  " "],
+    ["Ro","", " ",  " "],
+    ["Ro","", " ",  " "],
     ["Ro","", " ",  " "]
+
 ];
 
 // 記号入力キーの文字列. 6個.
@@ -191,77 +198,40 @@ function keyShiftOther( key ){
     return shiftcode;
 }
 
-//  かなシフトテーブルから文字を取り出す.
-function GetKanaMoji( index, offset ){
-    while( offset > 4 ) offset -= 4;
-    return kanashifttable[index][offset];
-}
-
 //  SPC押下時の convKana 設定. 
-function setConvKanaDownSpc(){
-//    console.log(`SP:(${keycondition})${convKana}`);
-    var keyact = true;
-    if( convKana[0] ){              //  2nd 以降を判断.
-        if( convKana[1] >= 0 ){     //  2nd以降の SPC入力.
-            var ofs     = DakuHan(convKana[1], keycondition);
-            convKana[2] = GetKanaMoji(convKana[1], ofs);  // 上キー or 濁音.
+function setConvKanaDownSpc( keyofs ){
+    console.log(`SP:${convKana}/${keyofs}`);
+    if( convKana[0] ){              // 2nd 以降を判断.
+        if( convKana[1] >= 0 ){     // 2nd以降の SPC入力.
+            convKana[2] = kanashifttable[convKana[1]][keyofs];  // 上キー or 濁音.
             convKana[0] = false;    // Validさせる.
         }
-        else{
-            var double = keycondition - convKana[1]
-            if( double == 3 || double == 19 ){  //  両シフト
-                keyact = false;
-            }
-        }
     } 
-    else {    // ここは初回JIS Key.
-        if( keycondition < 4 ) convKana = [true, -3, ""];   // 右側.
-        else convKana = [true, -2, ""];     // 左側.
+    else {    // ここは初回 Key.
+        convKana = [true, keyofs, ""]; // 親キーinx
     }
-    return keyact;
 }
   
 //  Key押下時の convKana 設定. 
-function setConvKanaDownKey( kinx, keyshift ){
+function setConvKanaDownKey( keyinx, keyshift ){
 //    console.log(`KY:(${kinx})${convKana}/${keyshift}`);
     if( convKana[0] ){
-        if( convKana[1] < 0 ){  //  1st が SPC入力の場合.
-            var ofs  = DakuHan(convKana[1], kinx);
-            convKana = [false, kinx, GetKanaMoji(kinx, ofs)];       // 上キー or 濁音&確定. 
+        if( convKana[1] == 2 || convKana[1] == 3 ){  //  1st が SPC入力の場合.
+            convKana[0] = false;
+            convKana[2] = kanashifttable[keyinx][convKana[1]];
         } 
         else{                   // 多重キーの場合.
             keyValidiate();     // 1st Key確定.
-            convKana = [true, kinx, GetKanaMoji(kinx, 1)];  // 2nd Key保留.
+            convKana = [true, keyinx, kanashifttable[keyinx][1]];  // 2nd Key保留.
         }
     }
     else{
-        convKana = [true, kinx, GetKanaMoji(kinx, 1)];  // ここは初回入力の時.
-        if( keyshift == 10 ){   // shift key押下.
-            var moji = Handakmoji(kinx);
-            if( moji.length != 0 ){
-                convKana[2] = moji;
-                convKana[0] = false;    // 半濁音確定.
-            }
+        convKana = [true, keyinx, kanashifttable[keyinx][1]];  // ここは初回入力の時.
+        if( keyshift ){         // shift key押下.
+            convKana[2] = convKana[2].toUpperCase();    // 大文字
+            convKana[0] = false;    // 確定.
         }
     }
-}
-
-//  Shift押下時のキー判断.
-function Handakmoji( kinx ){
-    const Hary = [1,2,5,8,20,21,19,22];     // 半濁音「ぱぴぷぺぽ」.
-    var moji = kanashifttable[kinx][0].toUpperCase();
-    for( var tag in Hary ){
-        if( Hary[tag] == kinx ){
-            moji = kanashifttable[kinx][4];
-            break;
-        }
-    }
-    return moji;
-}
-
-// 濁音の判断.
-function DakuHan( key1, key2 ){
-    return ((key1 ^ key2) & 1) ? 3 : 2; 
 }
 
 //  対象キーのかなシフトテーブルindexを取得.
@@ -278,11 +248,33 @@ function GetKanaIndex( key ){
 
 //  Key Down時に呼び出される.
 function thumbShift(keyData){
-    var action   = true;
+    var action   = false;
     var lkey     = "";
     var keyinx   = -1;
-    keycondition = 2;
+//    keycondition = 2;
 
+    if( !keyData.ctrlKey ){     // Ctrl 押されてないこと。
+        if( keyData.code == "Lang1" || keyData.code == "IntlRo" ){
+            keyinx = 3;
+        } else if( keyData.code == "Lang2" || keyData.code == "IntlYen" ){
+            keyinx = 2;
+        } else {
+            lkey = keyData.key.toLowerCase();   // 小文字検索の為
+            keyinx = GetKanaIndex( lkey );
+        }
+        console.log(`x:${keyData.code}/${keyData.key}/${keyinx}/${lkey}`);
+
+        if( keyinx >= 0){
+            action = true;
+            if( keyinx == 2 || keyinx == 3 ){    // 親キー押下
+                setConvKanaDownSpc( keyinx );   // convKana 設定：SPC.
+            } else {                            // 通常キー入力
+                setConvKanaDownKey( keyinx, (keyData.shiftKey) );   // convKana 設定：key.
+            }
+        }
+        console.log(`x2:${convKana}`);
+    }
+/*
     // key condition 
     //  bit 0 - kana, bit 1 - keys, bit 2 - 2nd, bit 3 - shift | IntlRo, 
     //  bit 4 - SPC, bit 5 - ctrl 
@@ -332,6 +324,7 @@ function thumbShift(keyData){
         default:
             action = false
     }
+            */
 //    console.log(`th:(${action})${keycondition}`);
     return action;
 }
@@ -427,7 +420,7 @@ function USKeyDown( keyData ){
 
 // SS keyUp event
 function SSKeyUp(engineID, keyData){
-//    console.log(`+kU:${convKana}/${keycondition}/${keyData.key}:${insidebuf.length}`);
+    console.log(`+kU:${convKana}/${keyData.key}:${insidebuf.length}`);
     if( keycondition < 1024 ){
         if( convKana[2] == " " ) UndoConvert( true );   // 変換候補確定とか
         else if( convKana[1] == -2 ) changeAndClear();  // US Mode

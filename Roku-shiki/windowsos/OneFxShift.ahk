@@ -136,12 +136,12 @@ IsPreOya(){
 }
 
 OnOyaDown( key ){
-    global preKey, kanaTbl
+    global preKey, kanatbl
     if( preKey < 0 ){ ; 先行キーなし
         preKey := key
     }
     else{   ; 先行キーあり
-        Send kanaTbl[preKey][key] ; キー確定
+        Send kanatbl[preKey][key] ; キー確定
         preKey := -1
     }
 }
@@ -153,20 +153,20 @@ OnKeyDown( key ){
     }
     else{   ; 先行キーあり状態
         if( IsPreOya() ){ ; 親キー
-            Send  kanaTbl[key][preKey] ; 文字確定
+            Send  kanatbl[key][preKey] ; 文字確定
             preKey := -1
         }
         else{ ; 一般キー
-            Send kanaTbl[preKey][1] ; 1stキー確定
+            Send kanatbl[preKey][1] ; 1stキー確定
             preKey := key ; 2ndキー保存
         }
     }
 }
 
 OnNumDown( key ){
-    global kanaTbl, preKey
+    global kanatbl, preKey
     if( GetKeyState("NumLock", "T") ){
-        Send kanaTbl[key][4] ; 10キーモード確定
+        Send kanatbl[key][4] ; 10キーモード確定
         preKey := -1
     }
     else{
@@ -175,10 +175,10 @@ OnNumDown( key ){
         }
         else{
             if( IsPreOya() ){
-                Send kanaTbl[key][6] ; 親US
+                Send kanatbl[key][6] ; 親US
             }
             else{
-                Send kanaTbl[key][5] ; US入力
+                Send kanatbl[key][5] ; US入力
                 preKey := -1
             }
         }
@@ -189,7 +189,7 @@ OnNumDown( key ){
 ; Key up 
 ;-----------------------------------------------------------
 OnKeyUp(){
-    global preKey, kanaTbl, noCand
+    global preKey, kanatbl, noCand
     noCand := false
     if( preKey > 0 ){      ; 未確定文字あり状態
         Send kanatbl[preKey][1]
@@ -395,7 +395,7 @@ sc14D up:: OnKeyUp()
 +sc1F1:: IME_Hiragana()
 
 ;----------------------
-;   Spcial Key Event
+;   Special Key Event
 ;----------------------
 +sc00C:: SpecialKey(1) ; -
 +sc00D:: SpecialKey(2) ; =

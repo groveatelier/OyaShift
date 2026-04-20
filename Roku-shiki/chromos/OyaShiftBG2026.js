@@ -1,4 +1,4 @@
-/*  2026.04.09 18:00
+/*  2026.04.20 18:00
   Oya Key shift keyboard ver 5.0 (自作キーボード用)
     下鍵   : キー               (offset 1)
     上鍵   : IntlYen ＋ 同側キー (offset 2)
@@ -6,7 +6,8 @@
     濁音   : IntlYen ＋ 逆側キー (offset 3) 
     濁音   : IntlRo ＋ 逆側キー  (offset 3) 
     半濁音 : shift ＋ キー       (offset 4)
-    日英切り替え: IntlYen+IntlRo, Shift+IntlYen, Shift + かな, Shift + Esc
+    日英切り替え: IntlYen+IntlRo, Shift + かな, Shift + Esc
+        US 左親Key単独, 日 右親Key単独
     
     >> Spcial keys << insidebuf.length > 0 
     "\"(Backslash) : enter                 
@@ -302,14 +303,14 @@ function thumbShift(keyData){
         }
     }
  
-    if( keyData.shiftKey ){         // Shiftキー押下？.
+    if( keyData.shiftKey ){     // Shiftキー押下？.
         keycondition += 8;
     }
     if( keyData.ctrlKey ){
-        keycondition += 32;                 // ctrlキーをスルーさせる為.
+        keycondition += 32;     // ctrlキーをスルーさせる為.
     }
 
-    console.log(`x:${keycondition}/${convKana[0]}/${convKana[1]}/${keyData.code}/${lkey}`);
+    //console.log(`x:${keycondition}/${convKana[0]}/${convKana[1]}/${keyData.code}/${lkey}`);
     switch( keycondition ){
         case 1:         // 条件1. Kana
         case 16:        // 条件2. SPC
@@ -331,7 +332,7 @@ function thumbShift(keyData){
         default:
             action = false
     }
-    console.log(`th:(${action})${keycondition}`);
+//    console.log(`th:(${action})${keycondition}`);
     return action;
 }
 
@@ -416,27 +417,22 @@ function USKeyDown( keyData ){
     //console.log(`UKD:${keyData.code}/${keyData.shiftKey}`);
     enact = false;
     // shift + 右親 → かな入力
-    if(( keyData.code == "IntlRo" || keyData.code == "Lang1"  ) && keyData.shiftKey ){
+    if(( keyData.code == "Lang1" || keyData.code == "Lang1IntlRo"  ) && !keyData.shiftKey ){
         enact = true;
-        changeAndClear();   // 
+        convKana[0] = true; // SSKeyUp で 日モードに切り替える
+        convKana[1] = -3;
     }
     return enact;
 }
 
 // SS keyUp event
 function SSKeyUp(engineID, keyData){
-    console.log(`+kU:${convKana}/${keycondition}/${keyData.key}:${keyData.code}`);
-    if( convKana[0] && convKana[2] != "" ){     // 下キーの確定.
-        if( insidebuf.length > 0 ){
-            // 変換候補ありの単独 Spc は変換処理にまわす。/
-            // 複文節ある場合も変換処理にまわす。.
-            if( convKana[2] == "　" && (cCandidate.length > 0 || imedata.length > 1 )){
-                setOtherCandidate(1);   // Spaceは先頭変換.
-            }
-           else if( convKana[2] == " " ) UndoConvert( true );  // 左spaceキーモードで実行. 
-            else keyValidiate();      // 他のキーは確定.
-        } else keyValidiate();          // 他の下キーは確定.
-    }
+//    console.log(`+kU:${convKana}/${keycondition}/${keyData.key}:${insidebuf.length}`);
+    if( keycondition < 1024 ){
+        if( convKana[2] == " " ) UndoConvert( true );   // 変換候補確定とか
+        else if( convKana[1] == -2 ) changeAndClear();  // US Mode
+        else if( convKana[0] ) keyValidiate();          // 他のキーがあれば確定.
+    } else if( convKana[1] == -3 ) changeAndClear();    // 日モード
     InitialKana();      // convKanaの初期化.
 }
 
@@ -452,7 +448,7 @@ function SSKeyDown(engineID, keyData){
         enact = true;
     } 
     else if( insidebuf.length > 0 ) {    // insidebuf(or cCandidate) が存在する時の処理
-        console.log(`ssKD+:(${keyData.key}|${keyData.code})`);
+//        console.log(`ssKD+:(${keyData.key}|${keyData.code})`);
         // Shift Space と タブ は先頭確定.
         if( keyData.key == " " || keyData.key == "Tab" ){
             if( keyData.shiftKey ) fixOne();        // Shift付きは先頭確定.
@@ -1226,7 +1222,7 @@ function googleData2MyIME( data ) {
 function googleIMEcgi(){
     var url = "http://google.com/transliterate?langpair=ja-Hira|ja&text=" + insidebuf;
     imemode = 1;
-    console.log(`GI:${insidebuf}`);
+//    console.log(`GI:${insidebuf}`);
     if( insidebuf.length > 0 ){
         fetch(url).then(function(response){
             return response.json();
@@ -1261,7 +1257,7 @@ function kanjiOnly( tagmoji ){
 // 前後一致を回避 : 二文字は出来るだけ残す.
 function removeKana( henkan, kakutei ){
     var removed = 0;
-    console.log(`reKa>${henkan}/${kakutei}`)
+//    console.log(`reKa>${henkan}/${kakutei}`)
     for( var limit = 0; limit < henkan.length; limit++ ){
         if( henkan.charCodeAt(0) == kakutei.charCodeAt(0) ){    // 元と同じ?
             henkan  = henkan.substr( 1 );
@@ -1277,7 +1273,7 @@ function removeKana( henkan, kakutei ){
             removed++;
         } else break;
     }
-    console.log(`reKa<${henkan}/${kakutei}`)
+//    console.log(`reKa<${henkan}/${kakutei}`)
     var ret = [henkan, kakutei, removed];
     return ret;
 }

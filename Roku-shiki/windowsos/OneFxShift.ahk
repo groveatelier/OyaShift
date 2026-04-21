@@ -1,5 +1,5 @@
 ﻿#Requires AutoHotKey v2.0
-; 1Fx key Space shift for win w/ AHK (1F1 & 1F2) 2026.4.20
+; 1Fx key Space shift for win w/ AHK (1F1 & 1F2) 2026.4.21
 ;  IntlYen sc7D, IntlRo sc73, JIS sc2b, 無変換 sc7b, 変換 sc079, かな sc070 
 ;  入力モード
 ;      1F1(07D) L-Oya : 1F2(073) R-Oya
@@ -11,7 +11,7 @@ InstallKeybdHook
 ;SetWinDelay 0
 SetStoreCapsLockMode False
 Script := "OneFx Key Shift ver. "
-Version := "2026.4.20"
+Version := "2026.4.21"
 
 ;  通常 左 右 NumPad 右英
 kanatbl := [
@@ -87,14 +87,38 @@ SpecialKey( key ){
 }
 
 ; 看板関数
-ShowToast(text, duration) {
-    agui := Gui("-Caption +AlwaysOnTop +ToolWindow +E0x08000000") ; WS_EX_NOACTIVATE
-    agui.BackColor := "Black"
-    agui.SetFont("s12 cWhite")
-    agui.Add("Text", "Center", text)
-    ; WS_EX_NOACTIVATE を使うと Show() に NA を付ける必要がある
-    agui.Show("NA AutoSize x" (A_ScreenWidth - 200) " y" (A_ScreenHeight - 100))
-    SetTimer(() => agui.Destroy(), -duration)
+ShowToast(text, colormode) {
+    ; --- GUI 作成 ---
+    agui := Gui("-Caption +AlwaysOnTop +ToolWindow +E0x08000000")
+    if( colormode ){
+        agui.BackColor := "183618"  ; 深い森の影色
+    } 
+    else {
+       agui.BackColor := "641818"          ; 赤濃いめ
+    }
+    agui.SetFont("s24 cFFDFA8")         ; 琥珀色の文字（六式の雰囲気）
+    agui.MarginX := 20
+    agui.MarginY := 15
+    agui.Add("Text", "Center w160", text)
+
+    ; --- 画面中央下に固定表示 ---
+    x := (A_ScreenWidth - 160) / 2
+    y := A_ScreenHeight / 2 + 128
+    agui.Show("NA AutoSize x" x " y" y)
+
+    ; --- 透明化を有効にする（WS_EX_LAYERED を追加） ---
+    ex := WinGetExStyle(agui.Hwnd)
+    WinSetExStyle(ex | 0x00080000, agui.Hwnd)
+    WinSetTransparent(170, agui.Hwnd)
+
+    ; --- 角丸（DWM）---
+    try DllCall("dwmapi\DwmSetWindowAttribute"
+        , "ptr", agui.Hwnd
+        , "int", 33                ; DWMWA_WINDOW_CORNER_PREFERENCE
+        , "int*", 2                ; 2 = rounded
+        , "int", 4)
+
+    SetTimer(() => agui.Destroy(), -800)
 }
 
 ; 英日切り替え
@@ -102,10 +126,7 @@ ToUSMode()
 {
     global noCand
     if( IME_GET() ){
-;        if( IsComposing() ){
-;            Send "{Enter}" ; 変換候補を確定させておく
-;        }
-        ShowToast("A", 300) ; 0.3 秒
+        ShowToast("A", False) ; 赤背景
         if( !noCand ){
             noCand := True
             Send "{Enter}"
@@ -122,7 +143,7 @@ ToJPMode()
     global noCand
     noCand := True
     if( !IME_GET() ){
-        ShowToast("あ", 300) ; 0.3 秒
+        ShowToast("あ", True) ; 緑背景
         IME_TOGGLE()
     }
 }

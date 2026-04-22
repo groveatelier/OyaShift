@@ -25,6 +25,7 @@ const kanashifttable = [
     ["h", "は", "ば", "み"],
     ["Lang2", "", "", ""],
     ["Lang1", "", "", ""],
+    ["b", "へ", "ぃ", "べ"],
     ["n", "め", "ぷ", "ぬ"],
     ["t", "さ", "れ", "ざ"],
     ["y", "ら", "ぱ", "よ"],
@@ -53,33 +54,25 @@ const kanashifttable = [
     ["q", "。", "ぁ", "ぁ゙"],
     ["p", "，", "ぴ", "ぇ"],
 
-    ["1", "1",  "？", "１"],      /* US配列に合わせる*/
-    ["6", "6",  "［］", "６"],
-    ["2", "2",  "／", "２"],
-    ["7", "7",  "《》", "７"],
-    ["3", "3",  "〜", "３"],
-    ["8", "8",  "【】", "８"],
-    ["4", "4",  "「", "４"],
-    ["9", "9",  "（）", "９"],
-    ["5", "5",  "」", "５"],
-    ["0", "0",  "、", "０"],
+    ["`", "‘",  "かっこ", "’"],      /* US配列に合わせる*/
+    ["1", "1",  "ф", "一"],
+    ["6", "6",  "六", "［］"],
+    ["2", "2",  "〇", "二"],
+    ["7", "7",  "七", "《》"],
+    ["3", "3",  "§", "三"],
+    ["8", "8",  "八", "【】"],
+    ["4", "4",  "「", "四"],
+    ["9", "9",  "九", "※"],
+    ["5", "5",  "」", "五"],
+    ["0", "0",  "０", "、"],
 
-    ["-", "―",  "−", "−"],
-    ["[", "』", "『", "["],
-    ["=", "｜", "＝", "￥"],
-    ["'", "’", "”", "'"],
-    ["Ro","", " ",  " "],
-
-    ["!11!aAARo","", " ",  " "],
-    ["Ro","", " ",  " "],
-    ["Ro","", " ",  " "],
+    ["-", "-", "√", "±"],
+    ["=", "=", "×", "÷"],
+    ["[", "』", "《《》》", "『"],
+    ["\\", "￥","くりかえし","＼"],
+    ["]", "]", "}","{"],
     ["Ro","", " ",  " "]
-
 ];
-
-// 記号入力キーの文字列. 6個.
-const kkeyTable = ["《》","：","；","””","’’","＜＞",      // Normal
-                   "《《》》",":",";","\"\"","''","<>"];    // w/ Shift
 
 //  下のテーブルは小文字変換できない文字用. シフト判断は不要?
 const keyShiftKeyTable = [
@@ -200,7 +193,6 @@ function keyShiftOther( key ){
 
 //  SPC押下時の convKana 設定. 
 function setConvKanaDownSpc( keyofs ){
-    console.log(`SP:${convKana}/${keyofs}`);
     if( convKana[0] ){              // 2nd 以降を判断.
         if( convKana[1] >= 0 ){     // 2nd以降の SPC入力.
             convKana[2] = kanashifttable[convKana[1]][keyofs];  // 上キー or 濁音.
@@ -251,7 +243,6 @@ function thumbShift(keyData){
     var action   = false;
     var lkey     = "";
     var keyinx   = -1;
-//    keycondition = 2;
 
     if( !keyData.ctrlKey ){     // Ctrl 押されてないこと。
         if( keyData.code == "Lang1" || keyData.code == "IntlRo" ){
@@ -262,122 +253,24 @@ function thumbShift(keyData){
             lkey = keyData.key.toLowerCase();   // 小文字検索の為
             keyinx = GetKanaIndex( lkey );
         }
-        console.log(`x:${keyData.code}/${keyData.key}/${keyinx}/${lkey}`);
+        //console.log(`x:${keyData.code}/${keyData.key}/${keyinx}/${lkey}`);
 
-        if( keyinx >= 0){
+        if( keyinx >= 0 ){
             action = true;
-            if( keyinx == 2 || keyinx == 3 ){    // 親キー押下
+            if( keyinx == 2 || keyinx == 3 ){   // 親キー押下
                 setConvKanaDownSpc( keyinx );   // convKana 設定：SPC.
             } else {                            // 通常キー入力
                 setConvKanaDownKey( keyinx, (keyData.shiftKey) );   // convKana 設定：key.
             }
-        }
-        console.log(`x2:${convKana}`);
+        } 
     }
-/*
-    // key condition 
-    //  bit 0 - kana, bit 1 - keys, bit 2 - 2nd, bit 3 - shift | IntlRo, 
-    //  bit 4 - SPC, bit 5 - ctrl 
-    if( keyData.code == "IntlRo" || keyData.code == "Lang1" ){
-        keycondition = 1;                       // Ro 押下(右親)
-    } else if( keyData.code == "IntlYen" || keyData.code == "Lang2" ){
-        keycondition = 16;                      // Backslash 押下(左親).
-    } else {
-        if( keyData.key.match(/^[a-z]$/) ){     // 有用キーかを判断.
-            lkey = keyData.key;
-        } else if( keyData.key.match(/^[A-Z]$/)){
-            lkey = keyData.key.toLowerCase();
-        } else {
-            lkey = keyShiftOther( keyData.key );
-            if( lkey == "" ){
-                keycondition = 0;  // 有用キーでなければ 0
-            }        
-        }
-    }
- 
-    if( keyData.shiftKey ){     // Shiftキー押下？.
-        keycondition += 8;
-    }
-    if( keyData.ctrlKey ){
-        keycondition += 32;     // ctrlキーをスルーさせる為.
-    }
-
-    //console.log(`x:${keycondition}/${convKana[0]}/${convKana[1]}/${keyData.code}/${lkey}`);
-    switch( keycondition ){
-        case 1:         // 条件1. Kana
-        case 16:        // 条件2. SPC
-            action = setConvKanaDownSpc();  // convKana 設定：SPC.
-            if( !action ) changeAndClear(); // 日英mode
-            break;
-        case 2:         // 条件3. keys
-        case 10:
-            var kinx = GetKanaIndex( lkey );
-            setConvKanaDownKey( kinx, keycondition );   // convKana 設定：key.
-            break;
-        case 24:         // 条件?. shift + Right Oya && 1st → 日mode
-            changeAndClear();
-            action = false;
-            break;
-        case 41:        // 条件6．ctrl + shift + space -> IME切り替え.
-            InitialKana();    // 入力無効.
-            // thouth down
-        default:
-            action = false
-    }
-            */
-//    console.log(`th:(${action})${keycondition}`);
     return action;
-}
-
-function SendRemapKeyEvent( keyData, remapped ){
-    keyData.key  = remapped;
-    SendRemapKeyEventCode( keyData, remapped );
-}
-
-function SendRemapKeyEventCode( keyData, remapped ){
-    keyData.code = remapped;
-    chrome.input.ime.sendKeyEvents({"contextID": context_id, "keyData": [keyData]});
-}
-
-function ResendEnter( keyData ){
-    SendRemapKeyEvent( keyData, "Enter" );
-}
-
-function ResendBS( keyData ){
-    SendRemapKeyEvent( keyData, "Backspace" );
-}
-
-function ResendDel( keyData ){
-    SendRemapKeyEvent( keyData, "Delete" );
-}
-
-function SpecialKeys( keyData ){
-    var enact = true;
-//    console.log(`SK:${keyData.key}/${keyData.code}/${KeyStyle}`);
-    switch( keyData.key ){
-        case "|":   // shift backslash to shift enter
-        case "\\":  // backslash to enter or special
-            SpecialKeyInput( !keyData.shiftKey );  // 特殊記号入力キー.
-            break;
-        case "}":   // shift BracketRight
-        case "]":   // BracketRight to Backspace
-            ResendBS( keyData );
-            break;
-        case "Esc":
-            if( keyData.shiftKey ){
-                changeAndClear();           // Shift+Esc 入力モード切り替え.
-            } else enact = false;
-            break;
-        default:
-            enact = false;
-    }
-    return enact;
 }
 
 chrome.input.ime.onKeyEvent.addListener(
   function(engineID, keyData) {
     var enact = false;
-    // keyup 時は 親指シフトのリセット と 単独Spcを確認.
+    // keyup 時は 親指シフトのリセット と 単独親キーを確認.
     // keyup && KeyCount == 0 は KeyValidiate
     if( keyData.type == "keyup" ){
         SSKeyUp( engineID, keyData );
@@ -385,8 +278,8 @@ chrome.input.ime.onKeyEvent.addListener(
     //  keydown イベント ---------------------------------------------------------
     else if(keyData.type == "keydown"){
         console.log(`PreKD:(${keyData.key}|${keyData.code})`);
-        if( keycondition < 1024 ) enact = SSKeyDown( engineID, keyData );
-        else enact = USKeyDown( keyData );
+        enact = ( keycondition < 1024 ) ? 
+                SSKeyDown( engineID, keyData ) : USKeyDown( keyData );
     }
     return enact;
   }
@@ -395,6 +288,7 @@ chrome.input.ime.onKeyEvent.addListener(
 // かなモードの変更.
 function changeKanaMode(){
     keycondition = keycondition < 1024 ? 1024 : 0;  // toggle kana mode
+    console.log(`CKana: ${keycondition}`)
     menuItemUpdate();           // menu Item update
     clearCompoAndCand();
 }
@@ -409,23 +303,29 @@ function changeAndClear(){
 function USKeyDown( keyData ){
     //console.log(`UKD:${keyData.code}/${keyData.shiftKey}`);
     enact = false;
-    // shift + 右親 → かな入力
-    if(( keyData.code == "Lang1" || keyData.code == "Lang1IntlRo"  ) && !keyData.shiftKey ){
-        enact = true;
-        convKana[0] = true; // SSKeyUp で 日モードに切り替える
-        convKana[1] = -3;
+    // No shift + 親キー確認
+    if( !keyData.shiftKey ){
+        if( keyData.code == "Lang1" || keyData.code == "IntlRo" ){
+            enact = true;
+            convKana = [false,3,''];   // SSKeyUp で日本語モード
+        }
+        else if( keyData.code == "Lang2" || keyData.code == "IntlYen" ){
+            enact = true;
+            convKana = [false,2,''];   // Just a mark
+        }
+        else convKana[1] = -1;
     }
     return enact;
 }
 
 // SS keyUp event
 function SSKeyUp(engineID, keyData){
-    console.log(`+kU:${convKana}/${keyData.key}:${insidebuf.length}`);
+    //console.log(`+kU:${convKana}/${keyData.key}:${insidebuf.length}`);
     if( keycondition < 1024 ){
-        if( convKana[2] == " " ) UndoConvert( true );   // 変換候補確定とか
-        else if( convKana[1] == -2 ) changeAndClear();  // US Mode
-        else if( convKana[0] ) keyValidiate();          // 他のキーがあれば確定.
-    } else if( convKana[1] == -3 ) changeAndClear();    // 日モード
+        if( convKana[2] == " " ) UndoConvert( true );  // 変換候補確定とか
+        else if( convKana[1] == 2 && convKana[2] == "" ) changeAndClear();  // US Mode
+        else if( convKana[0] ) keyValidiate();         // 他のキーがあれば確定.
+    } else if( convKana[1] == 3 && convKana[2] == "" ) changeAndClear();    // 日モード
     InitialKana();      // convKanaの初期化.
 }
 
@@ -435,9 +335,6 @@ function SSKeyDown(engineID, keyData){
 //    console.log(`sKD:(${keyData.key}|${keyData.code})`);
     if( thumbShift( keyData ) ){            // 親指シフト判断処理.
         if( !convKana[0] ) keyValidiate();  // 有効キー&入力確定.
-        enact = true;
-    } 
-    else if( SpecialKeys( keyData ) ){
         enact = true;
     } 
     else if( insidebuf.length > 0 ) {    // insidebuf(or cCandidate) が存在する時の処理
@@ -543,22 +440,6 @@ function UndoConvert( mode ){
     else if( mode && !henkanAri && cursolbuf.length > 0 ){
         if( cursolbuf.codePointAt( 0 ) >= 12449 ) translateKanaKana( false );
         else translateKanaKana( true );
-    }
-}
-
-// 記号特殊キー用処理.
-function SpecialKeyInput( shift ){
-    if( insidebuf.length <= 4 ){
-        var ofs = spkeyinx;
-        if( shift ) ofs += 6;    // 特殊文字の数.
-        insidebuf = kkeyTable[ofs];
-        cursolbuf = insidebuf;
-        if( ++spkeyinx >= 6 ) spkeyinx = 0;
-        invibleCandidate();
-        showLine( insidebuf );
-        if( interval < 0 )
-            interval = setInterval( SpecialKeyTimer, 4096 );
-        convKana[2] = "sp";     // Dummy 消滅回避.
     }
 }
 

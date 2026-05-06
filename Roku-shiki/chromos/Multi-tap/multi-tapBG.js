@@ -14,7 +14,7 @@ const kanashifttable = [
    /*Key  単    左+   右+ */
     [" ", " ", "", ""],
     ["g", "せ", "も", "ぜ"],
-    ["h", "は", "ば", "み"],
+    ["h", "は", "み", "ば"],
     ["b", "へ", "ぃ", "べ"],
     ["n", "め", "ぬ", "ぷ"],
     ["t", "さ", "れ", "ざ"],
@@ -45,16 +45,16 @@ const kanashifttable = [
     ["p", "，", "ぇ", "ぴ"],
 
     ["`", "‘", "’", "かっこ"],      /* US配列に合わせる*/
-    ["1", "1", "一", "ф"],
-    ["6", "6", "六", "［］"],
-    ["2", "2", "二", "〇"],
-    ["7", "7", "七", "《》"],
-    ["3", "3", "三", "§"],
-    ["8", "8", "八", "【】"],
-    ["4", "4", "四", "「"],
-    ["9", "9", "九", "※"],
-    ["5", "5", "五", "」"],
-    ["0", "0", "０", "、"],
+    ["1", "1", "ф", "一"],
+    ["6", "6", "［］", "六"],
+    ["2", "2", "〇", "二"],
+    ["7", "7", "《》", "七"],
+    ["3", "3", "§", "三"],
+    ["8", "8", "【】", "八"],
+    ["4", "4", "「", "四"],
+    ["9", "9", "※", "九"],
+    ["5", "5", "」", "五"],
+    ["0", "0", "、", "０"],
 
     ["-", "-", "±", "√"],
     ["=", "=", "×", "÷"],
@@ -91,12 +91,7 @@ function SSKeyUp(engineID, keyData){
     if( keycondition < 1024 ){
         if( convKana[2] === " " ) UndoConvert( true );  // 変換候補確定とか
         else if( convKana[1] === 2 && convKana[2] === "" ) changeAndClear();  // US Mode
-////        else if( convKana[0] ){
-//        else if( convKana[0] && kanashifttable[convKana[1]][0] === keyData.key ) {
-//            keyValidiate();         // 他のキーがあれば確定.
-//        }
     } else if( convKana[1] === 102 && convKana[2] === "" ) changeAndClear();    // 日モード
-    //InitialKana();      // convKanaの初期化.
 }
 
 // US keyDown event
@@ -170,10 +165,12 @@ function setConvKanaDownKey( keyinx, keyshift ){
 //  SPC押下時の convKana 設定. 
 function setConvKanaDownSpc(){
     let action = true;
-    if( convKana[0] ){              // 2nd 以降を判断.
+    // Multi-tap の制限時間内の場合は、時間クリアのみ.
+    if( IsTimeShift() !== KeyState.Tap0 ){   // 2nd 以降を判断.
         keylimit = Date.now();
+        convKana = [true, 0, ""];   // Null
     } 
-    else {    // ここは初回 Key.
+    else {
         convKana = [true, 0, " "];  // 単なるSPC
         action = false;
     }

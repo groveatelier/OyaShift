@@ -91,10 +91,10 @@ function SSKeyUp(engineID, keyData){
     if( keycondition < 1024 ){
         if( convKana[2] === " " ) UndoConvert( true );  // 変換候補確定とか
         else if( convKana[1] === 2 && convKana[2] === "" ) changeAndClear();  // US Mode
-//        else if( convKana[0] ){
-        else if( convKana[0] && kanashifttable[convKana[1]][0] === keyData.key ) {
-            keyValidiate();         // 他のキーがあれば確定.
-        }
+////        else if( convKana[0] ){
+//        else if( convKana[0] && kanashifttable[convKana[1]][0] === keyData.key ) {
+//            keyValidiate();         // 他のキーがあれば確定.
+//        }
     } else if( convKana[1] === 102 && convKana[2] === "" ) changeAndClear();    // 日モード
     //InitialKana();      // convKanaの初期化.
 }
@@ -135,39 +135,34 @@ function thumbShift(keyData){
 
 //  Key押下時の convKana 設定. 
 function setConvKanaDownKey( keyinx, keyshift ){
-    console.log(`KY:(${keyinx})${convKana}/${keyshift}`);
-    if( convKana[0] ){
-        let keystate = IsTimeShift();
-        console.log(`KY1:ks=${keystate}`);
-        if( keyinx === convKana[1] ){
-            // 同一キーの多重押しの時は、入力キーを変える.
-            if( keystate === KeyState.Tap0 ){
-                kanaoffset = 1;  // 新押鍵.
-            } else {
-                kanaoffset += 1;  // 短押し.
-                if( keystate === KeyState.Tap2 ) kanaoffset += 1;  // 長押し.
-                kanaoffset = kanaoffset % 4;
+    let keystate = IsTimeShift();
+    console.log(`KY:(${keyinx})${convKana}/${keyshift}/${keystate}`);
+
+    // Shift keyが押下されていないことを確認
+    if( !keyshift ){
+        // Multi-tap の制限時間以内の場合
+        if( keystate !== KeyState.Tap0 ){
+            if( convKana[1] === keyinx ){
+                // 同一キーの多重押しの時は、入力キーを変える.
+                kanaoffset = ( kanaoffset + 1 ) % 4;    //文字オフセット変更
                 BackOne();  // 直前の文字を消す処理.
             }
-            convKana[2] = kanashifttable[keyinx][kanaoffset];
-//            console.log(`KY2:${convKana}/${kanaoffset}/${keystate}/${insidebuf}/`);
+            else {
+                // 別のキーが押されたとき
+                kanaoffset = 1;  // 新押鍵.
+            }
         }
         else {
-            // 別のキーが押されたとき
-            if( keystate !== KeyState.Tap0 ) keyValidiate();     // 1st Key確定.
+            // Multi-tap の制限時間を過ぎている場合は、通常のキー入力とする.
             kanaoffset = 1;  // 新押鍵.
-            convKana = [true, keyinx, kanashifttable[keyinx][kanaoffset]];  // 別キー初回入力の時.
         }
+        // convKana の文字確定設定.
+        convKana = [false, keyinx, kanashifttable[keyinx][kanaoffset]];
     }
-    else{
-        if( keyshift ){         // shift key押下.
-            convKana = [false, keyinx, kanashifttable[keyinx][0].toUpperCase()];    // 大文字
-            kanaoffset = 0;     // US大文字.
-        }
-        else {
-            convKana = [true, keyinx, kanashifttable[keyinx][1]];  // ここは初回入力の時.
-            kanaoffset = 1;     // 初回文字.
-        }
+    else {
+        // Shift keyが押下されている場合は、英大文字とする.
+        convKana = [false, keyinx, kanashifttable[keyinx][0].toUpperCase()];    // 大文字
+        kanaoffset = 0;     // US大文字.
     }
     SetTimeKeyLimit();  // タイムシフトの時間制限をセット.
 }

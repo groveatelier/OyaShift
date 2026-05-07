@@ -86,17 +86,19 @@ function IsTimeShift(){
 
 // SS keyUp event
 function SSKeyUp(engineID, keyData){
-    //console.log(`+kU:${convKana}/${keyData.key}:${insidebuf.length}`);
-    if( keycondition < 1024 ){
-        if( convKana[2] === " " ) UndoConvert( true );  // 変換候補確定とか
-        else if( IsTimeShift() === KeyState.Tap2 && convKana[1] >= 0 ){ 
-            // Key 長押しが判明，確定文字を一つ削除してからオフセット3の文字を確定する
-            BackOne();
-            convKana[2] = kanashifttable[convKana[1]][3];  // オフセット3の文字を確定する
-            keyValidiate();  // 確定処理
-        }
-        else if( convKana[1] === 103 && convKana[2] === "" ) changeAndClear();  // US Mode
-    } else if( convKana[1] === 102 && convKana[2] === "" ) changeAndClear();    // 日モード
+    // console.log(`+kU:${convKana}/${keyData.key}:${insidebuf.length}`);
+    if( keyData.key !== "Shift" ){
+        if( keycondition < 1024 ){
+            if( convKana[2] === " " ) UndoConvert( true );  // 変換候補確定とか
+            else if( IsTimeShift() === KeyState.Tap2 && convKana[1] >= 0 ){ 
+                // Key 長押しが判明，確定文字を一つ削除してからオフセット3の文字を確定する
+                BackOne();
+                convKana[2] = kanashifttable[convKana[1]][3];  // オフセット3の文字を確定する
+                keyValidiate();  // 確定処理
+            }
+            else if( convKana[1] === 103 && convKana[2] === "" ) changeAndClear();  // US Mode
+        } else if( convKana[1] === 102 && convKana[2] === "" ) changeAndClear();    // 日モード
+    }
 }
 
 // US keyDown event

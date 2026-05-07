@@ -35,31 +35,31 @@
 
 */
 
-var context_id = -1;
-var insidebuf  = "";        // 日本語入力用バッファ.
-var cursolbuf  = "";        // カーソル行表示用バッファ.
-var compoinfo  = 0;         // カーソル行制御用変数 : 0-カーソル行表示文字数, 1-カーソル位置.
+let context_id = -1;
+let insidebuf  = "";        // 日本語入力用バッファ.
+let cursolbuf  = "";        // カーソル行表示用バッファ.
+let compoinfo  = 0;         // カーソル行制御用変数 : 0-カーソル行表示文字数, 1-カーソル位置.
 
-var cCandidate = [];        // 変換候補 ver2.2以降.
-var candIndex  = -1;        // 変換候補用 index
-var imedata  = [];          // 変換候補データ IME結果
-var imemode  = 4;           // 0-google, 1-google url応答待ち, 2-不揮発辞書, 3-揮発辞書, 4-起動前, 7-特殊.
-var rampwait = 0;           // 辞書まとめ書き用変数.
-var Niwadict  = [];         // 辞書 Version 3 以降.
-var dictOpen  = false;      // 辞書がOpen済の判断.
-var henkanAri = false;      // 変換候補指定あり.
-var Voldict   = [];         // 揮発辞書.
+let cCandidate = [];        // 変換候補 ver2.2以降.
+let candIndex  = -1;        // 変換候補用 index
+let imedata  = [];          // 変換候補データ IME結果
+let imemode  = 4;           // 0-google, 1-google url応答待ち, 2-不揮発辞書, 3-揮発辞書, 4-起動前, 7-特殊.
+let rampwait = 0;           // 辞書まとめ書き用変数.
+let Niwadict  = [];         // 辞書 Version 3 以降.
+let dictOpen  = false;      // 辞書がOpen済の判断.
+let henkanAri = false;      // 変換候補指定あり.
+let Voldict   = [];         // 揮発辞書.
 
-var convKana = [false, -1, ""];  // 入力中, 先キーIndex, 変換文字
-var keycondition = 0;       // Key入力判断用1 : 1024 - US key mode 
-var spkeyinx = 0;           // 特殊キー対応Index.
+let convKana = [false, -1, ""];  // 入力中, 先キーIndex, 変換文字
+let keycondition = 0;       // Key入力判断用1 : 1024 - US key mode 
+let spkeyinx = 0;           // 特殊キー対応Index.
 
-var interval  = -1;         // 辞書出力用1
-var dictline = 1;           // 辞書出力用2
-var laptime  = Date.now();
+let interval  = -1;         // 辞書出力用1
+let dictline = 1;           // 辞書出力用2
+let laptime  = Date.now();
 
 const menuInp  = "minput";
-var menuArg    = [{"id": menuInp, "label": "かな"}]
+let menuArg    = [{"id": menuInp, "label": "かな"}]
 
 OpenNiwaDict();             // local辞書を開けておく.
 InitialCandidate();         // cCandidateの初期化.
@@ -95,8 +95,26 @@ chrome.input.ime.onMenuItemActivated.addListener(function(eng,name){
 //    console.log(`onMenuItemActivated:${eng}/${name}/${KeyStyle}`);
 });
 
+chrome.input.ime.onKeyEvent.addListener(
+  function(engineID, keyData) {
+    let enact = false;
+    // keyup 時は 親指シフトのリセット と 単独親キーを確認.
+    // keyup && KeyCount == 0 は KeyValidiate
+    if( keyData.type === "keyup" ){
+        SSKeyUp( engineID, keyData );
+    } 
+    //  keydown イベント ---------------------------------------------------------
+    else if(keyData.type === "keydown"){
+        console.log(`PreKD:(${keyData.key}|${keyData.code})`);
+        enact = ( keycondition < 1024 ) ? 
+                SSKeyDown( engineID, keyData ) : USKeyDown( keyData );
+    }
+    return enact;
+  }
+);
+
 function menuItemRevise(){
-    menuArg[0].label   = keycondition < 1024 ? "かな" : "英字"; // かな入力モード.
+    menuArg[0].label = keycondition < 1024 ? "かな" : "英字"; // かな入力モード.
 }
 
 function menuItemUpdate(){
@@ -118,33 +136,15 @@ function InitialCandidate( candword = "" ){
 
 //  対象キーのかなシフトテーブルindexを取得.
 function GetKanaIndex( key ){
-    var keyindex = -1;
-    for(var depth = 0; depth < kanashifttable.length; depth++ ){
-        if (kanashifttable[depth][0] == key){
+    let keyindex = -1;
+    for(let depth = 0; depth < kanashifttable.length; depth++ ){
+        if (kanashifttable[depth][0] === key){
             keyindex = depth;
             break;
         }
     }
     return keyindex;
 }
-
-chrome.input.ime.onKeyEvent.addListener(
-  function(engineID, keyData) {
-    var enact = false;
-    // keyup 時は 親指シフトのリセット と 単独親キーを確認.
-    // keyup && KeyCount == 0 は KeyValidiate
-    if( keyData.type == "keyup" ){
-        SSKeyUp( engineID, keyData );
-    } 
-    //  keydown イベント ---------------------------------------------------------
-    else if(keyData.type == "keydown"){
-        console.log(`PreKD:(${keyData.key}|${keyData.code})`);
-        enact = ( keycondition < 1024 ) ? 
-                SSKeyDown( engineID, keyData ) : USKeyDown( keyData );
-    }
-    return enact;
-  }
-);
 
 // かなモードの変更.
 function changeKanaMode(){
@@ -162,7 +162,7 @@ function changeAndClear(){
 
 // SS keyDown event
 function SSKeyDown(engineID, keyData){
-    var enact = false;
+    let enact = false;
 //    console.log(`sKD:(${keyData.key}|${keyData.code})`);
     if( thumbShift( keyData ) ){            // 親指シフト判断処理.
         if( !convKana[0] ) keyValidiate();  // 有効キー&入力確定.
@@ -171,7 +171,7 @@ function SSKeyDown(engineID, keyData){
     else if( insidebuf.length > 0 ) {    // insidebuf(or cCandidate) が存在する時の処理
 //        console.log(`ssKD+:(${keyData.key}|${keyData.code})`);
         // Shift Space と タブ は先頭確定.
-        if( keyData.key == " " || keyData.key == "Tab" ){
+        if( keyData.key === " " || keyData.key === "Tab" ){
             if( keyData.shiftKey ) fixOne();        // Shift付きは先頭確定.
             else setOtherCandidate( 1 );            // 先頭変換.
             enact = true;
@@ -179,12 +179,12 @@ function SSKeyDown(engineID, keyData){
             enact = true;
             switch( keyData.key ){
                 case "Enter":                   // Enter は 全確定 か キー処理、shift があれば先頭確定. 
-                    if( keycondition == 8 || compoinfo < 0 ) fixOne();  // 先頭確定.
+                    if( keyData.shiftKey || compoinfo < 0 ) fixOne();  // 先頭確定.
                     else fixAll();                                      // 全確定.
                     break;
                 case "Up":                          // 上下矢印 は先頭変換.
                 case "Down":
-                    var addinx = ( keyData.key == "Up") ? -1 : 1;
+                    let addinx = ( keyData.key === "Up") ? -1 : 1;
                     setOtherCandidate( addinx );    // 先頭変換
                     break;
                 case "Right":                       // 右矢印 は カーソル移動 キー処理. 
@@ -222,10 +222,10 @@ function SSKeyDown(engineID, keyData){
             }
         }
         if( enact ) InitialKana();      // convKanaの初期化.
-        if( keyData.code == "IntlRo" ) enact = true;    // IntlRo はハンドリング済に.
+        if( keyData.code === "IntlRo" ) enact = true;    // IntlRo はハンドリング済に.
     } else {
         clearCompoAndCand();
-        if( imemode == 7 && keyData.key == "Esc" && keyData.altKey )
+        if( imemode == 7 && keyData.key === "Esc" && keyData.altKey )
             MakeTextNiwadictionary();             // 辞書のテキスト出力.
     }
     return enact;
@@ -265,7 +265,7 @@ function UndoConvert( mode ){
     }
     else if( henkanAri ){
         insidebuf = "";
-        for( var depth = 0; depth < imedata.length; depth++ ){
+        for( let depth = 0; depth < imedata.length; depth++ ){
             insidebuf += imedata[depth][0];     // insidebuf作り直し.
         }
         cCandidate[0].candidate = insidebuf;
@@ -284,10 +284,10 @@ function UndoConvert( mode ){
 function keyValidiate(){
     console.log(`KV(${compoinfo}):${convKana}`);
     if( compoinfo < 0 ){
-        var temptext = insidebuf.slice(0,compoinfo) + convKana[2] 
+         let temptext = insidebuf.slice(0,compoinfo) + convKana[2] 
                     + insidebuf.slice(insidebuf.length+compoinfo);
         insidebuf = temptext;
-    } else if( insidebuf.length == 0 && "　 。、？―".indexOf( convKana[2] ) >= 0 ) CommitOne( convKana[2] );
+    } else if( insidebuf.length === 0 && "　 。、？―".indexOf( convKana[2] ) >= 0 ) CommitOne( convKana[2] );
     else {
         insidebuf += convKana[2];     // 確定済キー.
         rokushikiIME();
@@ -306,10 +306,10 @@ function makeCandidate(){
 
 // cCandidate へのデータ設定.
 function copyCandidate( arrayone ){
-    for( var pos = 0; pos < arrayone.length; pos++ ){
+    for( let pos = 0; pos < arrayone.length; pos++ ){
         var idno = cCandidate.length;
-        if( arrayone[pos] != cCandidate[0].candidate ){
-            if( imemode == 3 ){
+        if( arrayone[pos] !== cCandidate[0].candidate ){
+            if( imemode === 3 ){
                 cCandidate.push({annotation:arrayone[pos+1], candidate:arrayone[pos], id:idno});
                 pos++;
             }
@@ -319,12 +319,12 @@ function copyCandidate( arrayone ){
 }
 
 function copyEntry( entryindex ){      // Entryを複製.
-    var array2 = [];
-    var array1 = [];
-    var entry  = Niwadict[entryindex];
-    for( var pos = 0; pos < entry[3].length; pos++ )
+    let array2 = [];
+    let array1 = [];
+    let entry  = Niwadict[entryindex];
+    for( let pos = 0; pos < entry[3].length; pos++ )
         array2.push( entry[3][pos] );
-    for( var pos = 0; pos < 3; pos++ )
+    for( let pos = 0; pos < 3; pos++ )
         array1.push( entry[pos] );
     array1.push( array2 );
     return array1;
@@ -338,7 +338,7 @@ function showCompoAndCand(){        // バインド関数
 // テキスト(カーソル行)の表示.
 function showLine( text ){
 //    console.log(`cur>${text}`); 
-    var obj = {
+    let obj = {
     	contextID: context_id,
     	text: text,
     	cursor: text.length,
@@ -360,14 +360,14 @@ function showComposition(){
 
 // カーソル行に表示する文字列を作成 : 適度に変換筆頭文字を加える.
 function getCurDataTopLine(){
-    var imeline  = candIndex > 0 ? cCandidate[ candIndex ].candidate : imedata[0][1][0];
-    var limitcnt = 1;
+    let imeline  = candIndex > 0 ? cCandidate[ candIndex ].candidate : imedata[0][1][0];
+    let limitcnt = 1;
     if( insidebuf.length >= 8 ){            // 筆頭変換制限.
         limitcnt = insidebuf.length >> 2;   // 4文字単位だと多い？ どうする?
     }
     //  筆頭候補を一本につなげる. 
-    for( var depth = 1; depth < imedata.length; depth++ ){
-        var mayoke = imedata[depth][0].length * 2;  // 2倍変換文字列は対象外.
+    for( let depth = 1; depth < imedata.length; depth++ ){
+        let mayoke = imedata[depth][0].length * 2;  // 2倍変換文字列は対象外.
         if( --limitcnt > 0 && imedata[depth][1][0].length < mayoke )
              imeline += imedata[depth][1][0];       // 筆頭候補をつなげる.
         else imeline += imedata[depth][0];          // 変換無し.
@@ -376,11 +376,11 @@ function getCurDataTopLine(){
 }
 
 function showCands(){
-    var displines = henkanAri ? cCandidate.length : 2;  // 変換無
-    var curpos    = displines <= candIndex ? displines-1 : candIndex;
-    var auxtext = "六式 IME";
-    if( imemode == 0 ) auxtext = "google IME cgi";
-    else if( imemode == 3 ) auxtext += " cahce";
+    let displines = henkanAri ? cCandidate.length : 2;  // 変換無
+    let curpos    = displines <= candIndex ? displines-1 : candIndex;
+    let auxtext = "六式 IME";
+    if( imemode === 0 ) auxtext = "google IME cgi";
+    else if( imemode === 3 ) auxtext += " cahce";
     if( cCandidate.length > 0 ){
         displines = cCandidate.length;
 //        console.log(`SC:${candIndex}/${curpos}`);
@@ -413,11 +413,11 @@ function showCands(){
 
 //  先頭候補確定.
 function fixOne(){
-    var allclear = false;
+    let allclear = false;
     console.log(`fixOne>${imedata}/${insidebuf}/${candIndex}`);
     // 最前一個を確定させる.
     if( compoinfo < 0 ){            // 今は無変換確定になりますね.
-        var valtext = insidebuf.slice(0, compoinfo);
+        let valtext = insidebuf.slice(0, compoinfo);
         chrome.input.ime.commitText({
             "contextID": context_id, 
             "text": valtext
@@ -447,8 +447,8 @@ function PrefixOne(){   // 先頭確定.
         while(true);        // debug stop
     }   //---------------------------------------------------------------------------
     //  候補選択がない場合は 未変換のまま.
-    var validiate = cCandidate[candIndex].candidate;
-    var optionext = "";
+    let validiate = cCandidate[candIndex].candidate;
+    let optionext = "";
     console.log( `PrefixOne>${validiate}-${cCandidate[candIndex].candidate}(${candIndex})` );
     insidebuf = insidebuf.substring( imedata[0][0].length );
 
@@ -506,7 +506,7 @@ function fixAll(){  //  変換候補を全FIX.
         "text": cursolbuf
     });
     if( imedata.length > 1 ){
-        for( var depth = 1; depth < imedata.length; depth++ )
+        for( let depth = 1; depth < imedata.length; depth++ )
             imedata[0][0] += imedata[depth][0];
         console.log(`fixAll>${imedata[0][0]}:${cursolbuf}`);
 
@@ -528,19 +528,19 @@ function setOtherCandidate( addvalue ){
     if( candIndex < 0 ) candIndex = cCandidate.length - 1;
     else if( candIndex >= cCandidate.length ) candIndex = 0;
     henkanAri = true;
-    if( candIndex == 0 && addvalue > 0 ) SelectIME();       // IME切り替え.
+    if( candIndex === 0 && addvalue > 0 ) SelectIME();       // IME切り替え.
     else showCompoAndCand();
 }
 
 // ひらがな−カタカナ コード変換を行う.
 // input: Hira2Kata true - カナ2かな, false - かな2カナ.
 function translateKanaKana( Hira2Kata ){
-    var kanabuf  = [];
-    var mojihani = Hira2Kata ? [12353,12439,12445,12446] : [12449,12535,12541,12542];
-    var shiftval = Hira2Kata ? 96 : -96;
-    for(var ofs = 0; ofs < insidebuf.length; ofs++ ){
-        var hirachar  = insidebuf.codePointAt( ofs );
-        var hirachar2 = hirachar;
+    let kanabuf  = [];
+    let mojihani = Hira2Kata ? [12353,12439,12445,12446] : [12449,12535,12541,12542];
+    let shiftval = Hira2Kata ? 96 : -96;
+    for(let ofs = 0; ofs < insidebuf.length; ofs++ ){
+        let hirachar  = insidebuf.codePointAt( ofs );
+        let hirachar2 = hirachar;
         if((mojihani[0] <= hirachar && hirachar <= mojihani[1])
             ||(mojihani[2] <= hirachar && hirachar <= mojihani[3])){ // 変換文字範囲の場合.
             hirachar2 += shiftval;

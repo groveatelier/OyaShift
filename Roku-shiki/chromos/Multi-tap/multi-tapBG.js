@@ -61,6 +61,7 @@ const kanashifttable = [
     ["[", "』", "《《》》", "『"],
     ["\\", "￥","くりかえし","＼"],
     ["]", "]", "}","{"],
+    ["Alt", "", "", ""],
     ["Ro","", "",  ""]
 ];
 
@@ -68,9 +69,9 @@ const engine   = "MultiTap";
 let keylimit = 0;           // Time shift limit.
 let kanaoffset = 1;         // かな変換offset量
 
-OpenNiwaDict();             // local辞書を開けておく.
-InitialCandidate();         // cCandidateの初期化.
-LoadCacheDict();            // Cache Dataのロード.
+//OpenNiwaDict();             // local辞書を開けておく.
+//InitialCandidate();         // cCandidateの初期化.
+//LoadCacheDict();            // Cache Dataのロード.
 
 const KeyState = Object.freeze({ Expire:1600, Single:800, Tap0:0, Tap1:1, Tap2:2 });  // 多重キーの状態定数.
 
@@ -90,7 +91,7 @@ function SSKeyUp(engineID, keyData){
     console.log(`+kU:${convKana}/${keyData.key}:${insidebuf.length}`);
     if( keycondition < 1024 ){
         if( convKana[2] === " " ) UndoConvert( true );  // 変換候補確定とか
-        else if( convKana[1] === 2 && convKana[2] === "" ) changeAndClear();  // US Mode
+        else if( convKana[1] === 103 && convKana[2] === "" ) changeAndClear();  // US Mode
     } else if( convKana[1] === 102 && convKana[2] === "" ) changeAndClear();    // 日モード
 }
 
@@ -123,7 +124,10 @@ function thumbShift(keyData){
         else if( keyinx > 0 ){
             action = true;
             setConvKanaDownKey( keyinx, (keyData.shiftKey) );   // convKana 設定：key.
-        } 
+        }
+        else if( keyData.code === "AltLeft" ){
+            convKana = [false,103,''];   // SSKeyUp でUSモード
+        }
     }
     return action;
 }

@@ -1,9 +1,6 @@
-//
-// Oya key shift keyboard input method for chrome OS
-//
 {
   "name": "Oya shift KB",
-  "version": "5.0.5",
+  "version": "5.1.0",
   "manifest_version": 3,
   "description": "Oya Key Shift keyboard",
   "action": {
@@ -35,9 +32,9 @@
       "name": "Oya Shift KB",
       "type": "ime",
       "id": "OyaShift",
-      "description": "Oyakey Shift keyboard input",  // user visible description
-      "language": "OS",  // The primary language this IME is used for
-      "layouts": ["us"]  // The supported keyboard layouts for this IME
+      "description": "Oyakey Shift keyboard input", 
+      "language": "OS", 
+      "layouts": ["us"] 
     }
   ]
 }

@@ -1,4 +1,4 @@
-/*  2026.05.04 19:00
+/*  2026.05.07 10:00
   Multi-tap keyboard ver 5.0 (JISキーボード用)
   日英切り替え: Alt-Left -> US, Alt-Right -> 日
     
@@ -68,12 +68,9 @@ const kanashifttable = [
 const engine   = "MultiTap";
 let keylimit = 0;           // Time shift limit.
 let kanaoffset = 1;         // かな変換offset量
+let prevkanaofs = 1;     // 直前のかな変換offset量
 
-//OpenNiwaDict();             // local辞書を開けておく.
-//InitialCandidate();         // cCandidateの初期化.
-//LoadCacheDict();            // Cache Dataのロード.
-
-const KeyState = Object.freeze({ Expire:1600, Single:800, Tap0:0, Tap1:1, Tap2:2 });  // 多重キーの状態定数.
+const KeyState = Object.freeze({ Expire:1600, Single:1350, Tap0:0, Tap1:1, Tap2:2 });  // 多重キーの状態定数.
 
 function SetTimeKeyLimit(){
     keylimit = Date.now() + KeyState.Expire;
@@ -81,6 +78,7 @@ function SetTimeKeyLimit(){
 
 function IsTimeShift(){
     let nowtime = Date.now();
+    // console.log(`Time:${keylimit - nowtime}`);
     if( nowtime > keylimit ) return KeyState.Tap0;    // 時間切れ
     else if( nowtime > keylimit - KeyState.Single ) return KeyState.Tap2;
     return KeyState.Tap1;
@@ -88,9 +86,15 @@ function IsTimeShift(){
 
 // SS keyUp event
 function SSKeyUp(engineID, keyData){
-    console.log(`+kU:${convKana}/${keyData.key}:${insidebuf.length}`);
+    //console.log(`+kU:${convKana}/${keyData.key}:${insidebuf.length}`);
     if( keycondition < 1024 ){
         if( convKana[2] === " " ) UndoConvert( true );  // 変換候補確定とか
+        else if( IsTimeShift() === KeyState.Tap2 && convKana[1] >= 0 ){ 
+            // Key 長押しが判明，確定文字を一つ削除してからオフセット3の文字を確定する
+            BackOne();
+            convKana[2] = kanashifttable[convKana[1]][3];  // オフセット3の文字を確定する
+            keyValidiate();  // 確定処理
+        }
         else if( convKana[1] === 103 && convKana[2] === "" ) changeAndClear();  // US Mode
     } else if( convKana[1] === 102 && convKana[2] === "" ) changeAndClear();    // 日モード
 }
@@ -135,7 +139,7 @@ function thumbShift(keyData){
 //  Key押下時の convKana 設定. 
 function setConvKanaDownKey( keyinx, keyshift ){
     let keystate = IsTimeShift();
-    console.log(`KY:(${keyinx})${convKana}/${keyshift}/${keystate}`);
+    // console.log(`KY:(${keyinx})${convKana}/${keyshift}/${keystate}`);
 
     // Shift keyが押下されていないことを確認
     if( !keyshift ){
@@ -148,12 +152,12 @@ function setConvKanaDownKey( keyinx, keyshift ){
             }
             else {
                 // 別のキーが押されたとき
-                kanaoffset = 1;  // 新押鍵.
+                kanaoffset = prevkanaofs ? 1 : 0;  // 直前のかな変換がUSの場合はUS連続.
             }
         }
         else {
             // Multi-tap の制限時間を過ぎている場合は、通常のキー入力とする.
-            kanaoffset = 1;  // 新押鍵.
+            kanaoffset = prevkanaofs ? 1 : 0;  // 直前のかな変換がUSの場合はUS連続.
         }
         // convKana の文字確定設定.
         convKana = [false, keyinx, kanashifttable[keyinx][kanaoffset]];
@@ -163,6 +167,7 @@ function setConvKanaDownKey( keyinx, keyshift ){
         convKana = [false, keyinx, kanashifttable[keyinx][0].toUpperCase()];    // 大文字
         kanaoffset = 0;     // US大文字.
     }
+    prevkanaofs = kanaoffset;  // 直前のかな変換offset量を保存.
     SetTimeKeyLimit();  // タイムシフトの時間制限をセット.
 }
 

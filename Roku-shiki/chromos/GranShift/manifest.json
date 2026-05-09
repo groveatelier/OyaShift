@@ -1,0 +1,40 @@
+{
+  "name": "GranShift KB",
+  "version": "5.2.0",
+  "manifest_version": 3,
+  "description": "GranShift keyboard",
+  "action": {
+    "default_popup": "dictdlg.html",
+    "default_icon": {
+      "16": "rokuicon-b.png",
+      "48": "rokuicon-s.png",
+      "128": "rokuicon-l.png"
+    }
+  },
+  "background": {
+    "service_worker": "GranShiftBG2.js"
+  },
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "input",
+    "scripting",
+    "offscreen", 
+	  "storage"
+  ],
+  "icons": {
+    "16": "rokuicon-b.png",
+    "48": "rokuicon-s.png",
+    "128": "rokuicon-l.png"
+  },
+  "input_components": [
+    {
+      "name": "GranShift KB",
+      "type": "ime",
+      "id": "GranShift",
+      "description": "GranShift keyboard input", 
+      "language": "GS", 
+      "layouts": ["us"] 
+    }
+  ]
+}

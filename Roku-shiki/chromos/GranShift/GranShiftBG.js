@@ -76,50 +76,88 @@ const kanashifttable = [
 */
 
 const engine   = "GranShift";
-let SPCGen = 0;    // SPC押下中の世代管理 (0~1023)
-let SPCdown = false;  // SPC押下中かどうか 
-let SPCValidiateWaitTimer = null;  // SPC Validiate waiting timer
-let SPCDNtime = 0;   // SPC押下時間管理
-let KeyDNtime = 0;   // Key押下時間管理
 
-//  SPC押下時の convKana 設定. 
-function setConvKanaDownSpc( keyofs ){
-    SPCGen = (SPCGen + 1) % 1024;   // 世代管理
-    SPCdown = true;  // SPC押下中
-    SPCDNtime = Date.now();  // SPC押下時間管理
-    if( convKana[0] ){              // 2nd 以降を判断.
-        if( convKana[1] > 0 ){      // 2nd以降の SPC入力.
-            convKana[2] = kanashifttable[convKana[1]][keyofs];  // 上キー.
-            convKana[0] = false;    // Validさせる.
-        }
+class ShiftKey {
+    constructor(){
+        this.Generation = 0;    // 世代管理 (0~1023)
+        this.Active = false;
     }
-    else {    // ここは初回SPC.
-        SPCValidiateWaitTimer = setTimeout( SPCValidiateWait, 120 );  // SPC Validiate waiting timer
-        convKana = [true, keyofs+2, " "]; // 親キーinx
+
+    KeyDown(){
+        this.Generation = (this.Generation + 1) % 1024;   // 世代管理
+        this.Active = true;  // 押下中
     }
-}
-  
-//  Key押下時の convKana 設定. 
-function setConvKanaDownKey( keyinx, keyshift ){
-//    console.log(`KY:(${kinx})${convKana}/${keyshift}`);
-    if( convKana[0] ){
-        if( convKana[1] === 0 ){  //  1st が SPC入力の場合.
-            convKana[0] = false;
-            convKana[2] = kanashifttable[keyinx][convKana[1]];
-        } 
-        else{                   // 多重キーの場合.
-            keyValidiate();     // 1st Key確定.
-            convKana = [true, keyinx, kanashifttable[keyinx][1]];  // 2nd Key保留.
-        }
+
+    KeyUp(){
+        this.Active = false;
     }
-    else{
-        convKana = [true, keyinx, kanashifttable[keyinx][1]];  // ここは初回入力の時.
-        if( keyshift ){         // shift key押下.
-            convKana[2] = convKana[2].toUpperCase();    // 大文字
-            convKana[0] = false;    // 確定.
-        }
+
+    Active(){
+        return this.Active;
+    }
+
+    GetGeneration(){
+        return this.Generation;
     }
 }
+
+class MojiKey {
+    constructor(){
+        this.Active = false;
+        this.startTime = 0;   // 押下時間管理
+        this.ShiftGeneration = -1;    // Shiftキーの世代管理 (0~1023)
+        this.keyIndex = -1;    // キーインデックス管理
+        this.prevkeyIndex = -1;    // キーインデックス管理
+        this.kanaoffset = 1;     // かな変換offset量
+        this.prevkanaofs = 1;     // 直前のかな変換offset量
+    }
+
+    KeyDown( index ){
+        this.Active = true;  // 押下中
+        this.startTime = Date.now();  // 押下時間管理
+        this.prevkeyIndex = this.keyIndex;
+        this.keyIndex = index;  // キーインデックス管理
+    }
+
+    KeyUp(){
+        this.Active = false;
+    }
+
+    Active(){
+        return this.Active;
+    }
+
+    LongPress(){
+        return this.Active && (Date.now() - this.startTime > 1200);  // 長押し判定
+    }
+
+    SetShiftGeneration( gen ){
+        this.ShiftGeneration = gen;
+    }
+
+    IsMultiTap( gen ){
+        return this.ShiftGeneration === gen && this.prevkeyIndex === this.keyIndex;  // 同一世代かつ同一キーの判定
+    }
+
+    getNextoffset(){
+        this.kanaoffset = ( this.kanaoffset + 1 ) % 4;    //文字オフセット変更
+        this.prevkanaofs = this.kanaoffset;  // 直前のかな変換offset量を保存.
+        return this.kanaoffset;
+    }
+
+    setKanaOffset( offset ){
+        this.kanaoffset = offset;     // かな変換offset量セット
+        this.prevkanaofs = this.kanaoffset;  // 直前のかな変換offset量を保存.
+        return this.kanaoffset;
+    }
+
+    getKanaOffset(){
+        return this.prevkanaofs ? 1 : 0;     // かな変換offset量取得
+    }
+}
+
+const SPCKey = new ShiftKey();  // SPCキー管理
+const MJKey = new MojiKey();  // 文字キー管理
 
 //  Key Down時に呼び出される.
 function thumbShift(keyData){
@@ -128,26 +166,54 @@ function thumbShift(keyData){
     let keyinx   = -1;
 
     if( !keyData.ctrlKey ){     // Ctrl 押されてないこと。
-        if( keyData.code == "Lang1" || keyData.code == "IntlRo" ){
-            keyinx = 3;
-        } else if( keyData.code == "Lang2" || keyData.code == "IntlYen" ){
-            keyinx = 2;
-        } else {
-            lkey = keyData.key.toLowerCase();   // 小文字検索の為
-            keyinx = GetKanaIndex( lkey );
-        }
+        lkey = keyData.key.toLowerCase();   // 小文字検索の為
+        keyinx = GetKanaIndex( lkey );
         //console.log(`x:${keyData.code}/${keyData.key}/${keyinx}/${lkey}`);
-
         if( keyinx >= 0 ){
             action = true;
             if( keyinx === 0 ){   // SPCキー押下
-                setConvKanaDownSpc( keyinx );   // convKana 設定：SPC.
+                setConvKanaDownSpc()    ;   // convKana 設定：SPC.
             } else {                            // 通常キー入力
                 setConvKanaDownKey( keyinx, (keyData.shiftKey) );   // convKana 設定：key.
             }
         } 
     }
     return action;
+}
+
+//  SPC押下時の convKana 設定. 
+function setConvKanaDownSpc(){
+    SPCKey.KeyDown();   // SPCキー管理
+    if( MJKey.Active() ){   // 文字キーが押されている場合は、シフト+文字の変換.
+        convKana = [false, 0, kanashifttable[convKana[1]][2]]; 
+        BackOne();  // 直前の文字を消す処理.
+    }
+    else {
+        convKana = [false, 0, " "];  // 単なるSPC
+    }
+}
+
+//  Key押下時の convKana 設定. 
+function setConvKanaDownKey( keyinx, keyshift ){
+//    console.log(`KY:(${kinx})${convKana}/${keyshift}`);
+    MJKey.KeyDown( keyinx );   // 文字キー管理
+    if( keyshift ){         // shift key押下.
+        convKana = [false, keyinx, kanashifttable[keyinx][0].toUpperCase()];    // 大文字
+        MJKey.setKanaOffset(0);     // US大文字.
+    }
+    else if( SPCKey.Active() ){   // SPCキーが押されている場合は、シフト+文字の変換.
+        BackOne();  // 直前の文字を消す処理.
+        if( MJKey.IsMultiTap(SPCKey.GetGeneration()) ){   // 同一世代かつ同一キーの判定
+            convKana = [false, keyinx, kanashifttable[keyinx][MJKey.getNextoffset()]]; 
+        }
+        else {
+            MJKey.SetShiftGeneration(SPCKey.GetGeneration());  // Shiftキーの世代を文字キーにセット
+            convKana = [false, keyinx, kanashifttable[keyinx][MJKey.setKanaOffset(2)]];  // シフト+文字の変換
+        }
+    }
+    else {
+        convKana = [false, keyinx, kanashifttable[keyinx][MJKey.getKanaOffset()]];  // シフト+文字の変換
+    }
 }
 
 // US keyDown event
@@ -183,4 +249,23 @@ function SSKeyUp(engineID, keyData){
 // SPC Validiate waiting timer
 function SPCValidiateWait(){
     SPCValidiateWaitTimer = null;
+}
+
+function SPCKeyDownTimer(){
+    SPCGen = (SPCGen + 1) % 1024;   // 世代管理
+    SPCdown = true;  // SPC押下中
+    ClearSPCValidiateWaitTimer();  // SPC Validiate waiting timerクリア
+    SPCDNtime = Date.now();  // SPC押下時間管理
+}
+
+function SetSPCValidiateWaitTimer(){
+    if( SPCValidiateWaitTimer === null ) 
+        SPCValidiateWaitTimer = setTimeout( SPCValidiateWait, 120 );  // SPC Validiate waiting timer
+}
+
+function ClearSPCValidiateWaitTimer(){
+    if( SPCValidiateWaitTimer !== null ) {
+        clearTimeout( SPCValidiateWaitTimer );
+        SPCValidiateWaitTimer = null;
+    }
 }

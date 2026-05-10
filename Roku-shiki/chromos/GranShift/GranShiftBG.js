@@ -77,19 +77,25 @@ const kanashifttable = [
 
 const engine   = "GranShift";
 let SPCGen = 0;    // SPC押下中の世代管理 (0~1023)
+let SPCdown = false;  // SPC押下中かどうか 
+let SPCValidiateWaitTimer = null;  // SPC Validiate waiting timer
 let SPCDNtime = 0;   // SPC押下時間管理
 let KeyDNtime = 0;   // Key押下時間管理
 
 //  SPC押下時の convKana 設定. 
 function setConvKanaDownSpc( keyofs ){
+    SPCGen = (SPCGen + 1) % 1024;   // 世代管理
+    SPCdown = true;  // SPC押下中
+    SPCDNtime = Date.now();  // SPC押下時間管理
     if( convKana[0] ){              // 2nd 以降を判断.
-        if( convKana[1] >= 0 ){     // 2nd以降の SPC入力.
-            convKana[2] = kanashifttable[convKana[1]][keyofs];  // 上キー or 濁音.
+        if( convKana[1] > 0 ){      // 2nd以降の SPC入力.
+            convKana[2] = kanashifttable[convKana[1]][keyofs];  // 上キー.
             convKana[0] = false;    // Validさせる.
         }
-    } 
-    else {    // ここは初回 Key.
-        convKana = [true, keyofs, ""]; // 親キーinx
+    }
+    else {    // ここは初回SPC.
+        SPCValidiateWaitTimer = setTimeout( SPCValidiateWait, 120 );  // SPC Validiate waiting timer
+        convKana = [true, keyofs+2, " "]; // 親キーinx
     }
 }
   
@@ -97,7 +103,7 @@ function setConvKanaDownSpc( keyofs ){
 function setConvKanaDownKey( keyinx, keyshift ){
 //    console.log(`KY:(${kinx})${convKana}/${keyshift}`);
     if( convKana[0] ){
-        if( convKana[1] == 2 || convKana[1] == 3 ){  //  1st が SPC入力の場合.
+        if( convKana[1] === 0 ){  //  1st が SPC入力の場合.
             convKana[0] = false;
             convKana[2] = kanashifttable[keyinx][convKana[1]];
         } 
@@ -117,9 +123,9 @@ function setConvKanaDownKey( keyinx, keyshift ){
 
 //  Key Down時に呼び出される.
 function thumbShift(keyData){
-    var action   = false;
-    var lkey     = "";
-    var keyinx   = -1;
+    let action   = false;
+    let lkey     = "";
+    let keyinx   = -1;
 
     if( !keyData.ctrlKey ){     // Ctrl 押されてないこと。
         if( keyData.code == "Lang1" || keyData.code == "IntlRo" ){
@@ -134,7 +140,7 @@ function thumbShift(keyData){
 
         if( keyinx >= 0 ){
             action = true;
-            if( keyinx == 2 || keyinx == 3 ){   // 親キー押下
+            if( keyinx === 0 ){   // SPCキー押下
                 setConvKanaDownSpc( keyinx );   // convKana 設定：SPC.
             } else {                            // 通常キー入力
                 setConvKanaDownKey( keyinx, (keyData.shiftKey) );   // convKana 設定：key.
@@ -172,4 +178,9 @@ function SSKeyUp(engineID, keyData){
         else if( convKana[0] ) keyValidiate();         // 他のキーがあれば確定.
     } else if( convKana[1] == 3 && convKana[2] == "" ) changeAndClear();    // 日モード
     InitialKana();      // convKanaの初期化.
+}
+
+// SPC Validiate waiting timer
+function SPCValidiateWait(){
+    SPCValidiateWaitTimer = null;
 }

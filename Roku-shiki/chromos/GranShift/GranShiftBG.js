@@ -219,53 +219,33 @@ function setConvKanaDownKey( keyinx, keyshift ){
 // US keyDown event
 function USKeyDown( keyData ){
     //console.log(`UKD:${keyData.code}/${keyData.shiftKey}`);
-    enact = false;
-    // No shift + 親キー確認
-    if( !keyData.shiftKey ){
-        if( keyData.code == "Lang1" || keyData.code == "IntlRo" ){
-            enact = true;
-            convKana = [false,3,''];   // SSKeyUp で日本語モード
-        }
-        else if( keyData.code == "Lang2" || keyData.code == "IntlYen" ){
-            enact = true;
-            convKana = [false,2,''];   // Just a mark
+    let enact = false;
+    if( !keyData.shiftKey && !keyData.ctrlKey ){
+        if( keyData.code === "AltRight" ){
+            convKana = [false,102,''];   // SSKeyUp で日本語モード
         }
         else convKana[1] = -1;
     }
+
     return enact;
 }
 
 // SS keyUp event
 function SSKeyUp(engineID, keyData){
     //console.log(`+kU:${convKana}/${keyData.key}:${insidebuf.length}`);
-    if( keycondition < 1024 ){
-        if( convKana[2] == " " ) UndoConvert( true );  // 変換候補確定とか
-        else if( convKana[1] == 2 && convKana[2] == "" ) changeAndClear();  // US Mode
-        else if( convKana[0] ) keyValidiate();         // 他のキーがあれば確定.
-    } else if( convKana[1] == 3 && convKana[2] == "" ) changeAndClear();    // 日モード
-    InitialKana();      // convKanaの初期化.
-}
-
-// SPC Validiate waiting timer
-function SPCValidiateWait(){
-    SPCValidiateWaitTimer = null;
-}
-
-function SPCKeyDownTimer(){
-    SPCGen = (SPCGen + 1) % 1024;   // 世代管理
-    SPCdown = true;  // SPC押下中
-    ClearSPCValidiateWaitTimer();  // SPC Validiate waiting timerクリア
-    SPCDNtime = Date.now();  // SPC押下時間管理
-}
-
-function SetSPCValidiateWaitTimer(){
-    if( SPCValidiateWaitTimer === null ) 
-        SPCValidiateWaitTimer = setTimeout( SPCValidiateWait, 120 );  // SPC Validiate waiting timer
-}
-
-function ClearSPCValidiateWaitTimer(){
-    if( SPCValidiateWaitTimer !== null ) {
-        clearTimeout( SPCValidiateWaitTimer );
-        SPCValidiateWaitTimer = null;
+    if( keyData.key !== "Shift" ){
+        if( keyData.key === " " ) SPCKey.KeyUp();   // SPCキー管理
+        else MJKey.KeyUp();
+        if( keycondition < 1024 ){
+            if( convKana[2] === " " ) UndoConvert( true );  // 変換候補確定とか
+            else if( MJKey.LongPress() ){ 
+                // Key 長押しが判明，確定文字を一つ削除してからオフセット3の文字を確定する
+                BackOne();
+                convKana[2] = kanashifttable[convKana[1]][MJKey.setKanaOffset(3)];  // オフセット3の文字を確定する
+                keyValidiate();  // 確定処理
+            }
+            else if( convKana[1] === 103 && convKana[2] === "" ) changeAndClear();  // US Mode
+        } else if( convKana[1] === 102 && convKana[2] === "" ) changeAndClear();    // 日モード
     }
 }
+

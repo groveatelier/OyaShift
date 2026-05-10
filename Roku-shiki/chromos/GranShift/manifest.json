@@ -12,7 +12,7 @@
     }
   },
   "background": {
-    "service_worker": "GranShiftBG2.js"
+    "service_worker": "GranShiftBG.js"
   },
   "permissions": [
     "activeTab",

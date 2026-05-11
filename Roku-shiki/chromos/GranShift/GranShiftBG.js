@@ -191,7 +191,7 @@ function thumbShift(keyData){
         if( keyinx >= 0 ){
             action = true;
             if( keyinx === 0 ){   // SPCキー押下
-                setConvKanaDownSpc()    ;   // convKana 設定：SPC.
+                setConvKanaDownSpc(keyData)    ;   // convKana 設定：SPC.
             } else {                            // 通常キー入力
                 setConvKanaDownKey( keyinx, (keyData.shiftKey) );   // convKana 設定：key.
             }
@@ -201,17 +201,29 @@ function thumbShift(keyData){
 }
 
 //  SPC押下時の convKana 設定. 
-function setConvKanaDownSpc(){
+function setConvKanaDownSpc(keyData){
+    console.log(`SPC:${keyData.shiftKey}/${MJKey.IsActive()}/${insidebuf}/`);
     if( SPCKey.KeyDown() ){    // SPCkey管理
         if( MJKey.IsActive() ){   // 文字キーが押されている場合は、シフト+文字の変換.
             convKana = [false, 0, kanashifttable[convKana[1]][2]]; 
             BackOne();  // 直前の文字を消す処理.
         }
-        else {
-            convKana = [false, 0, " "];  // 単なるSPC
+        else if( insidebuf.length === 0 ){   // insidebufが空のとき
+            convKana = [false, 0, " "];  // 単なるSPCを一旦設定
+        }
+        else if( MJKey.getKanaOffset() ){   // 変換候補の操作.
+            if( keyData.shiftKey ) fixOne();        // Shift付きは先頭確定.
+            else setOtherCandidate( 1 );            // 先頭変換.
+            convKana[0] = true;
+        }
+        else {      // insidebufの吐き出しと空白の吐き出し
+            fixAll();     // 確定
+            CommitOne(" ");   // SPCをアプリに渡す.
+            convKana[0] = true;
         }
     }
     else convKana[0] = true;    // SPCリピート無効
+    console.log(`SPCout:/${insidebuf}/`);
 }
 
 //  Key押下時の convKana 設定. 
@@ -287,7 +299,7 @@ function SSKeyUp(engineID, keyData){
 // 押下されたキーの確定した際の処理（単独押しと重複押しを含む）
 // insidebufに確定した文字を複写. 漢字変換呼び出し.
 function keyValidiate(){
-    console.log(`KV(${compoinfo}):${convKana}`);
+    console.log(`KV(${compoinfo}):${convKana}/${insidebuf}/`);
     if( compoinfo < 0 ){
          let temptext = insidebuf.slice(0,compoinfo) + convKana[2] 
                     + insidebuf.slice(insidebuf.length+compoinfo);

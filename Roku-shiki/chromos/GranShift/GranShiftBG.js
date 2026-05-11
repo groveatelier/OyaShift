@@ -147,7 +147,7 @@ class MojiKey {
     }
 
     IsLongPress(){
-        return this.Active && (Date.now() - this.startTime > 280);  // 長押し判定
+        return this.Active && (Date.now() - this.startTime > 255);  // 長押し判定
     }
 
     SetShiftGeneration( gen ){
@@ -311,6 +311,7 @@ function SPConlyUp( keyData ){
         }
         else {
             // insidebufが空でないときは、次変換候補の表示処理に.
+            BackOne();  // 直前のスペースを消す処理.
             if( keyData.shiftKey ) fixOne();        // Shift付きは先頭確定.
             else setOtherCandidate( 1 );            // 先頭変換.
         }

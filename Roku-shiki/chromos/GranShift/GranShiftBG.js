@@ -15,52 +15,52 @@ const kanashifttable = [
     ["g", "せ", "も", "ぜ"],
     ["Lang2", "", "", ""],
     ["Lang1", "", "", ""],
-    ["h", "は", "ば", "み"],
+    ["h", "は", "み", "ば"],
     ["b", "へ", "ぃ", "べ"],
-    ["n", "め", "ぷ", "ぬ"],
+    ["n", "め", "ぬ", "ぷ"],
     ["t", "さ", "れ", "ざ"],
-    ["y", "ら", "ぱ", "よ"],
+    ["y", "ら", "よ", "ぱ"],
     ["f", "け", "ゅ", "げ"],
-    ["j", "と", "ど", "お"],
+    ["j", "と", "お", "ど"],
     ["v", "ふ", "や", "ぶ"],
-    ["m", "そ", "ぞ", "ゆ"],
+    ["m", "そ", "ゆ", "ぞ"],
     ["r", "こ", "ゃ", "ご"],
-    ["u", "ち", "ぢ", "に"],
+    ["u", "ち", "に", "ぢ"],
     ["d", "て", "な", "で"],
-    ["k", "き", "ぎ", "の"],
+    ["k", "き", "の", "ぎ"],
     ["c", "す", "ろ", "ず"],
-    [",", "ね", "ぺ", "む"],
+    [",", "ね", "む", "ぺ"],
     ["e", "た", "り", "だ"],
-    ["i", "く", "ぐ", "る"],
+    ["i", "く", "る", "ぐ"],
     ["s", "し", "あ", "じ"],
-    ["l", "い", "ぽ", "ょ"],
+    ["l", "い", "ょ", "ぽ"],
     ["x", "ひ", "ー", "び"],
-    [".", "ほ", "ぼ", "わ"],
+    [".", "ほ", "わ", "ぼ"],
     ["w", "か", "え", "が"],
-    ["o", "つ", "づ", "ま"],
+    ["o", "つ", "ま", "づ"],
     ["a", "う", "を", "ゔ"],
-    [";", "ん", "：", "っ"],
+    [";", "ん", "っ", "："],
     ["z", "．", "ぅ", "."],
-    ["/", "・", "／", "ぉ"],
+    ["/", "・", "ぉ", "／"],
     ["q", "。", "ぁ", "ぁ゙"],
-    ["p", "，", "ぴ", "ぇ"],
+    ["p", "，", "ぇ", "ぴ"],
 
-    ["`", "‘",  "かっこ", "’"],      /* US配列に合わせる*/
-    ["1", "1",  "ф", "一"],
-    ["6", "6",  "六", "［］"],
-    ["2", "2",  "〇", "二"],
-    ["7", "7",  "七", "《》"],
-    ["3", "3",  "§", "三"],
-    ["8", "8",  "八", "【】"],
-    ["4", "4",  "「", "四"],
-    ["9", "9",  "九", "※"],
-    ["5", "5",  "」", "五"],
-    ["0", "0",  "０", "、"],
+    ["`", "‘", "’", "かっこ"],      /* US配列に合わせる*/
+    ["1", "1", "ф", "一"],
+    ["6", "6", "［］", "六"],
+    ["2", "2", "〇", "二"],
+    ["7", "7", "《》", "七"],
+    ["3", "3", "§", "三"],
+    ["8", "8", "【】", "八"],
+    ["4", "4", "「", "四"],
+    ["9", "9", "※", "九"],
+    ["5", "5", "」", "五"],
+    ["0", "0", "、", "０"],
 
     ["-", "-", "√", "±"],
-    ["=", "=", "×", "÷"],
-    ["[", "』", "《《》》", "『"],
-    ["\\", "￥","くりかえし","＼"],
+    ["=", "=", "÷", "×"],
+    ["[", "』", "『", "《《》》"],
+    ["\\", "￥","＼","くりかえし"],
     ["]", "]", "}","{"],
     ["Ro","", " ",  " "]
 ];
@@ -79,13 +79,23 @@ const engine   = "GranShift";
 
 class ShiftKey {
     constructor(){
+        this.startTime = 0;   // 押下時間管理
         this.Generation = 0;    // 世代管理 (0~1023)
         this.Active = false;
     }
 
     KeyDown(){
-        this.Generation = (this.Generation + 1) % 1024;   // 世代管理
-        this.Active = true;  // 押下中
+        let live = false;
+        if( !this.Active ){
+            this.Active = true;  // 押下中
+            this.Generation = (this.Generation + 1) % 1024;   // 世代管理
+            this.startTime = Date.now();  // 押下時間管理
+            live = true;
+        }
+        else if( Date.now() - this.startTime > 2400 ){   // 長押し判定
+            live = true;   // 長押しでリピート有効
+        }
+        return live;
     }
 
     KeyUp(){
@@ -113,11 +123,20 @@ class MojiKey {
     }
 
     KeyDown( index ){
-        this.Active = true;  // 押下中
-        this.startTime = Date.now();  // 押下時間管理
-        this.prevkeyIndex = this.keyIndex;
-        this.keyIndex = index;  // キーインデックス管理
+        let live = false;
+        if( !this.Active ){
+            this.Active = true;  // 押下中
+            this.startTime = Date.now();  // 押下時間管理
+            this.prevkeyIndex = this.keyIndex;
+            this.keyIndex = index;  // キーインデックス管理
+            live = true;
+        }
+        else if( this.keyIndex !== index || (Date.now() - this.startTime > 2400 ) ){   // リピート抑止
+            live = true;
+        }
+        return live;
     }
+
 
     KeyUp(){
         this.Active = false;
@@ -127,8 +146,8 @@ class MojiKey {
         return this.Active;
     }
 
-    LongPress(){
-        return this.Active && (Date.now() - this.startTime > 1200);  // 長押し判定
+    IsLongPress(){
+        return this.Active && (Date.now() - this.startTime > 280);  // 長押し判定
     }
 
     SetShiftGeneration( gen ){
@@ -166,9 +185,8 @@ function thumbShift(keyData){
     let keyinx   = -1;
 
     if( !keyData.ctrlKey ){     // Ctrl 押されてないこと。
-        //lkey = keyData.key.toLowerCase();   // 小文字検索の為
-        //keyinx = GetKanaIndex( lkey );
-        keyinx = GetKanaIndex( keyData.key );
+        lkey = keyData.key.toLowerCase();   // 小文字検索の為
+        keyinx = GetKanaIndex( lkey );
         //console.log(`x:${keyData.code}/${keyData.key}/${keyinx}/${lkey}`);
         if( keyinx >= 0 ){
             action = true;
@@ -184,37 +202,41 @@ function thumbShift(keyData){
 
 //  SPC押下時の convKana 設定. 
 function setConvKanaDownSpc(){
-    SPCKey.KeyDown();   // SPCキー管理
-    if( MJKey.IsActive() ){   // 文字キーが押されている場合は、シフト+文字の変換.
-        convKana = [false, 0, kanashifttable[convKana[1]][2]]; 
-        BackOne();  // 直前の文字を消す処理.
+    if( SPCKey.KeyDown() ){    // SPCkey管理
+        if( MJKey.IsActive() ){   // 文字キーが押されている場合は、シフト+文字の変換.
+            convKana = [false, 0, kanashifttable[convKana[1]][2]]; 
+            BackOne();  // 直前の文字を消す処理.
+        }
+        else {
+            convKana = [false, 0, " "];  // 単なるSPC
+        }
     }
-    else {
-        convKana = [false, 0, " "];  // 単なるSPC
-    }
+    else convKana[0] = true;    // SPCリピート無効
 }
 
 //  Key押下時の convKana 設定. 
 function setConvKanaDownKey( keyinx, keyshift ){
 //    console.log(`KY:(${kinx})${convKana}/${keyshift}`);
-    MJKey.KeyDown( keyinx );   // 文字キー管理
-    if( keyshift ){         // shift key押下.
-        convKana = [false, keyinx, kanashifttable[keyinx][0].toUpperCase()];    // 大文字
-        MJKey.setKanaOffset(0);     // US大文字.
-    }
-    else if( SPCKey.IsActive() ){   // SPCキーが押されている場合は、シフト+文字の変換.
-        BackOne();  // 直前の文字を消す処理.
-        if( MJKey.IsMultiTap(SPCKey.GetGeneration()) ){   // 同一世代かつ同一キーの判定
-            convKana = [false, keyinx, kanashifttable[keyinx][MJKey.getNextoffset()]]; 
+    if( MJKey.KeyDown( keyinx ) ){   // 文字キー管理
+        if( keyshift ){         // shift key押下.
+            convKana = [false, keyinx, kanashifttable[keyinx][0].toUpperCase()];    // 大文字
+            MJKey.setKanaOffset(0);     // US大文字.
+        }
+        else if( SPCKey.IsActive() ){   // SPCキーが押されている場合は、シフト+文字の変換.
+            BackOne();  // 直前の文字を消す処理.
+            if( MJKey.IsMultiTap(SPCKey.GetGeneration()) ){   // 同一世代かつ同一キーの判定
+                convKana = [false, keyinx, kanashifttable[keyinx][MJKey.getNextoffset()]]; 
+            }
+            else {
+                MJKey.SetShiftGeneration(SPCKey.GetGeneration());  // Shiftキーの世代を文字キーにセット
+                convKana = [false, keyinx, kanashifttable[keyinx][MJKey.setKanaOffset(2)]];  // シフト+文字の変換
+            }
         }
         else {
-            MJKey.SetShiftGeneration(SPCKey.GetGeneration());  // Shiftキーの世代を文字キーにセット
-            convKana = [false, keyinx, kanashifttable[keyinx][MJKey.setKanaOffset(2)]];  // シフト+文字の変換
+            convKana = [false, keyinx, kanashifttable[keyinx][MJKey.getKanaOffset()]];  // シフト+文字の変換
         }
     }
-    else {
-        convKana = [false, keyinx, kanashifttable[keyinx][MJKey.getKanaOffset()]];  // シフト+文字の変換
-    }
+    else convKana[0] = true;    // リピート抑止
 }
 
 // US keyDown event
@@ -234,28 +256,52 @@ function USKeyDown( keyData ){
 // SS keyUp event
 function SSKeyUp(engineID, keyData){
     //console.log(`+kU:${convKana}/${keyData.key}:${insidebuf.length}`);
-    //let lkey = keyData.key.toLowerCase();   // 小文字検索の為
-    //let keyinx = GetKanaIndex( lkey );
-    let keyinx = GetKanaIndex( keyData.key );
+    if( !keyData.ctrlKey ){     // Ctrl 押されてないこと。
+        let lkey = keyData.key.toLowerCase();   // 小文字検索の為
+        let keyinx = GetKanaIndex( lkey );
 
-    if( keyinx === 0 ){
-        SPCKey.KeyUp();   // SPCキー管理
-        if( keycondition < 1024 ){ 
-            //UndoConvert( true );  // 変換候補確定とか
-            if( convKana[1] === 102 && convKana[2] === "" ) changeAndClear();    // 日モード
-        }
-    }
-    else if( keyinx > 0 ){
-        MJKey.KeyUp();   // 文字キー管理    
-        if( keycondition < 1024 ){
-            if( MJKey.LongPress() ){ 
-                // Key 長押しが判明，確定文字を一つ削除してからオフセット3の文字を確定する
-                BackOne();
-                convKana[2] = kanashifttable[keyinx][MJKey.setKanaOffset(3)];  // オフセット3の文字を確定する
-                keyValidiate();  // 確定処理
+        if( keyinx === 0 ){
+            SPCKey.KeyUp();   // SPCキー管理
+            if( keycondition < 1024 ){ 
+                // SPCキーの単独押下の場合は、次変換候補の表示処理に。
+                //UndoConvert( true );  // 変換候補確定とか
+                if( convKana[1] === 102 && convKana[2] === "" ) changeAndClear();    // 日モード
             }
-            else if( convKana[1] === 103 && convKana[2] === "" ) changeAndClear();
+        }
+        else if( keyinx > 0 ){
+            if( keycondition < 1024 ){
+                if( MJKey.IsLongPress() ){ 
+                    // Key 長押しが判明，確定文字を一つ削除してからオフセット3の文字を確定する
+                    BackOne();
+                    convKana[2] = kanashifttable[keyinx][MJKey.setKanaOffset(3)];  // オフセット3の文字を確定する
+                    keyValidiate();  // 確定処理
+                }
+                else if( convKana[1] === 103 && convKana[2] === "" ) changeAndClear();
+            }
+            MJKey.KeyUp();   // 文字キー管理    
         }
     }
+}
+
+// 押下されたキーの確定した際の処理（単独押しと重複押しを含む）
+// insidebufに確定した文字を複写. 漢字変換呼び出し.
+function keyValidiate(){
+    console.log(`KV(${compoinfo}):${convKana}`);
+    if( compoinfo < 0 ){
+         let temptext = insidebuf.slice(0,compoinfo) + convKana[2] 
+                    + insidebuf.slice(insidebuf.length+compoinfo);
+        insidebuf = temptext;
+    } else if( insidebuf.length === 0 && "。、―".indexOf( convKana[2] ) >= 0 ) CommitOne( convKana[2] );
+    else {
+        insidebuf += convKana[2];     // 確定済キー.
+        rokushikiIME();
+    }
+}
+
+// 単独SPC KeyUp の際に SPCをアプリに渡すか変換候補を変更するか判断
+function SPConlyUp(){
+    if( insidebuf.length === 0 ) {
+        // insidebufが空のときは、SPCをアプリに渡す.
+        
 }
 

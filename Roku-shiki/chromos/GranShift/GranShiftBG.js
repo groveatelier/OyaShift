@@ -302,18 +302,19 @@ function keyValidiate(){
 // 単独SPC KeyUp の際に SPCをアプリに渡すか変換候補を変更するか判断
 function SPConlyUp( keyData ){
     let action = false;
+    console.log(`SPCUP:${convKana}/${insidebuf.length}`);
     if( convKana[2] === " " ){   // SPCの単独押しであることの判定
         action = true;
+        BackOne();  // 直前のスペースを消す処理.
         if( insidebuf.length === 0 ){
             // insidebufが空のときは、SPCをアプリに渡す.
-            BackOne();  // 直前のスペースを消す処理.
             CommitOne( " " );  // SPCをアプリに渡す.
         }
         else {
             // insidebufが空でないときは、次変換候補の表示処理に.
-            BackOne();  // 直前のスペースを消す処理.
             if( keyData.shiftKey ) fixOne();        // Shift付きは先頭確定.
             else setOtherCandidate( 1 );            // 先頭変換.
+            //UndoConvert(1);  // 変換前の状態に戻す.
         }
     }
     return action;

@@ -264,8 +264,9 @@ function SSKeyUp(engineID, keyData){
             SPCKey.KeyUp();   // SPCキー管理
             if( keycondition < 1024 ){ 
                 // SPCキーの単独押下の場合は、次変換候補の表示処理に。
-                //UndoConvert( true );  // 変換候補確定とか
-                if( convKana[1] === 102 && convKana[2] === "" ) changeAndClear();    // 日モード
+                if( !SPConlyUp( keyData ) ){
+                    if( convKana[1] === 102 && convKana[2] === "" ) changeAndClear();    // 日モード
+                }
             }
         }
         else if( keyinx > 0 ){
@@ -299,9 +300,20 @@ function keyValidiate(){
 }
 
 // 単独SPC KeyUp の際に SPCをアプリに渡すか変換候補を変更するか判断
-function SPConlyUp(){
-    if( insidebuf.length === 0 ) {
-        // insidebufが空のときは、SPCをアプリに渡す.
-        
+function SPConlyUp( keyData ){
+    let action = false;
+    if( convKana[2] === " " ){   // SPCの単独押しであることの判定
+        action = true;
+        if( insidebuf.length === 0 ){
+            // insidebufが空のときは、SPCをアプリに渡す.
+            BackOne();  // 直前のスペースを消す処理.
+            CommitOne( " " );  // SPCをアプリに渡す.
+        }
+        else {
+            // insidebufが空でないときは、次変換候補の表示処理に.
+            if( keyData.shiftKey ) fixOne();        // Shift付きは先頭確定.
+            else setOtherCandidate( 1 );            // 先頭変換.
+        }
+    }
+    return action;
 }
-

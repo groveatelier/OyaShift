@@ -210,17 +210,22 @@ function thumbShift(keyData){
     let keyinx   = -1;
 
     if( !keyData.ctrlKey ){     // Ctrl 押されてないこと。
-        lkey = keyData.key.toLowerCase();   // 小文字検索の為
-        keyinx = GetKanaIndex( lkey );
-        //console.log(`x:${keyData.code}/${keyData.key}/${keyinx}/${lkey}`);
-        if( keyinx >= 0 ){
-            action = true;
-            if( keyinx === 0 ){   // SPCキー押下
-                setConvKanaDownSpc(keyData)    ;   // convKana 設定：SPC.
-            } else {                            // 通常キー入力
-                setConvKanaDownKey( keyinx, (keyData.shiftKey) );   // convKana 設定：key.
-            }
-        } 
+        if( keyData.code === "Enter" && !MJKey.getKanaOffset() ){     // 
+            ZenKakuteiKey( keyData );  // 全確定 or 先頭確定
+        }
+        else {
+            lkey = keyData.key.toLowerCase();   // 小文字検索の為
+            keyinx = GetKanaIndex( lkey );
+            //console.log(`x:${keyData.code}/${keyData.key}/${keyinx}/${lkey}`);
+            if( keyinx >= 0 ){
+                action = true;
+                if( keyinx === 0 ){   // SPCキー押下
+                    setConvKanaDownSpc(keyData)    ;   // convKana 設定：SPC.
+                } else {                            // 通常キー入力
+                    setConvKanaDownKey( keyinx, (keyData.shiftKey) );   // convKana 設定：key.
+                }
+            } 
+        }
     }
     return action;
 }
@@ -283,7 +288,7 @@ function setConvKanaDownKey( keyinx, keyshift ){
 
 // US keyDown event
 function USKeyDown( keyData ){
-    console.log(`UKD:${keyData.code}/${keyData.shiftKey}`);
+    //console.log(`UKD:${keyData.code}/${keyData.shiftKey}`);
     let enact = false;
     if( !keyData.shiftKey && !keyData.ctrlKey ){
         if( keyData.code === "AltRight" ){
@@ -328,15 +333,20 @@ function SSKeyUp(engineID, keyData){
 
 // シフトの遅延処理
 function SPCLateKeyDown( eiShift ){
-    console.log(`SPCLate:${convKana}/${insidebuf.length}`);
+    //console.log(`SPCLate:${convKana}/${insidebuf.length}`);
     if( eiShift ) fixOne();        // Shift付きは先頭確定.
     else setOtherCandidate( 1 );   // 先頭変換.
+}
+
+function ZenKakuteiKey( keyData ){
+    if( keyData.shiftKey || compoinfo < 0 ) fixOne();  // 先頭確定.
+    else fixAll();                                      // 全確定.
 }
 
 // 単独SPC KeyUp の際に SPCをアプリに渡すか変換候補を変更するか判断
 function SPConlyUp( keyData ){
     let action = false;
-    console.log(`SPCUP:${convKana}/${insidebuf.length}`);
+    //console.log(`SPCUP:${convKana}/${insidebuf.length}`);
     if( convKana[2] === " " ){   // SPCの単独押しであることの判定
         action = true;
         BackOne();  // 直前のスペースを消す処理.

@@ -101,6 +101,7 @@ class ShiftKey {
 
     KeyUp(){
         this.Active = false;
+//        return this.ClearKeyDownTimer();  // タイマークリアして結果を返す
     }
 
     IsActive(){
@@ -138,7 +139,6 @@ class MojiKey {
         this.keyIndex = -1;    // キーインデックス管理
         this.prevkeyIndex = -1;    // キーインデックス管理
         this.kanaoffset = 1;     // かな変換offset量
-//        this.prevkanaofs = 1;     // 直前のかな変換offset量
     }
 
     KeyDown( index ){
@@ -156,7 +156,6 @@ class MojiKey {
         return live;
     }
 
-
     KeyUp(){
         this.Active = false;
     }
@@ -166,7 +165,6 @@ class MojiKey {
     }
 
     IsLongPress(){
-        //console.log(`LP:${this.Active}/${Date.now() - this.startTime}`);
         return this.Active && (Date.now() - this.startTime > 235);  // 長押し判定
     }
 
@@ -184,18 +182,15 @@ class MojiKey {
 
     getNextoffset(){
         this.kanaoffset = ( this.kanaoffset + 1 ) % 4;    //文字オフセット変更
-//        this.prevkanaofs = this.kanaoffset;  // 直前のかな変換offset量を保存.
         return this.kanaoffset;
     }
 
     setKanaOffset( offset ){
         this.kanaoffset = offset;     // かな変換offset量セット
-//        this.prevkanaofs = this.kanaoffset;  // 直前のかな変換offset量を保存.
         return this.kanaoffset;
     }
 
     getKanaOffset(){
-//        return this.prevkanaofs ? 1 : 0;     // かな変換offset量取得
         return this.kanaoffset ? 1 : 0;     // かな変換offset量取得
     }
 }
@@ -225,6 +220,9 @@ function thumbShift(keyData){
                     setConvKanaDownKey( keyinx, (keyData.shiftKey) );   // convKana 設定：key.
                 }
             } 
+            else if( keyData.code === "AltLeft" ){
+                convKana = [false,103,''];   // SSKeyUp でUSモード
+            }
         }
     }
     return action;
@@ -309,24 +307,32 @@ function SSKeyUp(engineID, keyData){
 
         if( keyinx === 0 ){
             SPCKey.KeyUp();   // SPCキー管理
-            if( keycondition < 1024 ){ 
-                // SPCキーの単独押下の場合は、次変換候補の表示処理に。
-                if( !SPConlyUp( keyData ) ){
-                    if( convKana[1] === 102 && convKana[2] === "" ) changeAndClear();    // 日モード
-                }
-            }
+//            if( SPCKey.KeyUp() ){    // SPCkey管理
+//                if(insidebuf.trim().length === 0) {    // insidebufに何かある
+//                    SPCLateKeyDown( keyData.shiftKey );  // シフトの遅延処理を実行
+//                }
+//                else{
+//                    //fixAll();     // 確定
+//                    CommitOne(" ");   // SPCをアプリに渡す.
+//                }
+//            }
         }
         else if( keyinx > 0 ){
             if( keycondition < 1024 ){
-                if( MJKey.IsLongPress() ){ 
+                if( MJKey.IsLongPress() && insidebuf.length > 0 ){ 
                     // Key 長押しが判明，確定文字を一つ削除してからオフセット3の文字を確定する
                     BackOne();
                     convKana[2] = kanashifttable[keyinx][MJKey.setKanaOffset(3)];  // オフセット3の文字を確定する
                     keyValidiate();  // 確定処理
                 }
-                else if( convKana[1] === 103 && convKana[2] === "" ) changeAndClear();
             }
             MJKey.KeyUp();   // 文字キー管理    
+        }
+        else {
+            if( keycondition < 1024 ){
+                if( convKana[1] === 103 && convKana[2] === "" ) changeAndClear();    // 英モード
+            }
+            else if( convKana[1] === 102 && convKana[2] === "" ) changeAndClear();  // 日 Mode
         }
     }
 }
@@ -344,22 +350,22 @@ function ZenKakuteiKey( keyData ){
 }
 
 // 単独SPC KeyUp の際に SPCをアプリに渡すか変換候補を変更するか判断
-function SPConlyUp( keyData ){
-    let action = false;
-    //console.log(`SPCUP:${convKana}/${insidebuf.length}`);
-    if( convKana[2] === " " ){   // SPCの単独押しであることの判定
-        action = true;
-        BackOne();  // 直前のスペースを消す処理.
-        if( insidebuf.length === 0 ){
-            // insidebufが空のときは、SPCをアプリに渡す.
-            CommitOne( " " );  // SPCをアプリに渡す.
-        }
-        else {
-            // insidebufが空でないときは、次変換候補の表示処理に.
-            if( keyData.shiftKey ) fixOne();        // Shift付きは先頭確定.
-            else setOtherCandidate( 1 );            // 先頭変換.
-            //UndoConvert(1);  // 変換前の状態に戻す.
-        }
-    }
-    return action;
-}
+//function SPConlyUp( keyData ){
+//    let action = false;
+//    //console.log(`SPCUP:${convKana}/${insidebuf.length}`);
+//    if( convKana[2] === " " ){   // SPCの単独押しであることの判定
+//        action = true;
+//        BackOne();  // 直前のスペースを消す処理.
+//        if( insidebuf.length === 0 ){
+//            // insidebufが空のときは、SPCをアプリに渡す.
+//            CommitOne( " " );  // SPCをアプリに渡す.
+//        }
+//        else {
+//            // insidebufが空でないときは、次変換候補の表示処理に.
+//            if( keyData.shiftKey ) fixOne();        // Shift付きは先頭確定.
+//            else setOtherCandidate( 1 );            // 先頭変換.
+//            //UndoConvert(1);  // 変換前の状態に戻す.
+//        }
+//    }
+//    return action;
+//}

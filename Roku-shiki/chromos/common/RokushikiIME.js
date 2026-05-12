@@ -327,7 +327,11 @@ function copyEntry( entryindex ){      // Entryを複製.
 
 function showCompoAndCand(){        // バインド関数
     showComposition();
-    showCands();
+//    showCands();
+    if (insidebuf.trim().length > 0) {
+        // insidebuf 空白文字以外もあるときは候補表示する
+        showCands();
+    }
 }
 
 // テキスト(カーソル行)の表示.

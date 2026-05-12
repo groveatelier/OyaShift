@@ -81,6 +81,7 @@ class ShiftKey {
     constructor(){
         this.startTime = 0;   // 押下時間管理
         this.Generation = 0;    // 世代管理 (0~1023)
+        this.timerid = null;    // タイマーID管理
         this.Active = false;
     }
 
@@ -108,6 +109,24 @@ class ShiftKey {
 
     GetGeneration(){
         return this.Generation;
+    }
+
+    SetLateKeyDown( callback, shiftState ){
+        if( this.timerid ) clearTimeout(this.timerid);  // 既存のタイマーがあればクリア
+        this.timerid = setTimeout( () => {
+            callback(shiftState);  // 遅延実行するコールバック関数を呼び出す
+            this.timerid = null;   // タイマーIDをリセット
+        }, 300);  // 300msの遅延
+    }
+
+    ClearKeyDownTimer(){
+        let cleared = false;
+        if( this.timerid ) {
+            clearTimeout(this.timerid);  // タイマーをクリア
+            this.timerid = null;   // タイマーIDをリセット
+            cleared = true;
+        }
+        return cleared;
     }
 }
 
@@ -147,7 +166,12 @@ class MojiKey {
     }
 
     IsLongPress(){
-        return this.Active && (Date.now() - this.startTime > 255);  // 長押し判定
+        console.log(`LP:${this.Active}/${Date.now() - this.startTime}`);
+        return this.Active && (Date.now() - this.startTime > 235);  // 長押し判定
+    }
+
+    ExpandLongTimer(){
+        this.startTime = Date.now() + 800;  // 長押し判定時間を延長
     }
 
     SetShiftGeneration( gen ){
@@ -207,16 +231,18 @@ function setConvKanaDownSpc(keyData){
         if( MJKey.IsActive() ){   // 文字キーが押されている場合は、シフト+文字の変換.
             convKana = [false, 0, kanashifttable[convKana[1]][2]]; 
             BackOne();  // 直前の文字を消す処理.
+            MJKey.ExpandLongTimer();  // 文字キーの長押し判定時間を延長
         }
         else if( insidebuf.length === 0 ){   // insidebufが空のとき
             convKana = [false, 0, " "];  // 単なるSPCを一旦設定
         }
         else if( MJKey.getKanaOffset() ){   // 変換候補の操作.
-            if( keyData.shiftKey ) fixOne();        // Shift付きは先頭確定.
-            else setOtherCandidate( 1 );            // 先頭変換.
+            console.log(`SPC10:/${insidebuf}/`);
+            SPCKey.SetLateKeyDown( SPCLateKeyDown, keyData.shiftKey );  // シフトの遅延処理をセット
             convKana[0] = true;
         }
         else {      // insidebufの吐き出しと空白の吐き出し
+            console.log(`SPC20:/${insidebuf}/`);
             fixAll();     // 確定
             CommitOne(" ");   // SPCをアプリに渡す.
             convKana[0] = true;
@@ -235,7 +261,9 @@ function setConvKanaDownKey( keyinx, keyshift ){
             MJKey.setKanaOffset(0);     // US大文字.
         }
         else if( SPCKey.IsActive() ){   // SPCキーが押されている場合は、シフト+文字の変換.
-            BackOne();  // 直前の文字を消す処理.
+            if( !SPCKey.ClearKeyDownTimer() ){  // SPCの遅延処理クリア
+                BackOne();  // 直前の空白を消す処理.
+            }
             if( MJKey.IsMultiTap(SPCKey.GetGeneration()) ){   // 同一世代かつ同一キーの判定
                 convKana = [false, keyinx, kanashifttable[keyinx][MJKey.getNextoffset()]]; 
             }
@@ -253,7 +281,7 @@ function setConvKanaDownKey( keyinx, keyshift ){
 
 // US keyDown event
 function USKeyDown( keyData ){
-    //console.log(`UKD:${keyData.code}/${keyData.shiftKey}`);
+    console.log(`UKD:${keyData.code}/${keyData.shiftKey}`);
     let enact = false;
     if( !keyData.shiftKey && !keyData.ctrlKey ){
         if( keyData.code === "AltRight" ){
@@ -267,7 +295,7 @@ function USKeyDown( keyData ){
 
 // SS keyUp event
 function SSKeyUp(engineID, keyData){
-    //console.log(`+kU:${convKana}/${keyData.key}:${insidebuf.length}`);
+    console.log(`+kU:${convKana}/${keyData.key}:${insidebuf.length}`);
     if( !keyData.ctrlKey ){     // Ctrl 押されてないこと。
         let lkey = keyData.key.toLowerCase();   // 小文字検索の為
         let keyinx = GetKanaIndex( lkey );
@@ -294,6 +322,13 @@ function SSKeyUp(engineID, keyData){
             MJKey.KeyUp();   // 文字キー管理    
         }
     }
+}
+
+// シフトの遅延処理
+function SPCLateKeyDown( eiShift ){
+    console.log(`SPCLate:${convKana}/${insidebuf.length}`);
+    if( eiShift ) fixOne();        // Shift付きは先頭確定.
+    else setOtherCandidate( 1 );   // 先頭変換.
 }
 
 // 押下されたキーの確定した際の処理（単独押しと重複押しを含む）

@@ -116,7 +116,7 @@ class ShiftKey {
         this.timerid = setTimeout( () => {
             callback(shiftState);  // 遅延実行するコールバック関数を呼び出す
             this.timerid = null;   // タイマーIDをリセット
-        }, 300);  // 300msの遅延
+        }, 250);  // 250msの遅延
     }
 
     ClearKeyDownTimer(){
@@ -138,7 +138,7 @@ class MojiKey {
         this.keyIndex = -1;    // キーインデックス管理
         this.prevkeyIndex = -1;    // キーインデックス管理
         this.kanaoffset = 1;     // かな変換offset量
-        this.prevkanaofs = 1;     // 直前のかな変換offset量
+//        this.prevkanaofs = 1;     // 直前のかな変換offset量
     }
 
     KeyDown( index ){
@@ -166,7 +166,7 @@ class MojiKey {
     }
 
     IsLongPress(){
-        console.log(`LP:${this.Active}/${Date.now() - this.startTime}`);
+        //console.log(`LP:${this.Active}/${Date.now() - this.startTime}`);
         return this.Active && (Date.now() - this.startTime > 235);  // 長押し判定
     }
 
@@ -184,18 +184,19 @@ class MojiKey {
 
     getNextoffset(){
         this.kanaoffset = ( this.kanaoffset + 1 ) % 4;    //文字オフセット変更
-        this.prevkanaofs = this.kanaoffset;  // 直前のかな変換offset量を保存.
+//        this.prevkanaofs = this.kanaoffset;  // 直前のかな変換offset量を保存.
         return this.kanaoffset;
     }
 
     setKanaOffset( offset ){
         this.kanaoffset = offset;     // かな変換offset量セット
-        this.prevkanaofs = this.kanaoffset;  // 直前のかな変換offset量を保存.
+//        this.prevkanaofs = this.kanaoffset;  // 直前のかな変換offset量を保存.
         return this.kanaoffset;
     }
 
     getKanaOffset(){
-        return this.prevkanaofs ? 1 : 0;     // かな変換offset量取得
+//        return this.prevkanaofs ? 1 : 0;     // かな変換offset量取得
+        return this.kanaoffset ? 1 : 0;     // かな変換offset量取得
     }
 }
 
@@ -226,7 +227,7 @@ function thumbShift(keyData){
 
 //  SPC押下時の convKana 設定. 
 function setConvKanaDownSpc(keyData){
-    console.log(`SPC:${keyData.shiftKey}/${MJKey.IsActive()}/${insidebuf}/`);
+    //console.log(`SPC:${keyData.shiftKey}/${MJKey.IsActive()}/${insidebuf}/`);
     if( SPCKey.KeyDown() ){    // SPCkey管理
         if( MJKey.IsActive() ){   // 文字キーが押されている場合は、シフト+文字の変換.
             convKana = [false, 0, kanashifttable[convKana[1]][2]]; 
@@ -237,24 +238,24 @@ function setConvKanaDownSpc(keyData){
             convKana = [false, 0, " "];  // 単なるSPCを一旦設定
         }
         else if( MJKey.getKanaOffset() ){   // 変換候補の操作.
-            console.log(`SPC10:/${insidebuf}/`);
+            //console.log(`SPC10:/${insidebuf}/`);
             SPCKey.SetLateKeyDown( SPCLateKeyDown, keyData.shiftKey );  // シフトの遅延処理をセット
             convKana[0] = true;
         }
         else {      // insidebufの吐き出しと空白の吐き出し
-            console.log(`SPC20:/${insidebuf}/`);
+            //console.log(`SPC20:/${insidebuf}/`);
             fixAll();     // 確定
             CommitOne(" ");   // SPCをアプリに渡す.
             convKana[0] = true;
         }
     }
     else convKana[0] = true;    // SPCリピート無効
-    console.log(`SPCout:/${insidebuf}/`);
+    //console.log(`SPCout:/${insidebuf}/`);
 }
 
 //  Key押下時の convKana 設定. 
 function setConvKanaDownKey( keyinx, keyshift ){
-//    console.log(`KY:(${kinx})${convKana}/${keyshift}`);
+    //console.log(`KY:(${keyinx})${convKana}/${keyshift}`);
     if( MJKey.KeyDown( keyinx ) ){   // 文字キー管理
         if( keyshift ){         // shift key押下.
             convKana = [false, keyinx, kanashifttable[keyinx][0].toUpperCase()];    // 大文字
@@ -277,6 +278,7 @@ function setConvKanaDownKey( keyinx, keyshift ){
         }
     }
     else convKana[0] = true;    // リピート抑止
+    //console.log(`KYout:${convKana}/${insidebuf}/`);
 }
 
 // US keyDown event
@@ -295,7 +297,7 @@ function USKeyDown( keyData ){
 
 // SS keyUp event
 function SSKeyUp(engineID, keyData){
-    console.log(`+kU:${convKana}/${keyData.key}:${insidebuf.length}`);
+    //console.log(`+kU:${convKana}/${keyData.key}:${insidebuf.length}`);
     if( !keyData.ctrlKey ){     // Ctrl 押されてないこと。
         let lkey = keyData.key.toLowerCase();   // 小文字検索の為
         let keyinx = GetKanaIndex( lkey );
@@ -329,21 +331,6 @@ function SPCLateKeyDown( eiShift ){
     console.log(`SPCLate:${convKana}/${insidebuf.length}`);
     if( eiShift ) fixOne();        // Shift付きは先頭確定.
     else setOtherCandidate( 1 );   // 先頭変換.
-}
-
-// 押下されたキーの確定した際の処理（単独押しと重複押しを含む）
-// insidebufに確定した文字を複写. 漢字変換呼び出し.
-function keyValidiate(){
-    console.log(`KV(${compoinfo}):${convKana}/${insidebuf}/`);
-    if( compoinfo < 0 ){
-         let temptext = insidebuf.slice(0,compoinfo) + convKana[2] 
-                    + insidebuf.slice(insidebuf.length+compoinfo);
-        insidebuf = temptext;
-    } else if( insidebuf.length === 0 && "。、―".indexOf( convKana[2] ) >= 0 ) CommitOne( convKana[2] );
-    else {
-        insidebuf += convKana[2];     // 確定済キー.
-        rokushikiIME();
-    }
 }
 
 // 単独SPC KeyUp の際に SPCをアプリに渡すか変換候補を変更するか判断

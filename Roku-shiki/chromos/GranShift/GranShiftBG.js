@@ -476,8 +476,6 @@ function USKeyDown( keyData ){
 function SSKeyUp(engineID, keyData){
     //console.log(`+kU:${convKana}/${keyData.key}:${insidebuf.length}`);
     if( !keyData.ctrlKey ){     // Ctrl 押されてないこと。
-        let lkey = keyData.key.toLowerCase();   // 小文字検索の為
-        let keyinx = GetKanaIndex( lkey );
         let keyinx = ckey.keyGetKanaIndex( keyData );  // キーインデックス検索
 
         if( keyinx < oyaubiline ){
@@ -492,7 +490,7 @@ function SSKeyUp(engineID, keyData){
                     keyValidiate();  // 確定処理
                 }
             }
-            MJKey.KeyUp();   // 文字キー管理     ※@Todo
+            ckey.keyKeyUp();   // 文字キー管理
         }
         else {
             if( keycondition < 1024 ){
@@ -500,7 +498,7 @@ function SSKeyUp(engineID, keyData){
             }
             else if( convKana[1] === 102 && convKana[2] === "" ){ 
                 changeAndClear();  // 日 Mode
-                MJKey.setKanaOffset(1);     // かな変換offset量セット (次回以降のキー入力でひらがなになるように)
+                ckey.keyKanaOffset = 1;     // かな変換offset量セット (次回以降のキー入力でひらがなになるように)
             }
         }
     }
@@ -517,17 +515,6 @@ function SPCLateKeyDown( eiShift ){
         if( eiShift ) fixOne();        // Shift付きは先頭確定.
         else setOtherCandidate( 1 );   // 先頭変換.
     }
-}
-
-//  かなテーブルから文字を抽出
-function getmoji(){
-    let offset = 2;
-    if( SPCKey.keyIndex !== 0 ){   // 親指キーあり
-        if( SPCKey.keyIndex === 1 )  offset = mojiinx > leftkeysLine ? 2 : 3;   // 右親シフトキー
-        else                offset = mojiinx > leftkeysLine ? 3 : 2;   // 左親シフトキー
-        OyayubiKeyboard = true;   // 親指シフトキーボードかどうかのフラグ
-    }
-    return kanashifttable[MJKey.keyIndex][offset];
 }
 
 function ZenKakuteiKey( keyData ){

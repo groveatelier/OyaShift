@@ -11,7 +11,7 @@ importScripts("RokushikiIME.js");
 
 const oyaubiline = 3;      // 親指シフトのキーライン
 const normalkeyline = 5;   // 通常文字の境界
-const leftkeysLine = normalkeyline + 31;   // 左キーの境界
+const leftkeysLine = normalkeyline + 21;   // 左キーの境界
 const kanashifttable = [
    /*Key  単    左+   右+ */
     [" ", " ", "", ""],
@@ -125,14 +125,6 @@ class OyaShiftCtrl {
         this.oyaActive = false;
     }
 
-    oyaIsActive(){
-        return this.oyaActive;
-    }
-
-    oyaGetGeneration(){
-        return this.oyaGeneration;
-    }
-
     oyaSetLateKeyDown( callback ){
         if( this.oyaTimerid ) clearTimeout(this.oyaTimerid);  // 既存のタイマーがあればクリア
         this.oyaTimerid = setTimeout( () => {
@@ -153,14 +145,14 @@ class OyaShiftCtrl {
 
     keyKeyDown( index ){
         let live = false;
+        this.keyPrevIndex = this.keyIndex;
+        this.keyIndex = index;  // キーインデックス管理
         if( !this.keyActive ){
             this.keyActive = true;  // 押下中
             this.keyStartTime = Date.now();  // 押下時間管理
-            this.keyPrevIndex = this.keyIndex;
-            this.keyIndex = index;  // キーインデックス管理
             live = true;
         }
-        else if( this.keyIndex !== index || (Date.now() - this.keyStartTime > 2400 ) ){   // リピート抑止
+        else if( this.keyPrevIndex !== index || (Date.now() - this.keyStartTime > 1800 ) ){   // リピート抑止
             live = true;
         }
         return live;
@@ -170,12 +162,8 @@ class OyaShiftCtrl {
         this.keyActive = false;
     }
 
-    keyIsActive(){
-        return this.keyActive;
-    }
-
     keyIsLongPress(){
-        return this.keyActive && (Date.now() - this.keyStartTime > 235);  // 長押し判定
+        return this.keyActive && (Date.now() - this.keyStartTime > 225);  // 長押し判定
     }
 
     keyExpandLongTimer(){
@@ -186,31 +174,21 @@ class OyaShiftCtrl {
         return this.oyaGeneration === this.keyGeneration && this.keyPrevIndex === this.keyIndex;  // 同一世代かつ同一キーの判定
     }
 
-    keyGetNextoffset(){
-        this.keyKanaOffset = ( this.keyKanaOffset + 1 ) % 4;    //文字オフセット変更
-        return this.keyKanaOffset;
-    }
-
-    keySetKanaOffset( offset ){
-        this.keyKanaOffset = offset;     // かな変換offset量セット
-        return this.keyKanaOffset;
-    }
-
-    keyGetKanaOffset(){
-        return this.keyKanaOffset ? 1 : 0;     // かな変換offset量取得
-    }
-
-    keyGetKanaIndex( keyData ){
+    getKanaIndex( keyData ){
         let keyindex = -1;
         this.keyShift = keyData.shiftKey;   // キーデータ管理
-        let moji = keyData.key.toLowerCase();   // 小文字検索の為
-        for(let depth = 0; depth < kanashifttable.length; depth++ ){
-            if (kanashifttable[depth][0] === moji){
-                keyindex = depth;
-                break;
+        if( keyData.code === "Lang1" ) keyindex = 1;        // Lang1キー
+        else if( keyData.code === "Lang2" ) keyindex = 2;   // Lang2キー
+        else
+        {
+            let moji = keyData.key.toLowerCase();   // 小文字検索の為
+            for(let depth = 0; depth < kanashifttable.length; depth++ ){
+                if (kanashifttable[depth][0] === moji){
+                    keyindex = depth;
+                    break;
+                }
             }
         }
-        this.peekKeyIndex = keyindex;  // 押されたキーのインデックス
         return keyindex;
     }
 
@@ -225,6 +203,7 @@ class OyaShiftCtrl {
     }
 
     keyGetUSMoji(){
+        this.keyKanaOffset = 0;    // Shiftキー押下でオフセット0の文字
         return kanashifttable[this.keyIndex][0];   // US文字
     }
 
@@ -249,128 +228,7 @@ class OyaShiftCtrl {
 
 }
 
-class ShiftKey {
-    constructor(){
-        this.startTime = 0;   // 押下時間管理
-        this.Generation = 0;    // 世代管理 (0~1023)
-        this.timerid = null;    // タイマーID管理
-        this.keyIndex = -1;    // キーインデックス管理
-        this.Active = false;
-    }
 
-    KeyDown( keyinx ){
-        let live = false;
-        if( !this.Active ){
-            this.Active = true;  // 押下中
-            this.Generation = (this.Generation + 1) % 1024;   // 世代管理
-            this.startTime = Date.now();  // 押下時間管理
-            this.keyIndex = keyinx;  // キーインデックス管理
-            live = true;
-        }
-        else if( Date.now() - this.startTime > 2400 ){   // 長押し判定
-            live = true;   // 長押しでリピート有効
-        }
-        return live;
-    }
-
-    KeyUp(){
-        this.Active = false;
-//        return this.ClearKeyDownTimer();  // タイマークリアして結果を返す
-    }
-
-    IsActive(){
-        return this.Active;
-    }
-
-    GetGeneration(){
-        return this.Generation;
-    }
-
-    SetLateKeyDown( callback, shiftState ){
-        if( this.timerid ) clearTimeout(this.timerid);  // 既存のタイマーがあればクリア
-        this.timerid = setTimeout( () => {
-            callback(shiftState);  // 遅延実行するコールバック関数を呼び出す
-            this.timerid = null;   // タイマーIDをリセット
-        }, 250);  // 250msの遅延
-    }
-
-    ClearKeyDownTimer(){
-        let cleared = false;
-        if( this.timerid ) {
-            clearTimeout(this.timerid);  // タイマーをクリア
-            this.timerid = null;   // タイマーIDをリセット
-            cleared = true;
-        }
-        return cleared;
-    }
-}
-
-class MojiKey {
-    constructor(){
-        this.Active = false;
-        this.startTime = 0;   // 押下時間管理
-        this.ShiftGeneration = -1;    // Shiftキーの世代管理 (0~1023)
-        this.keyIndex = -1;    // キーインデックス管理
-        this.prevkeyIndex = -1;    // キーインデックス管理
-        this.kanaoffset = 1;     // かな変換offset量
-    }
-
-    KeyDown( index ){
-        let live = false;
-        if( !this.Active ){
-            this.Active = true;  // 押下中
-            this.startTime = Date.now();  // 押下時間管理
-            this.prevkeyIndex = this.keyIndex;
-            this.keyIndex = index;  // キーインデックス管理
-            live = true;
-        }
-        else if( this.keyIndex !== index || (Date.now() - this.startTime > 2400 ) ){   // リピート抑止
-            live = true;
-        }
-        return live;
-    }
-
-    KeyUp(){
-        this.Active = false;
-    }
-
-    IsActive(){
-        return this.Active;
-    }
-
-    IsLongPress(){
-        return this.Active && (Date.now() - this.startTime > 235);  // 長押し判定
-    }
-
-    ExpandLongTimer(){
-        this.startTime = Date.now() + 800;  // 長押し判定時間を延長
-    }
-
-    SetShiftGeneration( gen ){
-        this.ShiftGeneration = gen;
-    }
-
-    IsMultiTap( gen ){
-        return this.ShiftGeneration === gen && this.prevkeyIndex === this.keyIndex;  // 同一世代かつ同一キーの判定
-    }
-
-    getNextoffset(){
-        this.kanaoffset = ( this.kanaoffset + 1 ) % 4;    //文字オフセット変更
-        return this.kanaoffset;
-    }
-
-    setKanaOffset( offset ){
-        this.kanaoffset = offset;     // かな変換offset量セット
-        return this.kanaoffset;
-    }
-
-    getKanaOffset(){
-        return this.kanaoffset ? 1 : 0;     // かな変換offset量取得
-    }
-}
-
-//const SPCKey = new ShiftKey();  // SPCキー管理
-//const MJKey = new MojiKey();  // 文字キー管理
 const ckey = new OyaShiftCtrl();  // 親指シフトキー管理
 
 //  Key Down時に呼び出される.
@@ -385,7 +243,8 @@ function thumbShift(keyData){
         }
         else {
             //console.log(`x:${keyData.code}/${keyData.key}/${keyinx}/${lkey}`);
-            if( ckey.keyGetKanaIndex( keyData ) >= 0 ){
+            ckey.peekKeyIndex = ckey.getKanaIndex( keyData );  // キーインデックス検索
+            if( ckey.peekKeyIndex >= 0 ){
                 action = true;
                 if( ckey.peekKeyIndex < oyaubiline ) setConvKanaDownOya()  ;  // convKana 設定：親.
                 else   setConvKanaDownKey();  // convKana 設定：key.
@@ -393,6 +252,7 @@ function thumbShift(keyData){
             else if( keyData.code === "AltLeft" ) convKana = [false,103,'']; // SSKeyUp でUSモード
         }
     }
+    //console.log(`thumbShift:${convKana}/${insidebuf}/`);
     return action;
 }
 
@@ -436,7 +296,6 @@ function setConvKanaDownKey(){
     if( ckey.keyKeyDown( ckey.peekKeyIndex ) ){   // 文字キー管理
         if( ckey.keyShift && ckey.keyIndex > normalkeyline ){         // shift key押下 && 通常キー.
             convKana = [false, ckey.keyIndex, ckey.keyGetUSMoji().toUpperCase()];    // 大文字
-            ckey.keyKanaOffset = 0;     // US大文字.
         }
         else if( ckey.oyaActive ){   // SPCキーが押されている場合は、シフト+文字の変換.
             if( !ckey.oyaClearKeyDownTimer() ){  // SPCの遅延処理クリア
@@ -476,21 +335,23 @@ function USKeyDown( keyData ){
 function SSKeyUp(engineID, keyData){
     //console.log(`+kU:${convKana}/${keyData.key}:${insidebuf.length}`);
     if( !keyData.ctrlKey ){     // Ctrl 押されてないこと。
-        let keyinx = ckey.keyGetKanaIndex( keyData );  // キーインデックス検索
+        let keyinx = ckey.getKanaIndex( keyData );  // キーインデックス検索
 
-        if( keyinx < oyaubiline ){
-            ckey.oyaKeyUp();   // 親キー管理
-        }
-        else if( keyinx > 0 ){
-            if( keycondition < 1024 ){
-                if( ckey.keyIsLongPress() && insidebuf.length > 0 ){ 
-                    // Key 長押しが判明，確定文字を一つ削除してからオフセット3の文字を確定する
-                    BackOne();
-                    convKana[2] = ckey.keyGetLPMoji();  // オフセット3の文字を確定する
-                    keyValidiate();  // 確定処理
-                }
+        if( keyinx >= 0 ){
+            if( keyinx < oyaubiline ){
+                ckey.oyaKeyUp();   // 親キー管理
             }
-            ckey.keyKeyUp();   // 文字キー管理
+            else{
+                if( keycondition < 1024 ){
+                    if( ckey.keyIsLongPress() && insidebuf.length > 0 ){ 
+                        // Key 長押しが判明，確定文字を一つ削除してからオフセット3の文字を確定する
+                        BackOne();
+                        convKana[2] = ckey.keyGetLPMoji();  // オフセット3の文字を確定する
+                        keyValidiate();  // 確定処理
+                    }
+                }
+                ckey.keyKeyUp();   // 文字キー管理
+            }
         }
         else {
             if( keycondition < 1024 ){

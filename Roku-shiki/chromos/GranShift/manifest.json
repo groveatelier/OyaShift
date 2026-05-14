@@ -1,8 +1,8 @@
 {
-  "name": "GranShift KB",
+  "name": "OyayubiShift KB",
   "version": "5.2.0",
   "manifest_version": 3,
-  "description": "GranShift keyboard",
+  "description": "親指シフトキーボード入力を実現します。",
   "action": {
     "default_popup": "dictdlg.html",
     "default_icon": {

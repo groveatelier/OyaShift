@@ -72,16 +72,9 @@ chromeos/
 |     ├── offscreen.js      # パワーセーブ対策処理
 |     ├── offscreen.html    # パワーセーブ対策仮ダイアログ
 |     └── RokushikiIME.js   # 入力変換ロジックの中心
-├── OyaShift/           # 親指シフトキーボード用ロジック
+├── GranShift/          # JISキーボード用ロジック
 |     ├── manifest.json     # Chrome 拡張の定義
-|     ├── OyaShiftBG2026.js # 親指シフト入力ロジック
-|     ├── rokuicon-*.png    # アイコン画像
-|     ├── RokushikiIME.js   # 入力変換ロジック (リンク)
-|     ├── dictdlg.*         # 辞書入力ダイアログ (リンク)
-|     └── offscreen.*       # パワーセーブ対策 (リンク)
-├── Multi-tap/          # JISキーボード用ロジック
-|     ├── manifest.json     # Chrome 拡張の定義
-|     ├── multi-tap.BG.js   # マルチタップ入力ロジック
+|     ├── GranShiftBG.js    # マルチタップ入力ロジック
 |     ├── rokuicon-*.png    # アイコン画像
 |     ├── RokushikiIME.js   # 入力変換ロジック (リンク)
 |     ├── dictdlg.*         # 辞書入力ダイアログ (リンク)
@@ -105,12 +98,12 @@ chromeos/
 ## 🌾 カスタマイズ
 
 ### キーイベント処理  
-`RokushikiIME.js`,`OyaShiftBG2026.js`,`multi-tapBG.js`  
-内のロジックを編集することで、変換ルールや同時押し判定の調整が可能です。  
+`RokushikiIME.js`,`GranShiftBG.js` 内のロジックを編集することで、  
+変換ルールや同時押し判定の調整が可能です。  
 
 ### 辞書ダイアログ  
-`dictdlg.js` と `dictdlg.html` を編集することで、  
-辞書登録 UI の動作を変更できます。
+`dictdlg.js` と `dictdlg.html` を編集することで、辞書登録 UI の  
+動作を変更できます。
 
 ---
 

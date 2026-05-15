@@ -225,7 +225,6 @@ class OyaShiftCtrl {
     keySyncGeneration(){
         this.keyGeneration = this.oyaGeneration;   // 世代管理
     }
-
 }
 
 

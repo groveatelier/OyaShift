@@ -199,6 +199,7 @@ class OyaShiftCtrl {
             else                offset = this.keyIndex > leftkeysLine ? 3 : 2;   // 左親シフトキー
             this.oyayubiKeyboard = true;   // 親指シフトキーボードかどうかのフラグ
         }
+        this.keyKanaOffset = offset;    // オフセット保存
         return kanashifttable[this.keyIndex][offset];
     }
 
@@ -291,7 +292,7 @@ function setConvKanaDownOya(){
 
 //  Key押下時の convKana 設定. 
 function setConvKanaDownKey(){
-    //console.log(`KY:(${keyinx})${convKana}/${keyshift}`);
+//    console.log(`KY:(${ckey.peekKeyIndex})${convKana}/${ckey.keyShift}`);
     if( ckey.keyKeyDown( ckey.peekKeyIndex ) ){   // 文字キー管理
         if( ckey.keyShift && ckey.keyIndex > normalkeyline ){         // shift key押下 && 通常キー.
             convKana = [false, ckey.keyIndex, ckey.keyGetUSMoji().toUpperCase()];    // 大文字

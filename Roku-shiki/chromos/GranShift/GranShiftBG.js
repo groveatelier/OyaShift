@@ -195,7 +195,6 @@ class OyaShiftCtrl {
     }
 
     keyGetNextMoji(){
-//        this.keyKanaOffset = ( this.keyKanaOffset + 1 ) % 4;    //文字オフセット変更
         this.keyKanaOffset = ( this.keyKanaOffset + 1 ) % kanashifttable[this.keyIndex].length;    //文字オフセット変更
         return kanashifttable[this.keyIndex][this.keyKanaOffset];  
     }
@@ -225,7 +224,7 @@ function thumbShift(keyData){
     let keyinx   = -1;
 
     if( !keyData.ctrlKey ){     // Ctrl 押されてないこと。
-        if( keyData.code === "Enter" && !ckey.keyKanaOffset ){ // 英モード+Enterで全吐き出し
+        if( !ckey.keyKanaOffset && (keyData.code === "Enter" || keyData.code === "Tab") ){ // 英モード+Enter&Tabで全吐き出し
             ZenKakuteiKey( keyData );  // 全確定 or 先頭確定
         }
         else {
@@ -314,7 +313,6 @@ function USKeyDown( keyData ){
         }
         else convKana[1] = -1;
     }
-
     return enact;
 }
 

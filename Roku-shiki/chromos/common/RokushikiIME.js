@@ -1,13 +1,5 @@
-/*  2026.04.21 18:00
+/*  2026.05.15 12:00
   Oya Key shift keyboard ver 5.0 (自作キーボード用)
-    下鍵   : キー               (offset 1)
-    上鍵   : IntlYen ＋ 同側キー (offset 2)
-    上鍵   : IntlRo ＋ 同側キー  (offset 2)
-    濁音   : IntlYen ＋ 逆側キー (offset 3) 
-    濁音   : IntlRo ＋ 逆側キー  (offset 3) 
-    半濁音 : shift ＋ キー       (offset 4)
-    日英切り替え: IntlYen+IntlRo, Shift + かな, Shift + Esc
-        US 左親Key単独, 日 右親Key単独
     
     >> Spcial keys << insidebuf.length > 0 
     "\"(Backslash) : enter                 

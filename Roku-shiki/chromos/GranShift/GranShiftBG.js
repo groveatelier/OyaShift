@@ -1,4 +1,4 @@
-/*  2026.05.09 23:00
+/*  2026.05.17 18:00
   親指シフトキーボードIME ver 5.2 (JISキーボード用)
     
     カーソル行表示：最初は検索文字（ひらがな）のみの表示、入力増で適度に変換候補筆頭を表示.
@@ -10,7 +10,9 @@
 importScripts("RokushikiIME.js");
 
 const oyaubiline = 3;      // 親指シフトのキーライン
-const eimoziline = 29;     // 英文字の境界
+const eimojiline = 29;     // 英文字の境界
+const iYen = eimojiline + 45;   // IntlYen キーのインデックス
+const iRo = eimojiline + 46;    // IntlRo キーのインデックス
 // 奇数行 - 左手キー，偶数行 - 右手キー，親指シフトキーは最初の３行
 const kanashifttable = [
    /*Key  単    左+   右+ */
@@ -56,7 +58,7 @@ const kanashifttable = [
     [")", "）"],               ["_", "＿"],
     ["+", "＋"],               ["{", "｛"],
     ["}", "｝"],              ["|", "｜"],
-    ["\"", "”"],              ["Yen", ""],
+    ["\"", "\"", "”"],        ["Yen", ""],
     ["Ro",""]
 ];
 
@@ -152,7 +154,8 @@ class OyaShiftCtrl {
     }
 
     keyIsLongPress(){
-        return this.keyActive && (Date.now() - this.keyStartTime > 225);  // 長押し判定
+        let longPressThreshold = this.oyayubiKeyboard ? 4096 : 225;  // 長押し判定時間
+        return this.keyActive && this.keyKanaOffset && (Date.now() - this.keyStartTime > longPressThreshold);  // 長押し判定
     }
 
     keyExpandLongTimer(){
@@ -178,9 +181,9 @@ class OyaShiftCtrl {
                 }
             }
         }
-        if( keyindex <= 0 ){
-            if( keyData.code === "IntlYen" ) keyindex = 74;   // IntlYenキー
-            else if( keyData.code === "IntlRo" ) keyindex = 75;
+        if( keyindex < 0 ){
+            if( keyData.code === "IntlYen" ) keyindex = iYen;       // IntlYenキー
+            else if( keyData.code === "IntlRo" ) keyindex = iRo;    // IntlRoキー
         }
         return keyindex;
     }
@@ -188,8 +191,8 @@ class OyaShiftCtrl {
     keyGetMoji(){
         let offset = 2;
         if( this.oyaKeyIndex > 0 ){   // 親指キーあり
-            if( this.oyaKeyIndex === 1 )  offset = this.keyIndex && 1 ? 2 : 3;   // 右親シフトキー
-            else                offset = this.keyIndex && 1 ? 3 : 2;   // 左親シフトキー
+            if( this.oyaKeyIndex === 1 )  offset = this.keyIndex & 1 ? 3 : 2;   // 右親シフトキー
+            else                offset = this.keyIndex & 1 ? 2 : 3;   // 左親シフトキー
             this.oyayubiKeyboard = true;   // 親指シフトキーボードかどうかのフラグ
         }
         this.keyKanaOffset = offset;    // オフセット保存
@@ -251,30 +254,40 @@ function thumbShift(keyData){
 
 //  SPC押下時の convKana 設定. 
 function setConvKanaDownOya(){
-    //console.log(`SPC:${keyData.shiftKey}/${MJKey.IsActive()}/${insidebuf}/`);
+    //console.log(`SPC:${ckey.keyShift}/${ckey.keyActive}/${insidebuf}/`);
     if( ckey.oyaKeyDown(ckey.peekKeyIndex) ){    // 親key管理
         if( ckey.keyActive ){           // 文字キーが押されている場合は、シフト+文字の変換.
             convKana = [false, 0, ckey.keyGetMoji()]; 
             BackOne();  // 直前の文字を消す処理.
-            ckey.keyExpandLongTimer();  // 文字キーの長押し判定時間を延長
+            if( ckey.oyaKeyIndex === 0 ) ckey.keyExpandLongTimer();  // 文字キーの長押し判定時間を延長
         }
-        else if( insidebuf.length === 0 ){   // insidebufが空のとき
-            if( ckey.isKeyRepeatAvailable() ){   // キーリピート抑止時間確認
-                CommitOne(" ");   // SPCをアプリに渡す(キーリピート).
+        else if( !ckey.oyayubiKeyboard ){   // 親指シフトキーボード未確定の場合.
+            if( insidebuf.length === 0 ){   // insidebufが空のとき
+                if( ckey.isKeyRepeatAvailable() ){   // キーリピート抑止時間確認
+                    CommitOne(" ");   // SPCをアプリに渡す(キーリピート).
+                }
+                else{
+                    ckey.oyaSetLateKeyDown( SPCLateKeyDown );  // シフトの遅延処理をセット
+                }
+                convKana[0] = true;
             }
-            else{
+            else if( ckey.keyKanaOffset !== 0 ){   // US文字以外.
                 ckey.oyaSetLateKeyDown( SPCLateKeyDown );  // シフトの遅延処理をセット
+                convKana[0] = true;
             }
-            convKana[0] = true;
+            else {      // 空白
+                convKana = [false, 0, " "];  // SPCを設定.
+            }
         }
-        else if( ckey.keyKanaOffset !== 0 ){   // US文字以外.
-            //console.log(`SPC10:/${insidebuf}/`);
-            ckey.oyaSetLateKeyDown( SPCLateKeyDown );  // シフトの遅延処理をセット
-            convKana[0] = true;
+        else if( ckey.oyaKeyIndex === 0 ){    // 空白(親指キーボード確定＆スペース)
+            if( ckey.keyKanaOffset !== 0 ){   // US文字以外.
+                SPCLateKeyDown( ckey.keyShift );  // ノータイムで変換
+                convKana[0] = true;
+            }
+            else convKana = [false, 0, " "];  // SPCを設定.
         }
-        else {      // 空白の吐き出し
-            //console.log(`SPC20:/${insidebuf}/`);
-            convKana = [false, 0, " "];  // SPCをアプリに渡す.
+        else{   // 親指シフトキーの押下
+            convKana = [true, ckey.oyaKeyIndex, "" ];
         }
     }
     else convKana[0] = true;    // リピート抑止
@@ -283,16 +296,17 @@ function setConvKanaDownOya(){
 
 //  Key押下時の convKana 設定. 
 function setConvKanaDownKey(){
-//    console.log(`KY:(${ckey.peekKeyIndex})${convKana}/${ckey.keyShift}`);
+    //console.log(`KY:(${ckey.peekKeyIndex})${convKana}/${ckey.keyShift}`);
     if( ckey.keyKeyDown( ckey.peekKeyIndex ) ){   // 文字キー管理
-        if( ckey.keyShift && ckey.keyIndex <= eimoziline ){         // shift key押下 && 通常キー.
+        if( ckey.keyShift && ckey.keyIndex <= eimojiline ){         // shift key押下 && 通常キー.
             convKana = [false, ckey.keyIndex, ckey.keyGetUSMoji().toUpperCase()];    // 大文字
         }
         else if( ckey.oyaActive ){   // SPCキーが押されている場合は、シフト+文字の変換.
-            if( !ckey.oyaClearKeyDownTimer() ){  // SPCの遅延処理クリア
-                BackOne();  // 直前の空白を消す処理.
+            if( !ckey.oyaClearKeyDownTimer() && !ckey.oyayubiKeyboard ){  // SPCの遅延処理クリア
+                BackOne();  // 親指キーボード未確定なら直前の空白を消す処理.
             }
             if( ckey.keyIsMultiTap() ){   // 同一世代かつ同一キーの判定
+                if( ckey.oyayubiKeyboard ) BackOne();  // 親指シフトキーボードなら直前の文字を消す処理.
                 convKana = [false, ckey.keyIndex, ckey.keyGetNextMoji()];  // 次の文字
             }
             else {

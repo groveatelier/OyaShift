@@ -72,9 +72,9 @@ chromeos/
 |     ├── offscreen.js      # パワーセーブ対策処理
 |     ├── offscreen.html    # パワーセーブ対策仮ダイアログ
 |     └── RokushikiIME.js   # 入力変換ロジックの中心
-├── GranShift/          # JISキーボード用ロジック
+├── GranShift/          # キーボード入力用ロジック
 |     ├── manifest.json     # Chrome 拡張の定義
-|     ├── GranShiftBG.js    # マルチタップ入力ロジック
+|     ├── GranShiftBG.js    # 入力ロジック
 |     ├── rokuicon-*.png    # アイコン画像
 |     ├── RokushikiIME.js   # 入力変換ロジック (リンク)
 |     ├── dictdlg.*         # 辞書入力ダイアログ (リンク)

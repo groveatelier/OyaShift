@@ -373,6 +373,77 @@ function SSKeyUp(engineID, keyData){
     }
 }
 
+// SS keyDown event
+function SSKeyDown(engineID, keyData){
+    let enact = false;
+//    console.log(`sKD:(${keyData.key}|${keyData.code})`);
+    if( thumbShift( keyData ) ){            // 親指シフト判断処理.
+        if( !convKana[0] ) keyValidiate();  // 有効キー&入力確定.
+        enact = true;
+    } 
+    else if( insidebuf.length > 0 ) {    // insidebuf(or cCandidate) が存在する時の処理
+//        console.log(`ssKD+:(${keyData.key}|${keyData.code})`);
+        // Shift Space と タブ は先頭確定.
+        if( keyData.key === " " || keyData.key === "Tab" ){
+            if( keyData.shiftKey ) fixOne();        // Shift付きは先頭確定.
+            else setOtherCandidate( 1 );            // 先頭変換.
+            enact = true;
+        } else {
+            enact = true;
+            switch( keyData.key ){
+                case "Enter":                   // Enter は 全確定 か キー処理、shift があれば先頭確定. 
+                    if( keyData.shiftKey || compoinfo < 0 ) fixOne();  // 先頭確定.
+                    else fixAll();                                      // 全確定.
+                    break;
+                case "Up":                          // 上下矢印 は先頭変換.
+                case "Down":
+                    let addinx = ( keyData.key === "Up") ? -1 : 1;
+                    setOtherCandidate( addinx );    // 先頭変換
+                    break;
+                case "Right":                       // 右矢印 は カーソル移動 キー処理. 
+                    compoinfo++;                    // カーソル右へ.
+                    if( compoinfo > 0 ) compoinfo = 0;
+                    showComposition();
+                    break;
+                case "Left":                        // 左矢印 は カーソル移動 キー処理. 
+                    compoinfo--;                    // カーソル左へ.
+                    if( insidebuf.length + compoinfo < 0 ) compoinfo = -insidebuf.length;
+                    showComposition();
+                    break;
+                case "Backspace":                   // Backspeceの入力 (変換候補有りの時のみ処理する) 
+                    BackOne();
+                    henkanAri = false;
+                    if( insidebuf.length > 0 ) rokushikiIME();
+                    else clearCompoAndCand();
+                    break;
+                case "BrightnessUp":                // Brightness upの入力 (カタカナ変換) 
+                    translateKanaKana( true )
+                    showComposition();
+                    break;
+                case "BrightnessDown":              // Brightness Downの入力 (ひらがな変換)
+                    translateKanaKana( false );
+                    showComposition();
+                    break;
+                case "Esc":                         // 未変換化
+                    UndoConvert( false );           // ESCキーモードで実行.
+                    break;
+                case "\"":                      // 一文字確定. Double Quate
+                    OneLeCommit();              // 一文字確定＆コミット処理.
+                    break;
+                default:
+                    enact = false;
+            }
+        }
+        if( enact ) InitialKana();      // convKanaの初期化.
+        if( keyData.code === "IntlRo" ) enact = true;    // IntlRo はハンドリング済に.
+    } else {
+        clearCompoAndCand();
+        if( imemode == 7 && keyData.key === "Esc" && keyData.altKey )
+            MakeTextNiwadictionary();             // 辞書のテキスト出力.
+    }
+    return enact;
+}
+
 // シフトの遅延処理
 function SPCLateKeyDown( eiShift ){
     //console.log(`SPCLate:${convKana}/${insidebuf.length}`);

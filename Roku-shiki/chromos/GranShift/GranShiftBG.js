@@ -101,14 +101,18 @@ class OyaShiftCtrl {
             this.oyaKeyIndex = keyinx;  // キーインデックス管理
             live = true;
         }
-        else if( Date.now() - this.oyaStartTime > 2400 ){   // キーリピート抑止時間
-            live = true;   // 長押しでリピート有効
+        else{
+            live = this.isKeyRepeatAvailable();
         }
         return live;
     }
 
     oyaKeyUp(){
         this.oyaActive = false;
+    }
+
+    isKeyRepeatAvailable(){
+        return ( Date.now() - this.oyaStartTime > 2400 );   // キーリピート抑止時間
     }
 
     oyaSetLateKeyDown( callback ){
@@ -252,7 +256,7 @@ function setConvKanaDownOya(){
             ckey.keyExpandLongTimer();  // 文字キーの長押し判定時間を延長
         }
         else if( insidebuf.length === 0 ){   // insidebufが空のとき
-            if( ckey.oyaKeyDown(ckey.oyaKeyIndex) ){   // キーリピート抑止時間確認
+            if( ckey.isKeyRepeatAvailable() ){   // キーリピート抑止時間確認
                 CommitOne(" ");   // SPCをアプリに渡す(キーリピート).
             }
             else{
@@ -265,11 +269,9 @@ function setConvKanaDownOya(){
             ckey.oyaSetLateKeyDown( SPCLateKeyDown );  // シフトの遅延処理をセット
             convKana[0] = true;
         }
-        else {      // insidebufの吐き出しと空白の吐き出し
+        else {      // 空白の吐き出し
             //console.log(`SPC20:/${insidebuf}/`);
-            fixAll();     // 確定
-            CommitOne(" ");   // SPCをアプリに渡す.
-            convKana[0] = true;
+            convKana = [false, 0, " "];  // SPCをアプリに渡す.
         }
     }
     else convKana[0] = true;    // リピート抑止
@@ -296,6 +298,10 @@ function setConvKanaDownKey(){
             }
         }
         else {
+            // offset==0の且つinsidebufが空では無い時は、insidebufの最後の文字が空白であれば確定させる
+            if( ckey.keyKanaOffset === 0 && insidebuf.length > 0 && insidebuf[insidebuf.length - 1] === " " ){
+                fixAll();     // 確定
+            }
             convKana = [false, ckey.keyIndex, ckey.keyGetFirstMoji()];  // シフト+文字の変換
         }
     }

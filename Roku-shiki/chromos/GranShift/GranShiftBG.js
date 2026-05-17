@@ -56,8 +56,7 @@ const kanashifttable = [
     [")", "）"],               ["_", "＿"],
     ["+", "＋"],               ["{", "｛"],
     ["}", "｝"],              ["|", "｜"],
-    ["\"", "”"],
-
+    ["\"", "”"],              ["Yen", ""],
     ["Ro",""]
 ];
 
@@ -178,6 +177,10 @@ class OyaShiftCtrl {
                     break;
                 }
             }
+        }
+        if( keyindex <= 0 ){
+            if( keyData.code === "IntlYen" ) keyindex = 74;   // IntlYenキー
+            else if( keyData.code === "IntlRo" ) keyindex = 75;
         }
         return keyindex;
     }

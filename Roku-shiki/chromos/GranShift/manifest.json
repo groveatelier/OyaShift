@@ -1,6 +1,6 @@
 {
   "name": "OyayubiShift KB",
-  "version": "5.2.0",
+  "version": "1.2.1",
   "manifest_version": 3,
   "description": "親指シフトキーボード入力を実現します。",
   "action": {

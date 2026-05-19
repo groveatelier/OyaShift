@@ -197,15 +197,15 @@ function UndoConvert( mode ){
 
 // 押下されたキーの確定した際の処理（単独押しと重複押しを含む）
 // insidebufに確定した文字を複写. 漢字変換呼び出し.
-function keyValidiate(){
-    console.log(`KV(${compoinfo}):${convKana}`);
+function keyValidiate( moji ){
+    console.log(`KV(${compoinfo}):${moji}`);
     if( compoinfo < 0 ){
          let temptext = insidebuf.slice(0,compoinfo) + convKana[2] 
                     + insidebuf.slice(insidebuf.length+compoinfo);
         insidebuf = temptext;
-    } else if( insidebuf.length === 0 && "。、―".indexOf( convKana[2] ) >= 0 ) CommitOne( convKana[2] );
+    } else if( insidebuf.length === 0 && "。、―".indexOf( moji ) >= 0 ) CommitOne( moji );
     else {
-        insidebuf += convKana[2];     // 確定済キー.
+        insidebuf += moji;     // 確定済キー.
         rokushikiIME();
     }
 }

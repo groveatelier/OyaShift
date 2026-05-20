@@ -70,32 +70,51 @@ class MojiMap {
             this.kanaIndexMap.set(row[0], index);
         });
         this.offset = 1;
+        this.index = -1;
+        this.shiftNo = -1;
+        this.thumbHW = false;
     }
 
-    getMoji( index, offset ){
+    getMoji2( offset ){
         this.offset = offset;
-        return this.kanatable[index][offset];
+        return this.kanatable[this.index][offset];
     }
 
-    getMojiFirst( index ){
+    getMojiFirst(){
         this.offset = this.offset === 0 ? 0 : 1;
-        return this.kanatable[index][this.offset];
+        return this.kanatable[this.index][this.offset];
     }
 
-    getMojiNext( index ){
-        console.log(`gmn: ${index}/${this.kanatable[index]}/`)
-        this.offset = (this.offset + 1) % this.kanatable[index].length;
-        return this.kanatable[index][this.offset];
+    getMojiNext(){
+        this.offset = (this.offset + 1) % this.kanatable[this.index].length;
+        return this.kanatable[this.index][this.offset];
+    }
+
+    getMoji(){
+        this.offset = 2;
+        if( this.thumbHW ){
+            if( this.shiftNo === 1 )  this.offset = this.index & 1 ? 3 : 2;   // 右親シフトキー
+            else    this.offset = this.index & 1 ? 2 : 3;   // 左親シフトキー
+        }
+        return this.kanatable[this.index][this.offset];
     }
 
     getIndex(keyData){
-        if (keyData.code === "Lang1") return 1;
-        if (keyData.code === "Lang2") return 2;
         const moji = keyData.key.toLowerCase();
-        const keyindex = this.kanaIndexMap.get(moji);
-        if (keyindex !== undefined) return keyindex;
-        if (keyData.code === "IntlYen") return iYen;
-        if (keyData.code === "IntlRo") return iRo;
+        if( this.thumbHW ){
+            if (keyData.code === "Lang1") {this.shiftNo = 1; return this.shiftNo;}
+            if (keyData.code === "Lang2") {this.shiftNo = 2; return this.shiftNo;}
+            this.index = this.kanaIndexMap.get(moji);
+        }
+        else{
+            if (keyData.code === "Lang1") {this.shiftNo = 1; this.thumbHW = true; return this.shiftNo;}
+            if (keyData.code === "Lang2") {this.shiftNo = 2; this.thumbHW = true; return this.shiftNo;}
+            this.index = this.kanaIndexMap.get(moji);
+            if (this.index === 0 ) this.shiftNo = this.index;
+        }
+        if (this.index !== undefined) return this.index;
+        if (keyData.code === "IntlYen") {this.index = this.iYen; return this.index}
+        if (keyData.code === "IntlRo") {this.index = this.iRo; return this.index}
         return -1;
     }
 
@@ -209,16 +228,6 @@ class OyaShiftCtrl {
         return this.oyaGeneration === this.keyGeneration && this.keyPrevIndex === this.keyIndex;  // 同一世代かつ同一キーの判定
     }
 
-    keyGetOffset(){
-        let offset = 2;
-        if( this.oyaKeyIndex > 0 ){   // 親指キーあり
-            if( this.oyaKeyIndex === 1 )  offset = this.keyIndex & 1 ? 3 : 2;   // 右親シフトキー
-            else                offset = this.keyIndex & 1 ? 2 : 3;   // 左親シフトキー
-            this.oyayubiKeyboard = true;   // 親指シフトキーボードかどうかのフラグ
-        }
-        return offset;
-    }
-
    keySyncGeneration(){
         this.keyGeneration = this.oyaGeneration;   // 世代管理
     }
@@ -230,11 +239,9 @@ class KeyInformation{
             pending: false, // キー処理保留フラグ
             index: -1,      // キーインデックス
             char: "",       // 変換文字
-            thumb: false,
             shift: false,
             ctrl: false
         };
-        this.thumbkeyboard = false; // 親指キーボード
     }
 
     setStatus( index = -1, char = '', flag = false ){ // KeyStatusの設定
@@ -246,18 +253,6 @@ class KeyInformation{
     setModifier(keyData){
         this.status.ctrl  = keyData.ctrlKey;
         this.status.shift = keyData.shiftKey;
-    }
-
-    setThumb(){
-        this.thumbkeyboard = true;
-        this.status.thumb = true;
-    }
-
-    getKanaIndex(index){
-        if( index == 1 || index == 2 ) this.setThumb();
-        else    this.status.thumb = ( index === 0 && !this.thumbkeyboard );
-        if( index !== undefined ) return index;
-        return -1;
     }
 }
 
@@ -277,7 +272,7 @@ function thumbShift(keyData){
         }
         else {
             //console.log(`x:${keyData.code}/${keyData.key}/${keyinx}/${lkey}`);
-            ckey.peekKeyIndex = cinf.getKanaIndex( cmap.getIndex(keyData) );  // キーインデックス検索
+            ckey.peekKeyIndex = cmap.getIndex(keyData);  // キーインデックス検索
             cinf.setModifier( keyData );
             if( ckey.peekKeyIndex >= 0 ){
                 action = true;
@@ -301,7 +296,7 @@ function setConvKanaDownOya(){
 
     // 1) 文字キーが押されている → 入力文字確定
     if (ckey.keyActive) {
-        cinf.setStatus( ckey.oyaKeyIndex, cmap.getMoji( ckey.keyIndex, ckey.keyGetOffset() ));
+        cinf.setStatus( ckey.oyaKeyIndex, cmap.getMoji());
         BackOne();      // 直前の文字確定を取り消す.
         if (ckey.oyaKeyIndex === 0) ckey.keyExpandLongTimer(); // SpC親キーの場合長押し判定時間を延長
         return;
@@ -356,7 +351,7 @@ function setConvKanaDownKey(){
     //console.log(`KY:(${ckey.peekKeyIndex})${convKana}/${ckey.keyShift}`);
     if( ckey.keyKeyDown( ckey.peekKeyIndex ) ){   // 文字キー管理
         if( cinf.status.shift && cmap.isEiInx( ckey.keyIndex )){         // shift key押下 && 通常キー.
-            cinf.setStatus( ckey.keyIndex, cmap.getMoji( ckey.keyIndex, 0 ).toUpperCase() );  // Key-statusの設定(英大文字)
+            cinf.setStatus( ckey.keyIndex, cmap.getMoji2( 0 ).toUpperCase() );  // Key-statusの設定(英大文字)
         }
         else if( ckey.oyaActive ){   // SPCキーが押されている場合は、シフト+文字の変換.
             if( !ckey.oyaClearKeyDownTimer() && !ckey.oyayubiKeyboard ){  // SPCの遅延処理クリア
@@ -364,11 +359,11 @@ function setConvKanaDownKey(){
             }
             if( ckey.keyIsMultiTap() ){   // 同一世代かつ同一キーの判定
                 if( ckey.oyayubiKeyboard ) BackOne();  // 親指シフトキーボードなら直前の文字を消す処理.
-                cinf.setStatus( ckey.keyIndex, cmap.getMojiNext( ckey.keyIndex ));  // 次の文字
+                cinf.setStatus( ckey.keyIndex, cmap.getMojiNext());  // 次の文字
             }
             else {
                 ckey.keySyncGeneration();  // Shiftキーの世代を文字キーにセット
-                cinf.setStatus( ckey.keyIndex, cmap.getMoji( ckey.keyIndex, ckey.keyGetOffset() ));  // シフト+文字の変換
+                cinf.setStatus( ckey.keyIndex, cmap.getMoji());  // シフト+文字の変換
             }
         }
         else {
@@ -376,7 +371,7 @@ function setConvKanaDownKey(){
             if( cmap.offset === 0 && insidebuf.length > 0 && insidebuf[insidebuf.length - 1] === " " ){
                 fixAll();     // 確定
             }
-            cinf.setStatus( ckey.keyIndex, cmap.getMojiFirst( ckey.keyIndex ));  // シフト+文字の変換
+            cinf.setStatus( ckey.keyIndex, cmap.getMojiFirst());  // シフト+文字の変換
         }
     }
     else cinf.status.pending = true;    // リピート抑止
@@ -399,7 +394,7 @@ function USKeyDown( keyData ){
 function SSKeyUp(engineID, keyData){
     //console.log(`+kU:${convKana}/${keyData.key}:${insidebuf.length}`);
     const now = Date.now();
-    const keyinx = cinf.getKanaIndex( cmap.getIndex( keyData ) );  // キーインデックス検索
+    const keyinx = cmap.getIndex( keyData );  // キーインデックス検索
     cinf.setModifier( keyData );
 
     if( !keyData.ctrlKey ){     // Ctrl 押されてないこと。
@@ -411,7 +406,7 @@ function SSKeyUp(engineID, keyData){
                 if( keycondition < 1024 && ckey.keyIsLongPress(now, cmap.offset) ){
                     // Key 長押しが判明，確定文字を一つ削除してからオフセット3の文字を確定する
                     BackOne();
-                    cinf.status.char = cmap.getMoji( ckey.keyIndex, 3 );  // オフセット3の文字を確定する
+                    cinf.status.char = cmap.getMoji2( 3 );  // オフセット3の文字を確定する
                     keyValidiate( cinf.status.char );  // 確定処理
                 }
                 ckey.keyKeyUp();   // 文字キー管理

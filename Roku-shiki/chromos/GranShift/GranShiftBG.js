@@ -6,61 +6,107 @@
             ユーザー意思の変換が実行された後は1行目はinsidebuf, ２行目以降を imedata１段目の
             変換候補を表示する.    
 */
+const engine   = "GranShift";
 
 importScripts("RokushikiIME.js");
 
-const oyaubiline = 3;      // 親指シフトのキーライン
-const eimojiline = 32;     // 英文字の境界界 xn2
-const iYen = eimojiline + 42;   // IntlYen キーのインデックス境界処3
-const iRo = eimojiline + 43;    // IntlRo キーのインデックス
-// 奇数行 - 左手キー，偶数行 - 右手キー，親指シフトキーは最初の３行
-const kanashifttable = [
-   /*Key  単    左+   右+ */
-    [" ", " ", "　"],
-    ["lang2", ""],
-    ["lang1", ""],  /*親指ここまで*/
+class MojiMap {
+    constructor(){
+        this.oyaubiline = 3;      // 親指シフトのキーライン
+        this.eimojiline = 32;     // 英文字の境界界 xn2
+        this.iYen = this.eimojiline + 42;   // IntlYen キーのインデックス境界処3
+        this.iRo = this.eimojiline + 43;    // IntlRo キーのインデックス
+        // 奇数行 - 左手キー，偶数行 - 右手キー，親指シフトキーは最初の３行
+        this.kanatable = [
+        /*Key  単    左+   右+ */
+            [" ", " ", "　"],
+            ["lang2", ""],
+            ["lang1", ""],  /*親指ここまで*/
 
-    /*左手キー                  右手キー*/
-    ["g", "せ", "も", "ぜ"],  ["h", "は", "み", "ば"],  
-    ["b", "へ", "ぃ", "べ"],  ["n", "め", "ぬ", "ぷ"],
-    ["t", "さ", "れ", "ざ"],  ["y", "ら", "よ", "ぱ"],
-    ["f", "け", "ゅ", "げ"],  ["j", "と", "お", "ど"],
-    ["v", "ふ", "や", "ぶ"],  ["m", "そ", "ゆ", "ぞ"],
-    ["r", "こ", "ゃ", "ご"],  ["u", "ち", "に", "ぢ"],
-    ["d", "て", "な", "で"],  ["k", "き", "の", "ぎ"],
-    ["c", "す", "ろ", "ず"],  ["", ""],
-    ["e", "た", "り", "だ"],  ["i", "く", "る", "ぐ"],
-    ["s", "し", "あ", "じ"],  ["l", "い", "ょ", "ぽ"],
-    ["x", "ひ", "ー", "び"],  ["", ""],
-    ["w", "か", "え", "が"],  ["o", "つ", "ま", "づ"],
-    ["a", "う", "を", "ゔ"],  ["", ""],
-    ["z", "．", "ぅ", "."],   ["", ""],
-    ["q", "。", "ぁ", "ぁ゙"],  ["p", "，", "ぇ", "ぴ"],
+            /*左手キー                  右手キー*/
+            ["g", "せ", "も", "ぜ"],  ["h", "は", "み", "ば"],  
+            ["b", "へ", "ぃ", "べ"],  ["n", "め", "ぬ", "ぷ"],
+            ["t", "さ", "れ", "ざ"],  ["y", "ら", "よ", "ぱ"],
+            ["f", "け", "ゅ", "げ"],  ["j", "と", "お", "ど"],
+            ["v", "ふ", "や", "ぶ"],  ["m", "そ", "ゆ", "ぞ"],
+            ["r", "こ", "ゃ", "ご"],  ["u", "ち", "に", "ぢ"],
+            ["d", "て", "な", "で"],  ["k", "き", "の", "ぎ"],
+            ["c", "す", "ろ", "ず"],  ["", ""],
+            ["e", "た", "り", "だ"],  ["i", "く", "る", "ぐ"],
+            ["s", "し", "あ", "じ"],  ["l", "い", "ょ", "ぽ"],
+            ["x", "ひ", "ー", "び"],  ["", ""],
+            ["w", "か", "え", "が"],  ["o", "つ", "ま", "づ"],
+            ["a", "う", "を", "ゔ"],  ["", ""],
+            ["z", "．", "ぅ", "."],   ["", ""],
+            ["q", "。", "ぁ", "ぁ゙"],  ["p", "，", "ぇ", "ぴ"],
 
-    ["1", "1", "ф", "一"],  ["0", "0", "、", "０"],
-    ["2", "2", "〇", "二"], ["9", "9", "※", "九"],
-    ["3", "3", "§", "三"],  ["8", "8", "【】", "八"],
-    ["4", "4", "「", "四"],  ["7", "7", "《》", "七"],
-    ["5", "5", "」", "五"],  ["6", "6", "［］", "六"],
+            ["1", "1", "ф", "一"],  ["0", "0", "、", "０"],
+            ["2", "2", "〇", "二"], ["9", "9", "※", "九"],
+            ["3", "3", "§", "三"],  ["8", "8", "【】", "八"],
+            ["4", "4", "「", "四"],  ["7", "7", "《》", "七"],
+            ["5", "5", "」", "五"],  ["6", "6", "［］", "六"],
 
-    ["`", "‘", "’", "かっこ"],  [",", "ね", "む", "ぺ"],
-    ["~", "〜"],               [".", "ほ", "わ", "ぼ"],
-    ["!", "！"],               [";", "ん", "っ", "："],
-    ["@", "＠"],               ["/", "・", "ぉ", "／"],
-    ["#", "＃"],               ["-", "ー", "√", "±"],
-    ["$", "＄"],               ["=", "＝", "÷", "×"],
-    ["%", "％"],               ["[", "』", "『", "《《》》"],
-    ["<", "＜"],               ["\\", "￥","＼","くりかえし"],
-    [">", "＞"],               ["]", "]", "}","{"],
-    [":", "："],               ["?", "？", "!?","！？"],
-    ["^", "^"],                ["&", "＆"],
-    ["*", "＊"],               ["(", "（"],
-    [")", "）"],               ["_", "＿"],
-    ["+", "＋"],               ["{", "｛"],
-    ["}", "｝"],              ["|", "｜"],
-    ["\"", "\"", "”"],        ["Yen", ""],
-    ["Ro",""]
-];
+            ["`", "‘", "’", "かっこ"],  [",", "ね", "む", "ぺ"],
+            ["~", "〜"],               [".", "ほ", "わ", "ぼ"],
+            ["!", "！"],               [";", "ん", "っ", "："],
+            ["@", "＠"],               ["/", "・", "ぉ", "／"],
+            ["#", "＃"],               ["-", "ー", "√", "±"],
+            ["$", "＄"],               ["=", "＝", "÷", "×"],
+            ["%", "％"],               ["[", "』", "『", "《《》》"],
+            ["<", "＜"],               ["\\", "￥","＼","くりかえし"],
+            [">", "＞"],               ["]", "]", "}","{"],
+            [":", "："],               ["?", "？", "!?","！？"],
+            ["^", "^"],                ["&", "＆"],
+            ["*", "＊"],               ["(", "（"],
+            [")", "）"],               ["_", "＿"],
+            ["+", "＋"],               ["{", "｛"],
+            ["}", "｝"],              ["|", "｜"],
+            ["\"", "\"", "”"],        ["Yen", ""],
+            ["Ro",""]
+        ];
+
+        this.kanaIndexMap = new Map();   // Map を構築
+        this.kanatable.forEach((row, index) => {
+            this.kanaIndexMap.set(row[0], index);
+        });
+        this.offset = 1;
+    }
+
+    getMoji( index, offset ){
+        this.offset = offset;
+        return this.kanatable[index][offset];
+    }
+
+    getMojiFirst( index ){
+        this.offset = this.offset === 0 ? 0 : 1;
+        return this.kanatable[index][this.offset];
+    }
+
+    getMojiNext( index ){
+        console.log(`gmn: ${index}/${this.kanatable[index]}/`)
+        this.offset = (this.offset + 1) % this.kanatable[index].length;
+        return this.kanatable[index][this.offset];
+    }
+
+    getIndex(keyData){
+        if (keyData.code === "Lang1") return 1;
+        if (keyData.code === "Lang2") return 2;
+        const moji = keyData.key.toLowerCase();
+        const keyindex = this.kanaIndexMap.get(moji);
+        if (keyindex !== undefined) return keyindex;
+        if (keyData.code === "IntlYen") return iYen;
+        if (keyData.code === "IntlRo") return iRo;
+        return -1;
+    }
+
+    isOyaInx( index ){
+        return ( index < this.oyaubiline );
+    }
+
+    isEiInx( index ){
+        return ( index <= this.eimojiline );
+    }
+}
 
 // chromebook キー入力 覚書.
 /*        -^@[;:],./
@@ -72,7 +118,6 @@ const kanashifttable = [
 
 */
 
-const engine   = "GranShift";
 
 // 親指シフトキーの制御クラス
 class OyaShiftCtrl { 
@@ -86,7 +131,6 @@ class OyaShiftCtrl {
         this.keyStartTime = 0;   // キー押下時間管理
         this.keyIndex = -1;      // キーインデックス管理
         this.keyPrevIndex = -1;  // 前回キーインデックス管理
-        this.keyKanaOffset = 1;  // かな変換offset量
         this.peekKeyIndex = -1;  // 押されたキーのインデックス
         this.keyGeneration = -1; // キーの世代管理 (0~1023)
         this.oyayubiKeyboard = false;   // 親指シフトキーボードかどうかのフラグ
@@ -152,9 +196,9 @@ class OyaShiftCtrl {
         this.keyActive = false;
     }
 
-    keyIsLongPress(now){
+    keyIsLongPress(now, offset){
         const threshold = this.oyayubiKeyboard ? 4096 : 225;  // 長押し判定時間
-        return this.keyActive && this.keyKanaOffset && (now - this.keyStartTime > threshold);  // 長押し判定
+        return this.keyActive && offset && (now - this.keyStartTime > threshold);  // 長押し判定
     }
 
     keyExpandLongTimer(){
@@ -165,38 +209,17 @@ class OyaShiftCtrl {
         return this.oyaGeneration === this.keyGeneration && this.keyPrevIndex === this.keyIndex;  // 同一世代かつ同一キーの判定
     }
 
-    keyGetMoji(){
+    keyGetOffset(){
         let offset = 2;
         if( this.oyaKeyIndex > 0 ){   // 親指キーあり
             if( this.oyaKeyIndex === 1 )  offset = this.keyIndex & 1 ? 3 : 2;   // 右親シフトキー
             else                offset = this.keyIndex & 1 ? 2 : 3;   // 左親シフトキー
             this.oyayubiKeyboard = true;   // 親指シフトキーボードかどうかのフラグ
         }
-        this.keyKanaOffset = offset;    // オフセット保存
-        return kanashifttable[this.keyIndex][offset];
+        return offset;
     }
 
-    keyGetUSMoji(){
-        this.keyKanaOffset = 0;    // Shiftキー押下でオフセット0の文字
-        return kanashifttable[this.keyIndex][0];   // US文字
-    }
-
-    keyGetNextMoji(){
-        this.keyKanaOffset = ( this.keyKanaOffset + 1 ) % kanashifttable[this.keyIndex].length;    //文字オフセット変更
-        return kanashifttable[this.keyIndex][this.keyKanaOffset];  
-    }
-
-    keyGetLPMoji(){
-        this.keyKanaOffset = 3;    // 長押しでオフセット3の文字
-        return kanashifttable[this.keyIndex][3];   // 長押し文字
-    }
-
-    keyGetFirstMoji(){
-        let offset = this.keyKanaOffset ? 1 : 0;  // USか日か
-        return kanashifttable[this.keyIndex][offset];
-    }
-
-    keySyncGeneration(){
+   keySyncGeneration(){
         this.keyGeneration = this.oyaGeneration;   // 世代管理
     }
 }
@@ -230,28 +253,17 @@ class KeyInformation{
         this.status.thumb = true;
     }
 
-    getKanaIndex(keyData){
-        this.setModifier( keyData ); 
-        if (keyData.code === "Lang1"){ this.setThumb(); return 1; }
-        if (keyData.code === "Lang2"){ this.setThumb(); return 2; }
-
-        const moji = keyData.key.toLowerCase();
-        const keyindex = kanaIndexMap.get(moji);
-        this.status.thumb = (keyindex === 0 && !this.thumbkeyboard );
-        if (keyindex !== undefined) return keyindex;
-
-        if (keyData.code === "IntlYen") return iYen;
-        if (keyData.code === "IntlRo") return iRo;
+    getKanaIndex(index){
+        if( index == 1 || index == 2 ) this.setThumb();
+        else    this.status.thumb = ( index === 0 && !this.thumbkeyboard );
+        if( index !== undefined ) return index;
         return -1;
     }
 }
 
 const ckey = new OyaShiftCtrl();    // 親指シフトキー管理
 const cinf = new KeyInformation();  // 入力キー情報管理
-const kanaIndexMap = new Map();   // Map を構築
-kanashifttable.forEach((row, index) => {
-    kanaIndexMap.set(row[0], index);
-});
+const cmap = new MojiMap();         // キーマップ管理
 
 //  Key Down時に呼び出される.
 function thumbShift(keyData){
@@ -260,15 +272,16 @@ function thumbShift(keyData){
     let keyinx   = -1;
 
     if( !keyData.ctrlKey ){     // Ctrl 押されてないこと。
-        if( !ckey.keyKanaOffset && (keyData.code === "Enter" || keyData.code === "Tab") ){ // 英モード+Enter&Tabで全吐き出し
+        if( !cmap.offset && (keyData.code === "Enter" || keyData.code === "Tab") ){ // 英モード+Enter&Tabで全吐き出し
             ZenKakuteiKey( keyData );  // 全確定 or 先頭確定
         }
         else {
             //console.log(`x:${keyData.code}/${keyData.key}/${keyinx}/${lkey}`);
-            ckey.peekKeyIndex = cinf.getKanaIndex( keyData );  // キーインデックス検索
+            ckey.peekKeyIndex = cinf.getKanaIndex( cmap.getIndex(keyData) );  // キーインデックス検索
+            cinf.setModifier( keyData );
             if( ckey.peekKeyIndex >= 0 ){
                 action = true;
-                if( ckey.peekKeyIndex < oyaubiline ) setConvKanaDownOya()  ;  // 設定：親.
+                if( cmap.isOyaInx( ckey.peekKeyIndex )) setConvKanaDownOya()  ;  // 設定：親.
                 else   setConvKanaDownKey();  // 設定：key.
             } 
             else if( keyData.code === "AltLeft" ) cinf.setStatus( 203 ); // SSKeyUp でUSモード
@@ -288,7 +301,7 @@ function setConvKanaDownOya(){
 
     // 1) 文字キーが押されている → 入力文字確定
     if (ckey.keyActive) {
-        cinf.setStatus( ckey.oyaKeyIndex, ckey.keyGetMoji() );
+        cinf.setStatus( ckey.oyaKeyIndex, cmap.getMoji( ckey.keyIndex, ckey.keyGetOffset() ));
         BackOne();      // 直前の文字確定を取り消す.
         if (ckey.oyaKeyIndex === 0) ckey.keyExpandLongTimer(); // SpC親キーの場合長押し判定時間を延長
         return;
@@ -315,7 +328,7 @@ function handleOyaBeforeConfirmed(){
         }
         cinf.status.pending = true;
     }
-    else if( ckey.keyKanaOffset !== 0 ){   // US文字以外.
+    else if( cmap.offset !== 0 ){   // US文字以外.
         ckey.oyaSetLateKeyDown( SPCLateKeyDown );  // シフトの遅延処理をセット
         cinf.status.pending = true;
     }
@@ -327,7 +340,7 @@ function handleOyaBeforeConfirmed(){
 // 親指キーボード確定後の親キーダウン処理
 function handleOyaAfterConfirmed(){
     if( ckey.oyaKeyIndex === 0 ){    // 空白(親指キーボード確定＆スペース)
-        if( ckey.keyKanaOffset !== 0 ){   // US文字以外.
+        if( cmap.offset !== 0 ){   // US文字以外.
             SPCLateKeyDown();           // ノータイムで変換
             cinf.status.pending = true;
         }
@@ -342,8 +355,8 @@ function handleOyaAfterConfirmed(){
 function setConvKanaDownKey(){
     //console.log(`KY:(${ckey.peekKeyIndex})${convKana}/${ckey.keyShift}`);
     if( ckey.keyKeyDown( ckey.peekKeyIndex ) ){   // 文字キー管理
-        if( cinf.status.shift && ckey.keyIndex <= eimojiline ){         // shift key押下 && 通常キー.
-            cinf.setStatus( ckey.keyIndex, ckey.keyGetUSMoji().toUpperCase() );  // Key-statusの設定(英大文字)
+        if( cinf.status.shift && cmap.isEiInx( ckey.keyIndex )){         // shift key押下 && 通常キー.
+            cinf.setStatus( ckey.keyIndex, cmap.getMoji( ckey.keyIndex, 0 ).toUpperCase() );  // Key-statusの設定(英大文字)
         }
         else if( ckey.oyaActive ){   // SPCキーが押されている場合は、シフト+文字の変換.
             if( !ckey.oyaClearKeyDownTimer() && !ckey.oyayubiKeyboard ){  // SPCの遅延処理クリア
@@ -351,19 +364,19 @@ function setConvKanaDownKey(){
             }
             if( ckey.keyIsMultiTap() ){   // 同一世代かつ同一キーの判定
                 if( ckey.oyayubiKeyboard ) BackOne();  // 親指シフトキーボードなら直前の文字を消す処理.
-                cinf.setStatus( ckey.keyIndex, ckey.keyGetNextMoji() );  // 次の文字
+                cinf.setStatus( ckey.keyIndex, cmap.getMojiNext( ckey.keyIndex ));  // 次の文字
             }
             else {
                 ckey.keySyncGeneration();  // Shiftキーの世代を文字キーにセット
-                cinf.setStatus( ckey.keyIndex, ckey.keyGetMoji() );  // シフト+文字の変換
+                cinf.setStatus( ckey.keyIndex, cmap.getMoji( ckey.keyIndex, ckey.keyGetOffset() ));  // シフト+文字の変換
             }
         }
         else {
             // offset==0の且つinsidebufが空では無い時は、insidebufの最後の文字が空白であれば確定させる
-            if( ckey.keyKanaOffset === 0 && insidebuf.length > 0 && insidebuf[insidebuf.length - 1] === " " ){
+            if( cmap.offset === 0 && insidebuf.length > 0 && insidebuf[insidebuf.length - 1] === " " ){
                 fixAll();     // 確定
             }
-            cinf.setStatus( ckey.keyIndex, ckey.keyGetFirstMoji() );  // シフト+文字の変換
+            cinf.setStatus( ckey.keyIndex, cmap.getMojiFirst( ckey.keyIndex ));  // シフト+文字の変換
         }
     }
     else cinf.status.pending = true;    // リピート抑止
@@ -386,18 +399,19 @@ function USKeyDown( keyData ){
 function SSKeyUp(engineID, keyData){
     //console.log(`+kU:${convKana}/${keyData.key}:${insidebuf.length}`);
     const now = Date.now();
-    const keyinx = cinf.getKanaIndex( keyData );  // キーインデックス検索
+    const keyinx = cinf.getKanaIndex( cmap.getIndex( keyData ) );  // キーインデックス検索
+    cinf.setModifier( keyData );
 
     if( !keyData.ctrlKey ){     // Ctrl 押されてないこと。
         if( keyinx >= 0 ){
-            if( keyinx < oyaubiline ){
+            if( cmap.isOyaInx( keyinx ) ){
                 ckey.oyaKeyUp();   // 親キー管理
             }
             else{
-                if( keycondition < 1024 && ckey.keyIsLongPress(now) ){
+                if( keycondition < 1024 && ckey.keyIsLongPress(now, cmap.offset) ){
                     // Key 長押しが判明，確定文字を一つ削除してからオフセット3の文字を確定する
                     BackOne();
-                    cinf.status.char = ckey.keyGetLPMoji();  // オフセット3の文字を確定する
+                    cinf.status.char = cmap.getMoji( ckey.keyIndex, 3 );  // オフセット3の文字を確定する
                     keyValidiate( cinf.status.char );  // 確定処理
                 }
                 ckey.keyKeyUp();   // 文字キー管理
@@ -407,12 +421,12 @@ function SSKeyUp(engineID, keyData){
             if( keycondition < 1024 ){
                 if( cinf.status.index === 203 && cinf.status.char === "" ){
                     changeAndClear();       // 英モード
-                    ckey.keyKanaOffset = 0;
+                    cmap.offset = 0;
                 }
             }
             else if( cinf.status.index === 202 && cinf.status.char === "" ){ 
                 changeAndClear();           // 日 Mode
-                ckey.keyKanaOffset = 1;     // かな変換offset量セット (次回以降のキー入力でひらがなになるように)
+                cmap.offset = 1;     // かな変換offset量セット (次回以降のキー入力でひらがなになるように)
             }
         }
     }

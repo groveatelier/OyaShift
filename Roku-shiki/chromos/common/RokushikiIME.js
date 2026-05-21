@@ -1,5 +1,5 @@
-/*  2026.05.17 20:00
-  Oya Key shift keyboard ver 5.0 (自作キーボード用)
+/*  2026.05.21 20:00
+  Oya Key shift keyboard (自作キーボード用)
     
     >> Spcial keys << insidebuf.length > 0 
     "\"(Backslash) : enter                 
@@ -10,16 +10,6 @@
     候補窓表示：ユーザー意思の変換が実行される前は 2行のみの窓とし、insidebufを表示
             ユーザー意思の変換が実行された後は1行目はinsidebuf, ２行目以降を imedata１段目の
             変換候補を表示する.    
-*/
-
-// chromebook キー入力 覚書.
-/*        -^@[;:],./
-!@#$%^&*()_+{}:"|<>?
-1234567890-=[];'\,./ 
---
- IntlRo "\", "_"
- IntlYen "¥", "|"
-
 */
 
 let context_id = -1;
@@ -81,24 +71,6 @@ chrome.input.ime.onMenuItemActivated.addListener(function(eng,name){
     }
 //    console.log(`onMenuItemActivated:${eng}/${name}/${KeyStyle}`);
 });
-
-chrome.input.ime.onKeyEvent.addListener(
-  function(engineID, keyData) {
-    let enact = false;
-    // keyup 時は 親指シフトのリセット と 単独親キーを確認.
-    // keyup && KeyCount == 0 は KeyValidiate
-    if( keyData.type === "keyup" ){
-        SSKeyUp( engineID, keyData );
-    } 
-    //  keydown イベント ---------------------------------------------------------
-    else if(keyData.type === "keydown"){
-        console.log(`PreKD:(${keyData.key}|${keyData.code})`);
-        enact = ( keycondition < 1024 ) ? 
-                SSKeyDown( engineID, keyData ) : USKeyDown( keyData );
-    }
-    return enact;
-  }
-);
 
 function menuItemRevise(){
     menuArg[0].label = keycondition < 1024 ? "かな" : "英字"; // かな入力モード.

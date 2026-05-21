@@ -10,8 +10,34 @@ const engine   = "GranShift";
 
 importScripts("RokushikiIME.js");
 
+class KeyInformation{
+    constructor(){
+        this.status = {
+            pending: false, // キー処理保留フラグ
+            index: -1,      // キーインデックス
+            char: "",       // 変換文字
+            shift: false,
+            ctrl: false,
+            alt: false
+        };
+    }
+
+    setStatus( index = -1, char = '', flag = false ){ // KeyStatusの設定
+        this.status.index = index;
+        this.status.char = char;
+        this.status.pending = flag;
+    }
+
+    setModifier(keyData){
+        this.status.ctrl = keyData.ctrlKey;
+        this.status.shift = keyData.shiftKey;
+        this.status.alt = keyData.altKey; 
+    }
+}
+
 class MojiMap {
     constructor(){
+//        this.info = keyinfo;
         this.oyaubiline = 3;      // 親指シフトのキーライン
         this.eimojiline = 32;     // 英文字の境界界 xn2
         this.iYen = this.eimojiline + 42;   // IntlYen キーのインデックス境界処3
@@ -109,8 +135,9 @@ class MojiMap {
         else{
             if (keyData.code === "Lang1") {this.shiftNo = 1; this.thumbHW = true; return this.shiftNo;}
             if (keyData.code === "Lang2") {this.shiftNo = 2; this.thumbHW = true; return this.shiftNo;}
-            this.index = this.kanaIndexMap.get(moji);
-            if (this.index === 0 ) this.shiftNo = this.index;
+            const index = this.kanaIndexMap.get(moji);
+            if( index === 0 ) {this.shiftNo = index; return index;}
+            else this.index = index;
         }
         if (this.index !== undefined) return this.index;
         if (keyData.code === "IntlYen") {this.index = this.iYen; return this.index}
@@ -119,11 +146,330 @@ class MojiMap {
     }
 
     isOyaInx( index ){
+        if( this.thumbHW ) return ( index === 1 || index === 2 );
         return ( index < this.oyaubiline );
     }
 
+//    isOyaInxZero( index ){
+//        return ( index < this.oyaubiline );
+//    }
+
     isEiInx( index ){
         return ( index <= this.eimojiline );
+    }
+}
+
+class KeyFlowCommon{
+    constructor(repeatmask){
+        this.start = 0;
+        this.generation = 0;
+        this.active = false;
+        this.repeatmask = repeatmask;   // キーリピートマスク時間
+        this.previous = -1;     // 前回のキー番号
+    }
+
+    isKeyRepeatActive(){
+        return ( Date.now() - this.start > this.repeatmask );
+    }
+
+    keyDown2( index ){
+        let live = false;
+        if( !this.active ){
+            this.active = true; // 押下中
+            this.start = Date.now();  // 押下時間管理
+            live = true;
+        }
+        else{
+            live = ( this.previois !== index || this.isKeyRepeatActive() );
+        }
+        this.previous = index;
+        return  live;
+    }
+}
+
+class KeyFlows{
+    constructor(info, map){
+        this.shift = new KeyFlowCommon(2400);
+        this.moji = new KeyFlowCommon(1800);
+        this.info = info;   // KeyInformationハンドラ
+        this.map = map;     // MojiMapハンドラ
+        this.seen = {
+            PEND: "pending",
+            SHIFT2MOJI: "shiftToMoji",
+            MOJI2SHIFT: "mojiToShift",
+            MOJIFIRST: "moji1st",
+            HWSHIFTFOLLOW: "HWshiftafter",
+            SHIFTFOLLOW: "shiftafter",
+            USLARGE: "USLLetter",
+            DICTOUTPUT: "DictoOutput",
+            NOKEYBUF: "NoKeybuf",
+            TABSPC: "TabAndSpace",
+            ENTER: "Enter",
+            UP: "Up",
+            DOWN: "Down",
+            RIGHT: "Right",
+            LEFT: "Left",
+            BACKSPACE: "BS",
+            BRIGHTNESSUP: "BriteUp",
+            BRIGHTNESSDOWN: "BriteDown",
+            QUOTE: "Quote",
+            ESC: "Escape",
+            LONGPRESS: "LongPress"
+        };
+        this.timerID = null;
+    }
+
+    keyDown(keyData){
+        this.info.setModifier(keyData); // 修飾キーの状態保存
+        console.log(`kd-s1: /${this.map.index}/${this.map.shiftNo}/`);
+        const seen = this.detectKeyDownAction(keyData);
+        console.log(`kd-s2: ${seen}/${this.map.index}/${this.map.shiftNo}/`);
+        if( seen ){
+            const enact = this.actIfNeeded( seen );
+            this.info.setStatus();
+            return enact;
+        }
+        return false;
+    }
+
+    detectKeyDownAction(keyData){
+        const keyindex = this.map.getIndex(keyData);  // キーインデックス検索
+        console.log(`dkDA: ${keyindex}/${this.map.index}/${this.map.shiftNo}/`);
+        if( keyindex >= 0 ){
+            return this.map.isOyaInx( keyindex ) ? this.shiftkeyDown() : this.mojikeyDown();
+        }
+        if( insidebuf.length === 0 )
+            return ( imemode === 7 && keyData.key === "Esc" && this.info.alt ) ? 
+                this.seen.DICTOUTPUT : this.seen.NOKEYBUF;  // 辞書のテキスト出力 or IME処理不要
+        
+        switch(keyData.key){
+            case "Tab": return this.seen.TABSPC;
+//            case " ": return this.seen.TABSPC;  // Tab or Space (スペースは親指シフトのスペースキーも含む)
+            case "Enter": return this.seen.ENTER;
+            case "Up": return this.seen.UP;
+            case "Down": return this.seen.DOWN;
+            case "Right": return this.seen.RIGHT;
+            case "Left": return this.seen.LEFT;
+            case "Backspace": return this.seen.BACKSPACE;
+            case "BrightnessUp": return this.seen.BRIGHTNESSUP;
+            case "BrightnessDown": return this.seen.BRIGHTNESSDOWN;
+            case "\"": return this.seen.QUOTE;
+            case "Esc": return this.seen.ESC;
+            default: return null;
+        }
+        return null;
+    }
+
+    shiftkeyDown(){     // 親指 shift 押下時の処理
+        if( !this.shiftkeyDown2(this.map.shiftNo) ) return this.seen.PEND;  // リピート抑止期間中は何もしない
+        if( this.moji.active ) return this.seen.SHIFT2MOJI; // 文字キーあり＋シフトキー → 文字確定
+        if( this.map.thumbHW ) return this.seen.HWSHIFTFOLLOW;
+        return this.seen.SHIFTFOLLOW;
+    }
+   
+    shiftkeyDown2(index){
+        const live = this.shift.keyDown2(index);
+        if( live ) this.shift.generation = (this.shift.generation + 1) % 1024;   // 世代管理
+        return live;
+    }
+
+    mojikeyDown(){      // 文字キー押下時の処理
+        if( this.map.index === 0 && insidebuf.length > 0 ) return this.seen.TABSPC;
+        if( !this.moji.keyDown2( this.map.index ) ) return this.seen.PEND;  // リピート抑止期間中は何もしない
+        if( this.info.shift && this.map.isEiInx( this.map.index )) return this.seen.USLARGE;
+        if( this.shift.active ) return this.seen.MOJI2SHIFT; // シフトキーあり＋文字キー → 文字確定
+        return this.seen.MOJIFIRST;
+    }
+
+    keyUp(keyData){
+        this.info.setModifier(keyData); // 修飾キーの状態保存
+        const seen = this.detectKeyUpAction(keyData);
+        if (seen) this.actIfNeeded(seen);
+    }
+
+    detectKeyUpAction(keyData){
+        const keyinx = this.map.getIndex(keyData);  // キーインデックス検索
+        const now = Date.now();
+
+        if( this.info.ctrl ) return null;  // Ctrl 押されているときは、IME処理なし
+        if( this.map.isOyaInx(keyinx) ){
+            this.shift.active = false;
+        }
+        else{
+            const seen = ( keycondition < 1024 && this.isLongPress(now) ) ? this.seen.LONGPRESS : null;
+            this.moji.active = false;
+            return seen;
+        }
+        return null;
+    }
+
+    isLongPress(now){
+        const threshold = this.map.thumbHW ? 4096 : 225;  // 長押し判定時間
+        return this.moji.active && this.map.offset && (now - this.moji.start > threshold);  // 長押し判定
+    }
+
+    expandLongTimer(){
+        this.moji.start = Date.now() + 800;  // 長押し判定時間を延長
+    }
+
+    clearDownTimer(){
+        let cleared = false;
+        if( this.timerID ) {
+            clearTimeout(this.timerID);  // タイマーをクリア
+            this.timerID = null;   // タイマーIDをリセット
+            cleared = true;
+        }
+        return cleared;
+    }
+
+    isMultiTap(){
+        return (this.shift.generation === this.moji.generation && this.moji.previous === this.map.index);  // 同一世代かつ同一キーの判定
+    }
+
+    syncGeneration(){
+        this.moji.generation = this.shift.generation;   // 世代管理
+    }
+
+    setLateKeyDown( callback ){
+        if( this.timerID ) clearTimeout(this.timerID);  // 既存のタイマーがあればクリア
+        this.timerID = setTimeout( () => {
+            callback();            // 遅延実行するコールバック関数を呼び出す
+            this.timerID = null;   // タイマーIDをリセット
+        }, 250);  // 250msの遅延
+    }
+
+    actIfNeeded(seen){
+        let acted = true;
+        switch(seen){
+            case this.seen.PEND:
+                this.info.status.pending = true;    // 保留 何もしない
+                break;
+
+            case this.seen.SHIFT2MOJI:  // シフト契機で文字確定
+//                this.info.setStatus( this.map.index, this.map.getMoji() );
+                BackOne();  // 直前の文字確定を取り消す.
+                if (!this.map.thumbHW) this.expandLongTimer(); // シフトキーの場合長押し判定時間を延長
+                keyValidiate( this.map.getMoji() );  // 確定処理
+                break;
+
+            case this.seen.MOJI2SHIFT:  // 文字キー契機で文字確定
+                if( !this.clearDownTimer() && !this.map.thumbHW ){  // シフトの遅延処理クリア
+                    BackOne();  // 親指キーボード未確定なら直前の空白を消す処理.
+                }
+                if( this.isMultiTap() ){   // 同一世代かつ同一キーの判定
+                    if( this.map.thumbHW ) BackOne();  // 親指シフトキーボードなら直前の文字を消す処理.
+//                    this.info.setStatus( this.map.index, this.map.getMojiNext());  // 次の文字
+                    keyValidiate( this.map.getMojiNext() );  // 確定処理
+                }
+                else {
+                    this.syncGeneration();  // Shiftキーの世代を文字キーにセット
+//                    this.info.setStatus( this.map.index, this.map.getMoji());  // シフト+文字の変換
+                    keyValidiate( this.map.getMoji() );  // 確定処理
+                }
+                break;
+
+            case this.seen.MOJIFIRST:
+                // offset==0の且つinsidebufが空では無い時は、insidebufの最後の文字が空白であれば確定させる
+                if( this.map.offset === 0 && insidebuf.length > 0 && insidebuf[insidebuf.length - 1] === " " ){
+                    fixAll();     // 確定
+                }
+//                this.info.setStatus( this.map.index, this.map.getMojiFirst());  // シフト+文字の変換
+//                keyValidiate( this.info.status.char );  // 確定処理
+                keyValidiate( this.map.getMojiFirst() );  // 確定処理
+                break;
+
+            case this.seen.HWSHIFTFOLLOW:  // シフト後処理 親指キーボード
+                this.info.setStatus( this.map.shiftNo, "", true );
+                break;
+
+            case this.seen.SHIFTFOLLOW:    // シフト後処理 親指キーボード未確定
+                if( insidebuf.length === 0 ){
+                    if( this.shift.isKeyRepeatActive() ) CommitOne(" ") // SPCをアプリに渡す(キーリピート).
+                    else this.setLateKeyDown( SPCLateKeyDown );  // シフトの遅延処理をセット
+                    this.info.status.pending = true;
+                }
+                else if( this.map.offset !== 0 ){
+                    this.setLateKeyDown( SPCLateKeyDown );  // シフトの遅延処理をセット
+                    this.info.status.pending = true;
+                }
+                else this.info.setStatus( 0, " " );     // 空白を設定
+                break;
+
+            case this.seen.USLARGE:     // 英大文字
+                this.info.setStatus( this.Map.index, this.map.getMoji2( 0 ).toUpperCase() );  // Key-statusの設定(英大文字)
+                break;
+
+            case this.seen.DICTOUTPUT:
+                MakeTextNiwadictionary();       // 辞書のテキスト出力.
+                // Path throuth
+            case this.seen.NOKEYBUF:
+                clearCompoAndCand();
+                acted = false;                   // キーイベントはアプリに渡す
+                break;
+
+            case this.seen.TABSPC:
+                if( this.info.shift ) fixOne(); // Shift付きは先頭確定.
+                else setOtherCandidate( 1 );    // 先頭変換.
+                break;
+
+            case this.seen.ENTER:
+                if( this.info.shift || compoinfo < 0 ) fixOne();    // 先頭確定.
+                else fixAll();
+                break;
+
+            case this.seen.UP:
+                setOtherCandidate( -1 );    // 先頭変換
+                break;
+
+            case this.seen.DOWN:
+                setOtherCandidate( 1 );     // 先頭変換
+                break;
+
+            case this.seen.RIGHT:
+                compoinfo++;                // カーソル右へ.
+                if( compoinfo > 0 ) compoinfo = 0;
+                showComposition();
+                break;
+
+            case this.seen.LEFT:
+                compoinfo--;                // カーソル左へ.
+                if( insidebuf.length + compoinfo < 0 ) compoinfo = -insidebuf.length;
+                showComposition();
+                break;
+
+            case this.seen.BACKSPACE:
+                BackOne();
+                henkanAri = false;
+                if( insidebuf.length > 0 ) rokushikiIME();
+                else clearCompoAndCand();
+                break;
+
+            case this.seen.BRIGHTNESSUP:     // Brightness upの入力 (カタカナ変換) 
+                translateKanaKana( true )
+                showComposition();
+                break;
+
+            case this.seen.BRIGHTNESSDOWN:   // Brightness Downの入力 (ひらがな変換)
+                translateKanaKana( false );
+                showComposition();
+                break;
+
+            case this.seen.ESC:
+                UndoConvert( false );   // ESCキーモードで実行.
+                break;
+
+            case this.seen.QUOTE:    // 一文字確定. Double Quate
+                OneLeCommit();          // 一文字確定＆コミット処理.
+                break;
+
+            case this.seen.LONGPRESS:   // Key 長押し, 確定文字を一つ削除してからオフセット3の文字を確定する
+                BackOne();
+                this.info.status.char = this.map.getMoji2( 3 );  // オフセット3の文字を確定する
+                keyValidiate( this.info.status.char );  // 確定処理
+                break;
+
+        }
+        return acted;
     }
 }
 
@@ -136,7 +482,6 @@ class MojiMap {
  IntlYen "¥", "|"
 
 */
-
 
 // 親指シフトキーの制御クラス
 class OyaShiftCtrl { 
@@ -233,32 +578,9 @@ class OyaShiftCtrl {
     }
 }
 
-class KeyInformation{
-    constructor(){
-        this.status = {
-            pending: false, // キー処理保留フラグ
-            index: -1,      // キーインデックス
-            char: "",       // 変換文字
-            shift: false,
-            ctrl: false
-        };
-    }
-
-    setStatus( index = -1, char = '', flag = false ){ // KeyStatusの設定
-        this.status.index = index;
-        this.status.char = char;
-        this.status.pending = flag;
-    }
-
-    setModifier(keyData){
-        this.status.ctrl  = keyData.ctrlKey;
-        this.status.shift = keyData.shiftKey;
-    }
-}
-
-const ckey = new OyaShiftCtrl();    // 親指シフトキー管理
 const cinf = new KeyInformation();  // 入力キー情報管理
 const cmap = new MojiMap();         // キーマップ管理
+const cflow = new KeyFlows(cinf, cmap); // キーフロー制御
 
 //  Key Down時に呼び出される.
 function thumbShift(keyData){
@@ -515,4 +837,18 @@ function ZenKakuteiKey( keyData ){
     if( keyData.shiftKey || compoinfo < 0 ) fixOne();  // 先頭確定.
     else fixAll();                                      // 全確定.
 }
+
+chrome.input.ime.onKeyEvent.addListener(
+  function(engineID, keyData) {
+    let enact = false;
+    if( keyData.type === "keyup" ){
+        cflow.keyUp( keyData );
+    } 
+    else if(keyData.type === "keydown"){
+        console.log(`KD:(${keyData.key}|${keyData.code})`);
+        enact = cflow.keyDown( keyData );
+    }
+    return enact;
+  }
+);
 

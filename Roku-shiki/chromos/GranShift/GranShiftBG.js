@@ -166,7 +166,7 @@ class KeyFlowCommon{
             live = true;
         }
         else{
-            live = ( this.previois !== index || this.isKeyRepeatActive() );
+            live = ( this.previous !== index || this.isKeyRepeatActive() );
         }
         this.previous = index;
         return  live;
@@ -495,7 +495,7 @@ chrome.input.ime.onKeyEvent.addListener(
         cflow.keyUp( keyData );
     } 
     else if(keyData.type === "keydown"){
-        console.log(`KD:(${keyData.key}|${keyData.code})`);
+        //console.log(`KD:(${keyData.key}|${keyData.code})`);
         enact = cflow.keyDown( keyData );
     }
     return enact;

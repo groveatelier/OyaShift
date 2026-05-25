@@ -310,7 +310,7 @@ class KeyFlows{
             this.shift.active = false;
         }
         else{
-            const seen = ( keycondition < 1024 && this.isLongPress(now) ) ? this.seen.LONGPRESS : null;
+            const seen = ( this.map.jpmode && this.isLongPress(now) ) ? this.seen.LONGPRESS : null;
             this.moji.active = false;
             return seen;
         }
@@ -550,7 +550,6 @@ const cflow = new KeyFlows(cinf, cmap); // キーフロー制御
 
 // シフトの遅延処理
 function SPCLateKeyDown(){
-    //console.log(`SPCLate:${convKana}/${fifo.inbuf.length}`);
     if( fifo.isEmpty() ){   // inbufが空のときは、SPCをアプリに渡す.
         CommitOne(" ");   // SPCをアプリに渡す.
     }

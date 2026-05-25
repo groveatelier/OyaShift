@@ -91,13 +91,10 @@ let dictOpen  = false;      // 辞書がOpen済の判断.
 let henkanAri = false;      // 変換候補指定あり.
 let Voldict   = [];         // 揮発辞書.
 
-let convKana = [false, -1, ""];  // 入力中, 先キーIndex, 変換文字
-let keycondition = 0;       // Key入力判断用1 : 1024 - US key mode 
 let spkeyinx = 0;           // 特殊キー対応Index.
 
 let interval  = -1;         // 辞書出力用1
 let dictline = 1;           // 辞書出力用2
-let laptime  = Date.now();
 
 const menuInp  = "minput";
 let menuArg    = [{"id": menuInp, "label": "かな"}]
@@ -137,7 +134,7 @@ chrome.input.ime.onMenuItemActivated.addListener(function(eng,name){
 });
 
 function menuItemRevise(){
-    menuArg[0].label = keycondition < 1024 ? "かな" : "英字"; // かな入力モード.
+    menuArg[0].label = cmap.jpmode ? "かな" : "英字"; // かな入力モード.
 }
 
 function menuItemUpdate(){
@@ -146,10 +143,6 @@ function menuItemUpdate(){
         "engineID": engine,
         "items": menuArg
     });
-}
-
-function InitialKana(){
-    convKana = [false, -1, ""];
 }
 
 function InitialCandidate( candword = "" ){
@@ -171,16 +164,10 @@ function GetKanaIndex( key ){
 
 // かなモードの変更.
 function changeKanaMode(){
-    keycondition = keycondition < 1024 ? 1024 : 0;  // toggle kana mode
-    console.log(`CKana: ${keycondition}`)
+    cmap.jpmode = cmap.jpmode ? false : true;  // toggle kana mode
+    console.log(`CKana: ${cmap.jpmode}`)
     menuItemUpdate();           // menu Item update
     clearCompoAndCand();
-}
-
-function changeAndClear(){
-    if( keycondition < 1024 && fifo.curbuf.length > 0 ) fixAll();    //  日モードなら全確定.
-    changeKanaMode();   // かなモード切り替え
-    InitialKana();
 }
 
 // 一文字確定処理.
@@ -498,7 +485,7 @@ function CommitOne( text ){   // 一文字確定.
 
 chrome.input.ime.onCandidateClicked.addListener(
     function(engineID, candidate, button, mouse) {
-    	if(keycondition < 1024 && button == "left"){
+    	if(cmap.jpmode && button == "left"){
             candIndex = candidate;                   // set index
             showComposition();
         }

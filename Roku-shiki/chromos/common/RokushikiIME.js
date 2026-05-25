@@ -1,14 +1,14 @@
 /*  2026.05.21 20:00
   Oya Key shift keyboard (自作キーボード用)
     
-    >> Spcial keys << insidebuf.length > 0 
+    >> Spcial keys << inbuf.length > 0 
     "\"(Backslash) : enter                 
     "'"(Quote)     : BackSpace            
     "]"(BracketRight) : 記号入力特殊キー
 
     カーソル行表示：最初は検索文字（ひらがな）のみの表示、入力増で適度に変換候補筆頭を表示.
-    候補窓表示：ユーザー意思の変換が実行される前は 2行のみの窓とし、insidebufを表示
-            ユーザー意思の変換が実行された後は1行目はinsidebuf, ２行目以降を imedata１段目の
+    候補窓表示：ユーザー意思の変換が実行される前は 2行のみの窓とし、inbufを表示
+            ユーザー意思の変換が実行された後は1行目はinbuf, ２行目以降を imedata１段目の
             変換候補を表示する.    
 */
 
@@ -19,9 +19,9 @@ class FIFO {
         this.bufptr = 0;    // バッファ内ポインター
     }
 
-    isEempty() { return (this.inbuf.length === 0); }
+    isEmpty() { return (this.inbuf.length === 0); }
     isAvailable() { return (this.inbuf.trim().length > 0); }
-    substr( num ){ this.inbuf = this.inbuf( num ); }
+    substr( num ){ this.inbuf = this.inbuf.substring( num ); }
 
     clear(){
         this.inbuf = "";
@@ -42,13 +42,13 @@ class FIFO {
                         + inbuf.slice(inbuf.length + this.bufptr);
             this.inbuf = tempbuf;
             if( this.inbuf.length + this.bufptr < 0 ) this.bufptr = -this.inbuf.length;
-        } else this.inbuf = this.inbuf.slice(0,-1);   // javaの仕様上insidebufが空でもOK
+        } else this.inbuf = this.inbuf.slice(0,-1);   // javaの仕様上inbufが空でもOK
     }
 
     remakeFIFO( stepbuf ){
         this.inbuf = "";
         for( let depth = 0; depth < stepbuf.length; depth++ ){
-            this.inbuf += stepbuf[depth][0];     // insidebuf作り直し.
+            this.inbuf += stepbuf[depth][0];     // inbuf作り直し.
         }
     }
 
@@ -68,7 +68,7 @@ class FIFO {
     pull(){
         if( this.bufptr < 0 ){            // 今は無変換確定になりますね.
             const pulledtext = this.inbuf.slice(0, this.bufptr);
-            const restin = insidebuf.slice(this.inbuf.length+this.bufptr);
+            const restin = this.inbuf.slice(this.inbuf.length+this.bufptr);
             this.inbuf = restin;
             return pulledtest;
         }
@@ -80,9 +80,6 @@ class FIFO {
 const fifo = new FIFO();
 
 let context_id = -1;
-//let insidebuf  = "";        // 日本語入力用バッファ.
-//let cursolbuf  = "";        // カーソル行表示用バッファ.
-//let compoinfo  = 0;         // カーソル行制御用変数 : 0-カーソル行表示文字数, 1-カーソル位置.
 
 let cCandidate = [];        // 変換候補 ver2.2以降.
 let candIndex  = -1;        // 変換候補用 index
@@ -181,7 +178,7 @@ function changeKanaMode(){
 }
 
 function changeAndClear(){
-    if( keycondition < 1024 && cursolbuf.length > 0 ) fixAll();    //  日モードなら全確定.
+    if( keycondition < 1024 && fifo.curbuf.length > 0 ) fixAll();    //  日モードなら全確定.
     changeKanaMode();   // かなモード切り替え
     InitialKana();
 }
@@ -193,7 +190,7 @@ function OneLeCommit(){
         const moji = fifo.getFirstOut();
         chrome.input.ime.commitText({
             "contextID": context_id, 
-            "text": moij;
+            "text": moij
         });
         henkanAri = false;
         if( !fifo.isEmpty ) rokushikiIME();
@@ -222,9 +219,9 @@ function UndoConvert( mode ){
 }
 
 // 押下されたキーの確定した際の処理（単独押しと重複押しを含む）
-// insidebufに確定した文字を複写. 漢字変換呼び出し.
+// inbufに確定した文字を複写. 漢字変換呼び出し.
 function keyValidiate( moji ){
-    console.log(`KV(${compoinfo}):${moji}`);
+    console.log(`KV(${fifo.bufptr}):${moji}`);
     if( !fifo.push( moji ) ) CommitOne( moji );
     else rokushikiIME();
 }
@@ -268,7 +265,7 @@ function copyEntry( entryindex ){      // Entryを複製.
 function showCompoAndCand(){        // バインド関数
     showComposition();
 //    showCands();
-    if (fifo.isAvilable()) {
+    if (fifo.isAvailable()) {
         // fifo 空白文字以外もあるときは候補表示する
         showCands();
     }
@@ -282,14 +279,14 @@ function showLine( text ){
     	text: text,
     	cursor: text.length,
     	selectionStart: 0,
-    	selectionEnd: text.length+compoinfo
+    	selectionEnd: text.length+fifo.bufptr
     };
     chrome.input.ime.setComposition(obj); // カーソル位置に未変換文字列をアンダーライン表示
 }
 
 //  imedataから cursol lineを作り直して表示.
 function showComposition(){
-    if( compoinfo < 0 ){
+    if( fifo.bufptr < 0 ){
         showLine( fifo.inbuf );
     } else {
         fifo.curbuf = imedata.length > 0 ? getCurDataTopLine() : fifo.inbuf;
@@ -363,7 +360,7 @@ function fixOne(){
         });
     } 
     else if( imedata.length > 0 ) PrefixOne();
-    if( !fifo.isEempty() ){
+    if( !fifo.isEmpty() ){
         showCompoAndCand();         // 残りの文字を表示.
     } else {
         clearCompoAndCand();
@@ -379,7 +376,7 @@ function fixOne(){
 //  操作: 辞書登録, commitText, 候補窓変更
 function PrefixOne(){   // 先頭確定.
     //  異状停止: 入力無し状態で呼ばれたくない。デバッグ用に停止コードを仕込む.
-    if( imedata.length <= 0 || fifo.isEempty() ){ //---------------------------
+    if( imedata.length <= 0 || fifo.isEmpty() ){ //---------------------------
         console.log(`@@ Halt-PrefixOne: imedata=${imedata}, inbuf=${fifo.inbuf}`);
         while(true);        // debug stop
     }   //---------------------------------------------------------------------------
@@ -438,21 +435,20 @@ function invibleCandidate(){
 function fixAll(){  //  変換候補を全FIX.
     chrome.input.ime.commitText({
         "contextID": context_id, 
-        "text": cursolbuf
+        "text": fifo.curbuf
     });
     if( imedata.length > 1 ){
         for( let depth = 1; depth < imedata.length; depth++ )
             imedata[0][0] += imedata[depth][0];
-        console.log(`fixAll>${imedata[0][0]}:${cursolbuf}`);
+        console.log(`fixAll>${imedata[0][0]}:${fifo.curbuf}`);
 
         // 長文登録は避ける 文字数制限を実施.
         if( imedata[0][0].length < 16 )
-            SaveNiwaDictEntry( cursolbuf );             // 先に変換データを保存.
+            SaveNiwaDictEntry( fifo.curbuf );             // 先に変換データを保存.
     }
-    imedata   = [];         // imedataを削除.
-    insidebuf = "";         // 入力文字も初期化.
-    cursolbuf = "";
-    invibleCandidate();     // candidate windowの消去.
+    imedata   = [];     // imedataを削除.
+    fifo.clear();       // 入力文字も初期化.
+    invibleCandidate(); // candidate windowの消去.
     henkanAri = false;
 }
 
@@ -473,8 +469,8 @@ function translateKanaKana( Hira2Kata ){
     let kanabuf  = [];
     let mojihani = Hira2Kata ? [12353,12439,12445,12446] : [12449,12535,12541,12542];
     let shiftval = Hira2Kata ? 96 : -96;
-    for(let ofs = 0; ofs < insidebuf.length; ofs++ ){
-        let hirachar  = insidebuf.codePointAt( ofs );
+    for(let ofs = 0; ofs < fifo.inbuf.length; ofs++ ){
+        let hirachar  = fifo.inbuf.codePointAt( ofs );
         let hirachar2 = hirachar;
         if((mojihani[0] <= hirachar && hirachar <= mojihani[1])
             ||(mojihani[2] <= hirachar && hirachar <= mojihani[3])){ // 変換文字範囲の場合.
@@ -483,8 +479,8 @@ function translateKanaKana( Hira2Kata ){
         kanabuf += String.fromCharCode(hirachar2);
     }
     InitialCandidate( kanabuf );
-    cCandidate[0].annotation = insidebuf;
-    imedata = [[ insidebuf, [kanabuf, insidebuf]]];
+    cCandidate[0].annotation = fifo.inbuf;
+    imedata = [[ fifo.inbuf, [kanabuf, fifo.inbuf]]];
     candIndex = 0;
     henkanAri = true;
 }
@@ -495,10 +491,9 @@ function CommitOne( text ){   // 一文字確定.
         "contextID": context_id, 
         "text": text
     });
-    invibleCandidate();       // candidate windowの消去.
-    imedata = [];             // imedata 初期化.
-    insidebuf = "";           // insidebuf 初期化.
-    cursolbuf = "";
+    invibleCandidate(); // candidate windowの消去.
+    imedata = [];       // imedata 初期化.
+    fifo.clear();       // inbuf 初期化.
 }
 
 chrome.input.ime.onCandidateClicked.addListener(
@@ -514,7 +509,7 @@ chrome.input.ime.onCandidateClicked.addListener(
 /* 以下は変換候補サーチ(IME)関連のコード  */
 /***************************************/
 //  IME を呼ばれた際は cursole lineも作り直しとする。
-//  入力： insidebuf
+//  入力： inbuf
 //  出力： imedata
 function rokushikiIME(){
     if( henkanAri ) PrefixOne();    // 先頭が選択済ならFIXさせる.
@@ -526,7 +521,7 @@ function SelectIME(){
 //    console.log(`SI:${imemode}`)
     if( imemode != 1 ){
         InitialCandidate();
-        if( insidebuf.length > 0 ){
+        if( !fifo.isEmpty() ){
             if( imemode == 2 ) googleIMEcgi();  // web search
             else if( imemode == 3 ) GetNiwaDictEntry();
             else {
@@ -779,16 +774,16 @@ function SaveNiwaDictEntry( henkancode ){
 }
 
 // 辞書から変換文字列を検索し、imedataを作成する.
-// 入力: insidebuf - 変換入力文字
+// 入力: inbuf - 変換入力文字
 // 出力: imedata, candIndex
 function GetNiwaDictEntry(){
     imedata = [];
     if( !dictOpen ){        // local 辞書が読まれる前は待つ.
         OpenNiwaDict();
-        showLine( insidebuf );      // 辞書が開くまでの暫定表示.
-        cursolbuf = insidebuf;
+        showLine( fifo.inbuf );      // 辞書が開くまでの暫定表示.
+        fifo.curbuf = fifo.inbuf;
     } else {
-        var tagtext  = insidebuf;   // 変換対象文字列.
+        var tagtext  = fifo.inbuf;   // 変換対象文字列.
         var stoplimit = 64;         // 長文変換の制限.
         imemode = 2;                // Rokushiki IME 動作―早めに設定要.
 
@@ -853,25 +848,24 @@ function googleData2MyIME( data ) {
 }
 
 // Google IME での検索.
-// 入力: insidebuf - 変換入力文字
+// 入力: inbuf - 変換入力文字
 // 出力: imedata, candIndex
 function googleIMEcgi(){
-    var url = "http://google.com/transliterate?langpair=ja-Hira|ja&text=" + insidebuf;
+    if( fifo.isEmpty() ) return;
+    var url = "http://google.com/transliterate?langpair=ja-Hira|ja&text=" + fifo.inbuf;
     imemode = 1;
-//    console.log(`GI:${insidebuf}`);
-    if( insidebuf.length > 0 ){
-        fetch(url).then(function(response){
-            return response.json();
-        }).catch(function(){
-            console.log("error caught at fetch()!");
-        }).then(function(data){
-            // 変換候補が無い場合、RokushikiIMEが起動済の場合は何もしない.
-            if( data != undefined && imemode == 1 ){
-                imemode = 0;
-                googleData2MyIME( data );
-            }
-        });
-    }
+//    console.log(`GI:${fifo.inbuf}`);
+    fetch(url).then(function(response){
+        return response.json();
+    }).catch(function(){
+        console.log("error caught at fetch()!");
+    }).then(function(data){
+        // 変換候補が無い場合、RokushikiIMEが起動済の場合は何もしない.
+        if( data != undefined && imemode == 1 ){
+            imemode = 0;
+            googleData2MyIME( data );
+        }
+    });
 }
 
 // ひらがな文字判斷　: 文字列がひらがなだけの場合は true
@@ -968,8 +962,8 @@ function SearchCache( tagword ){
 
 // キャッシュ辞書から imedata を作成.
 function GetCacheDict(){
-    imedata = [[insidebuf,[insidebuf]]];
-    var hitque = SearchCache( insidebuf );
+    imedata = [[fifo.inbuf,[fifo.inbuf]]];
+    var hitque = SearchCache( fifo.inbuf );
     if( hitque.length > 0 ){
         for( var depth = 0; depth < hitque.length; depth++ ){
             imedata[0][1].push( hitque[depth][1] );

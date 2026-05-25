@@ -2,8 +2,8 @@
   親指シフトキーボードIME ver 5.2 (JISキーボード用)
     
     カーソル行表示：最初は検索文字（ひらがな）のみの表示、入力増で適度に変換候補筆頭を表示.
-    候補窓表示：ユーザー意思の変換が実行される前は 2行のみの窓とし、insidebufを表示
-            ユーザー意思の変換が実行された後は1行目はinsidebuf, ２行目以降を imedata１段目の
+    候補窓表示：ユーザー意思の変換が実行される前は 2行のみの窓とし、inbufを表示
+            ユーザー意思の変換が実行された後は1行目はinbuf, ２行目以降を imedata１段目の
             変換候補を表示する.    
 */
 const engine   = "GranShift";
@@ -235,10 +235,10 @@ class KeyFlows{
     }
 
     detectNoKeyBufCase(keyData){
-        if (insidebuf.length > 0) return null;
+        if (fifo.inbuf.length > 0) return null;
         // Alt + Esc → 辞書テキスト出力
         if (imemode === 7 && keyData.key === "Esc" && this.info.alt) return this.seen.DICTOUTPUT;
-        // insidebuf が空 → IME 処理不要
+        // inbuf が空 → IME 処理不要
         return this.seen.NOKEYBUF;
     }
 
@@ -265,7 +265,7 @@ class KeyFlows{
         // 1) 親指シフト or かなキー
         const kanaOrShift = this.detectKanaOrShift(keyindex);
         if (kanaOrShift) return kanaOrShift;
-        // 2) insidebuf が空のときの特別処理 (辞書出力暫定コード)
+        // 2) inbuf が空のときの特別処理 (辞書出力暫定コード)
         const noKeyBuf = this.detectNoKeyBufCase(keyData);
         if (noKeyBuf) return noKeyBuf;
         // 3) 特殊キー（Tab, Enter, BS, 矢印など）
@@ -286,7 +286,7 @@ class KeyFlows{
     }
 
     mojikeyDown(){      // 文字キー押下時の処理
-        if( this.map.index === 0 && insidebuf.trim().length > 0 ) return this.seen.TABSPC;
+        if( this.map.index === 0 && fifo.inbuf.trim().length > 0 ) return this.seen.TABSPC;
         if( !this.moji.keyDown2( this.map.index ) ) return this.seen.PEND;  // リピート抑止期間中は何もしない
         //if (!this.moji.shouldFire(this.map.index)) return this.seen.PEND;
         if( this.info.shift && this.map.isEiInx( this.map.index )) return this.seen.USLARGE;
@@ -353,13 +353,13 @@ class KeyFlows{
     }
 
     enterUSmode(){
-        if( insidebuf.length > 0 ) fixAll();  // 掃き出し
+        if( fifo.inbuf.length > 0 ) fixAll();  // 掃き出し
         clearCompoAndCand();
         this.map.jpmode = false;
     }
 
     actIfNeeded(seen){
-        //console.log(`ai:${seen}`);
+        console.log(`ai:${seen}`);
         switch(seen){
             case this.seen.PEND:               return true;
             case this.seen.SHIFT2MOJI:         return this.actShift2Moji();
@@ -413,10 +413,10 @@ class KeyFlows{
 
     // 文字入力
     actMojiFirst(){
-        //console.log(`M1: ${insidebuf.length}/${insidebuf}/${this.map.index}/${this.map.offset}`);
-        // insidebufが空では無い時は、insidebufの最後の文字が空白であれば確定させる
-        if( insidebuf.length > 0 && insidebuf[insidebuf.length - 1] === " " ) fixAll();     // 確定
-        if( this.map.offset === 0 && (insidebuf.length === 0 || insidebuf.length > 5)) this.enterUSmode();   // US modeへ 
+        //console.log(`M1: ${fifo.inbuf.length}/${fifo.inbuf}/${this.map.index}/${this.map.offset}`);
+        // inbufが空では無い時は、inbufの最後の文字が空白であれば確定させる
+        if( !fifo.isEmpty() && fifo.inbuf[fifo.inbuf.length - 1] === " " ) fixAll();     // 確定
+        if( this.map.offset === 0 && (fifo.isEmpty() || fifo.inbuf.length > 5)) this.enterUSmode();   // US modeへ 
         if( this.map.jpmode ) keyValidiate( this.map.getMojiFirst() );  // 確定処理
         else return false;  // システムへ処理を渡す
         return true;
@@ -424,7 +424,7 @@ class KeyFlows{
 
     // シフト後処理 親指キーボード未確定
     actShiftFollow(){
-        if( insidebuf.length === 0 ){
+        if( fifo.isEmpty() ){
             if( this.shift.isKeyRepeatActive() ) CommitOne(" ") // SPCをアプリに渡す(キーリピート).
             else this.setLateKeyDown( SPCLateKeyDown );  // シフトの遅延処理をセット
         }
@@ -463,7 +463,7 @@ class KeyFlows{
     }
 
     actEnter(){
-        if( this.info.shift || compoinfo < 0 ) fixOne();    // 先頭確定.
+        if( this.info.shift || fifo.bufptr < 0 ) fixOne();    // 先頭確定.
         else fixAll();
         return true;
     }
@@ -479,15 +479,15 @@ class KeyFlows{
     }
 
     actRight(){
-        compoinfo++;                // カーソル右へ.
-        if( compoinfo > 0 ) compoinfo = 0;
+        fifo.bufptr++;                // カーソル右へ.
+        if( fifo.bufptr > 0 ) fifo.bufptr = 0;
         showComposition();
         return true;
     }
 
     actLeft(){
-        compoinfo--;                // カーソル左へ.
-        if( insidebuf.length + compoinfo < 0 ) compoinfo = -insidebuf.length;
+        fifo.bufptr--;                // カーソル左へ.
+        if( fifo.insbuf.length + fifo.bufptr < 0 ) fifo.bufptr = -fifo.inbuf.length;
         showComposition();
         return true;
     }
@@ -495,7 +495,7 @@ class KeyFlows{
     actBackspace(){
         fifo.deleteLastOne();
         henkanAri = false;
-        if( insidebuf.length > 0 ) rokushikiIME();
+        if( !fifo.isEmpty() ) rokushikiIME();
         else clearCompoAndCand();
         return true;
     }
@@ -515,7 +515,7 @@ class KeyFlows{
     }
 
     actEsc(){
-        if( insidebuf.length > 0 && this.map.offset === 0 ) fixAll();   // 掃き出してから
+        if( !fifo.isEmpty() && this.map.offset === 0 ) fixAll();   // 掃き出してから
         UndoConvert( false );   // ESCキーモードで実行.
         return true;
     }
@@ -550,8 +550,8 @@ const cflow = new KeyFlows(cinf, cmap); // キーフロー制御
 
 // シフトの遅延処理
 function SPCLateKeyDown(){
-    //console.log(`SPCLate:${convKana}/${insidebuf.length}`);
-    if( insidebuf.length === 0 ){   // insidebufが空のときは、SPCをアプリに渡す.
+    //console.log(`SPCLate:${convKana}/${fifo.inbuf.length}`);
+    if( fifo.isEmpty() ){   // inbufが空のときは、SPCをアプリに渡す.
         CommitOne(" ");   // SPCをアプリに渡す.
     }
     else {

@@ -388,7 +388,7 @@ class KeyFlows{
 
     // シフト契機で文字確定
     actShift2Moji(){
-        BackOne();  // 直前の文字確定を取り消す.
+        fifo.deleteLastOne();  // 直前の文字確定を取り消す.
         if (!this.map.thumbHW) this.expandLongTimer(); // シフトキーの場合長押し判定時間を延長
         keyValidiate( this.map.getMoji() );  // 確定処理
         return true;
@@ -397,10 +397,10 @@ class KeyFlows{
     // 文字キー契機で文字確定
     actMoji2Shift(){
         if( !this.clearDownTimer() && !this.map.thumbHW ){  // シフトの遅延処理クリア
-            BackOne();  // 親指キーボード未確定なら直前の空白を消す処理.
+            fifo.deleteLastOne();  // 親指キーボード未確定なら直前の空白を消す処理.
         }
         if( this.isMultiTap() ){   // 同一世代かつ同一キーの判定
-            if( this.map.thumbHW ) BackOne();  // 親指シフトキーボードなら直前の文字を消す処理.
+            if( this.map.thumbHW ) fifo.deleteLastOne();  // 親指シフトキーボードなら直前の文字を消す処理.
             keyValidiate( this.map.getMojiNext() );  // 確定処理
         }
         else {
@@ -493,7 +493,7 @@ class KeyFlows{
     }
 
     actBackspace(){
-        BackOne();
+        fifo.deleteLastOne();
         henkanAri = false;
         if( insidebuf.length > 0 ) rokushikiIME();
         else clearCompoAndCand();
@@ -528,7 +528,7 @@ class KeyFlows{
 
     // Key 長押し, 確定文字を一つ削除してからオフセット3の文字を確定する
     actLongPress(){
-        BackOne();
+        fifo.deleteLastOne();
         keyValidiate( this.map.getMoji2( 3 ) );  // オフセット3の文字を確定処理
         return true;
     }

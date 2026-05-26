@@ -1,4 +1,4 @@
-/*  2026.05.21 20:00
+/*  2026.05.26 20:00
   Oya Key shift keyboard (自作キーボード用)
     
     >> Spcial keys << inbuf.length > 0 
@@ -8,7 +8,7 @@
 
     カーソル行表示：最初は検索文字（ひらがな）のみの表示、入力増で適度に変換候補筆頭を表示.
     候補窓表示：ユーザー意思の変換が実行される前は 2行のみの窓とし、inbufを表示
-            ユーザー意思の変換が実行された後は1行目はinbuf, ２行目以降を imedata１段目の
+            ユーザー意思の変換が実行された後は1行目はinbuf, ２行目以降を data１段目の
             変換候補を表示する.    
 */
 
@@ -58,7 +58,7 @@ class FIFO {
             const temptext = this.inbuf.slice(0, this.bufptr) + moji 
                     + this.inbuf.slice(this.inbuf.length + this.bufptr);
             this.inbuf = temptext;
-        } else if( this.inbuf.length === 0 && "。、―".indexOf( moji ) >= 0 ) return true;
+        } else if( this.inbuf.length === 0 && "。、―".indexOf( moji ) >= 0 ) return false;
         else {
             this.inbuf += moji;     // 確定済キー.
         }
@@ -77,13 +77,63 @@ class FIFO {
 
 }
 
+class Converter{
+    constructor(fifo){
+        this.fo = fifo;
+        this.candidate = [];    // 変換候補 ver2.2以降.
+        this.index = -1;        // 変換候補用 index
+        this.data = [];         // 変換候補データ IME結果
+    }
+
+    initialize( word = "" ){
+        this.candidate = [{annotation:"<入力>", candidate:word, id:0}]; // 変換候補 ver2.2以降.
+        this.index = 0;
+    }
+
+    // candidate へのデータ設定.
+    copy( arrayone, mode ){
+        for( let pos = 0; pos < arrayone.length; pos++ ){
+            let idno = this.candidate.length;
+            if( arrayone[pos] !== this.candidate[0].candidate ){
+                if( mode === 3 ){
+                    this.candidate.push({annotation:arrayone[pos+1], candidate:arrayone[pos], id:idno});
+                    pos++;
+                }
+                else this.candidate.push({annotation:"", candidate:arrayone[pos], id:idno});
+            }
+        }
+    }
+
+    // カーソル行に表示する文字列を作成 : 適度に変換筆頭文字を加える.
+    makeCursolbuf(){
+        if( this.data.length > 0 ){
+            let imeline  = this.index > 0 ? this.candidate[ this.index ].candidate : this.data[0][1][0];
+            let limitcnt = 1;
+            if( this.fo.inbuf.length >= 8 ){            // 筆頭変換制限.
+                limitcnt = this.fo.inbuf.length >> 2;   // 4文字単位だと多い？ どうする?
+            }
+            //  筆頭候補を一本につなげる. 
+            for( let depth = 1; depth < this.data.length; depth++ ){
+                let mayoke = this.data[depth][0].length * 2;  // 2倍変換文字列は対象外.
+                if( --limitcnt > 0 && this.data[depth][1][0].length < mayoke )
+                    imeline += this.data[depth][1][0];       // 筆頭候補をつなげる.
+                else imeline += this.data[depth][0];          // 変換無し.
+            }
+            this.fo.curbuf = imeline;
+        }
+        else this.fo.curbuf = fhis.fo.inbuf;
+    }
+
+}
+
 const fifo = new FIFO();
+const con = new Converter(fifo);
 
 let context_id = -1;
 
-let cCandidate = [];        // 変換候補 ver2.2以降.
-let candIndex  = -1;        // 変換候補用 index
-let imedata  = [];          // 変換候補データ IME結果
+//let cCandidate = [];        // 変換候補 ver2.2以降.
+//let candIndex  = -1;        // 変換候補用 index
+//let imedata  = [];          // 変換候補データ IME結果
 let imemode  = 4;           // 0-google, 1-google url応答待ち, 2-不揮発辞書, 3-揮発辞書, 4-起動前, 7-特殊.
 let rampwait = 0;           // 辞書まとめ書き用変数.
 let Niwadict  = [];         // 辞書 Version 3 以降.
@@ -99,9 +149,9 @@ let dictline = 1;           // 辞書出力用2
 const menuInp  = "minput";
 let menuArg    = [{"id": menuInp, "label": "かな"}]
 
-OpenNiwaDict();             // local辞書を開けておく.
-InitialCandidate();         // cCandidateの初期化.
-LoadCacheDict();            // Cache Dataのロード.
+OpenNiwaDict();     // local辞書を開けておく.
+con.initialize();   // candidateの初期化.
+LoadCacheDict();    // Cache Dataのロード.
 
 chrome.input.ime.onFocus.addListener(function(context) {
 //    if( context_id >= 0 ) clearCompoAndCand();
@@ -143,11 +193,6 @@ function menuItemUpdate(){
         "engineID": engine,
         "items": menuArg
     });
-}
-
-function InitialCandidate( candword = "" ){
-    cCandidate = [{annotation:"<入力>", candidate:candword, id:0}]; // 変換候補 ver2.2以降.
-    candIndex  = 0;
 }
 
 //  対象キーのかなシフトテーブルindexを取得.
@@ -193,9 +238,9 @@ function UndoConvert( mode ){
         clearCompoAndCand();    // 変換無状態なら 入力自体をクリア.
     }
     else if( henkanAri ){
-        fifo.remakeFIFO( imedata ); // inbuf作り直し.
-        cCandidate[0].candidate = fifo.inbufbuf;
-        candIndex = 0;          // 候補筆頭も取り止め.
+        fifo.remakeFIFO( con.data ); // inbuf作り直し.
+        con.candidate[0].candidate = fifo.inbuf;
+        con.index = 0;          // 候補筆頭も取り止め.
         henkanAri = false;      // 変換も無効.
         showCompoAndCand();     // 表示と変換候補窓を更新.
     }
@@ -213,28 +258,13 @@ function keyValidiate( moji ){
     else rokushikiIME();
 }
 
-//  変換データからCandidateを作成. candIndexも作り直し...
+//  変換データからCandidateを作成. Indexも作り直し...
 //  カーソルライン用の文字列作成.
 function makeCandidate(){
-    InitialCandidate( fifo.inbuf );     // cCandidate初期化.
-    candIndex  = 0;
-    if( imedata.length >= 1 )           // imedataが存在すれば実行.
-        copyCandidate( imedata[0][1] ); // 一段目の候補を設定: cCandidateに複製.
+    con.initialize( fifo.inbuf ); // candidate初期化.
+    if( con.data.length >= 1 )           // dataが存在すれば実行.
+        con.copy( con.data[0][1], imemode ); // 一段目の候補を設定: candidateに複製.
     return;   
-}
-
-// cCandidate へのデータ設定.
-function copyCandidate( arrayone ){
-    for( let pos = 0; pos < arrayone.length; pos++ ){
-        var idno = cCandidate.length;
-        if( arrayone[pos] !== cCandidate[0].candidate ){
-            if( imemode === 3 ){
-                cCandidate.push({annotation:arrayone[pos+1], candidate:arrayone[pos], id:idno});
-                pos++;
-            }
-            else cCandidate.push({annotation:"", candidate:arrayone[pos], id:idno});
-        }
-    }
 }
 
 function copyEntry( entryindex ){      // Entryを複製.
@@ -271,42 +301,25 @@ function showLine( text ){
     chrome.input.ime.setComposition(obj); // カーソル位置に未変換文字列をアンダーライン表示
 }
 
-//  imedataから cursol lineを作り直して表示.
+//  dataから cursol lineを作り直して表示.
 function showComposition(){
     if( fifo.bufptr < 0 ){
         showLine( fifo.inbuf );
     } else {
-        fifo.curbuf = imedata.length > 0 ? getCurDataTopLine() : fifo.inbuf;
+        con.makeCursolbuf();
         showLine( fifo.curbuf );
     }
 }
 
-// カーソル行に表示する文字列を作成 : 適度に変換筆頭文字を加える.
-function getCurDataTopLine(){
-    let imeline  = candIndex > 0 ? cCandidate[ candIndex ].candidate : imedata[0][1][0];
-    let limitcnt = 1;
-    if( fifo.inbuf.length >= 8 ){            // 筆頭変換制限.
-        limitcnt = fifo.inbuf.length >> 2;   // 4文字単位だと多い？ どうする?
-    }
-    //  筆頭候補を一本につなげる. 
-    for( let depth = 1; depth < imedata.length; depth++ ){
-        let mayoke = imedata[depth][0].length * 2;  // 2倍変換文字列は対象外.
-        if( --limitcnt > 0 && imedata[depth][1][0].length < mayoke )
-             imeline += imedata[depth][1][0];       // 筆頭候補をつなげる.
-        else imeline += imedata[depth][0];          // 変換無し.
-    }
-    return imeline;
-}
-
 function showCands(){
-    let displines = henkanAri ? cCandidate.length : 2;  // 変換無
-    let curpos    = displines <= candIndex ? displines-1 : candIndex;
+    let displines = henkanAri ? con.candidate.length : 2;  // 変換無
+    let curpos    = displines <= con.index ? displines-1 : con.index;
     let auxtext = "六式 IME";
     if( imemode === 0 ) auxtext = "google IME cgi";
     else if( imemode === 3 ) auxtext += " cahce";
-    if( cCandidate.length > 0 ){
-        displines = cCandidate.length;
-//        console.log(`SC:${candIndex}/${curpos}`);
+    if( con.candidate.length > 0 ){
+        displines = con.candidate.length;
+//        console.log(`SC:${con.index}/${curpos}`);
         if( displines > 10 ) displines = 10;
         chrome.input.ime.setCandidateWindowProperties({
             engineID: engine,
@@ -315,17 +328,17 @@ function showCands(){
                 cursorVisible: true,
                 vertical:true,
                 pageSize: displines,
-                totalCandidates: cCandidate.length,
-                currentCandidateIndex: candIndex,
+                totalCandidates: con.candidate.length,
+                currentCandidateIndex: con.index,
                 auxiliaryText: auxtext,
                 auxiliaryTextVisible: true
             }
         });
         chrome.input.ime.setCandidates({
             contextID:context_id,
-            candidates:cCandidate
+            candidates:con.candidate
         });
-        if( candIndex >= 0 ){
+        if( con.index >= 0 ){
             chrome.input.ime.setCursorPosition({
                 contextID:context_id,
                 candidateID:curpos 
@@ -337,7 +350,7 @@ function showCands(){
 //  先頭候補確定.
 function fixOne(){
     let allclear = false;
-    console.log(`fixOne>${imedata}/${fifo.inbuf}/${candIndex}`);
+    console.log(`fixOne>${con.data}/${fifo.inbuf}/${con.index}`);
     // 最前一個を確定させる.
     const text = fifo.pull();
     if( text ){
@@ -346,40 +359,40 @@ function fixOne(){
             "text": text
         });
     } 
-    else if( imedata.length > 0 ) PrefixOne();
+    else if( con.data.length > 0 ) PrefixOne();
     if( !fifo.isEmpty() ){
         showCompoAndCand();         // 残りの文字を表示.
     } else {
         clearCompoAndCand();
         allclear = true;
     }
-    console.log(`fixOne<${imedata}/${fifo.inbuf}`);
+    console.log(`fixOne<${con.data}/${fifo.inbuf}`);
     return allclear;
 }
 
 //  PrefixOne: 先頭の検索キーを確定させ, 辞書に登録する.
-//  入力: cCandidate, imedata, inbuf
-//  出力: imedata, inbuf
+//  入力: candidate, data, inbuf
+//  出力: data, inbuf
 //  操作: 辞書登録, commitText, 候補窓変更
 function PrefixOne(){   // 先頭確定.
     //  異状停止: 入力無し状態で呼ばれたくない。デバッグ用に停止コードを仕込む.
-    if( imedata.length <= 0 || fifo.isEmpty() ){ //---------------------------
-        console.log(`@@ Halt-PrefixOne: imedata=${imedata}, inbuf=${fifo.inbuf}`);
+    if( con.data.length <= 0 || fifo.isEmpty() ){ //---------------------------
+        console.log(`@@ Halt-PrefixOne: data=${con.data}, inbuf=${fifo.inbuf}`);
         while(true);        // debug stop
     }   //---------------------------------------------------------------------------
     //  候補選択がない場合は 未変換のまま.
-    let validiate = cCandidate[candIndex].candidate;
+    let validiate = con.candidate[con.index].candidate;
     let optionext = "";
-    console.log( `PrefixOne>${validiate}-${cCandidate[candIndex].candidate}(${candIndex})` );
-    fifo.substr( imedata[0][0].length );
+    console.log( `PrefixOne>${validiate}-${con.candidate[con.index].candidate}(${con.index})` );
+    fifo.substr( con.data[0][0].length );
 
-    // 確定オプション: imedata 二段目が 「てにをは」なら二段目も確定させる.
-    if( imedata.length > 1 ){
+    // 確定オプション: data 二段目が 「てにをは」なら二段目も確定させる.
+    if( con.data.length > 1 ){
         const optionmoji = "てにをはのもでがと、。";
-        if( optionmoji.indexOf( imedata[1][0] ) >= 0 ){
-            optionext = imedata[1][0];      // 二段目を追加確定.
-            fifo.substr( imedata[1][0].length );
-            imedata.splice(1,1);            // 二段目も消しておく.
+        if( optionmoji.indexOf( con.data[1][0] ) >= 0 ){
+            optionext = con.data[1][0];      // 二段目を追加確定.
+            fifo.substr( con.data[1][0].length );
+            con.data.splice(1,1);            // 二段目も消しておく.
         }
     }
 
@@ -388,10 +401,10 @@ function PrefixOne(){   // 先頭確定.
         "text": validiate + optionext
     });
     SaveNiwaDictEntry( validiate ); // 先に変換データを保存.
-    imedata.splice(0,1);        // imedataの一段目を削除.
+    con.data.splice(0,1);        // dataの一段目を削除.
     invibleCandidate();         // candidate windowの消去.
 
-    if( imedata.length > 0 ) makeCandidate();   // cCandidateの作り直し
+    if( con.data.length > 0 ) makeCandidate();   // candidateの作り直し
     henkanAri = false;
     console.log( `PrefixOne<${validiate}:${fifo.inbuf}` );
 }
@@ -402,7 +415,7 @@ function clearCompoAndCand(){
         chrome.input.ime.clearComposition({contextID: context_id});
     invibleCandidate();
     fifo.clear();
-    imedata   = [];
+    con.data   = [];
     henkanAri = false;
 }
 
@@ -414,8 +427,8 @@ function invibleCandidate(){
             visible:false
         }
     });
-    candIndex = -1;
-    InitialCandidate();
+//    con.index = -1;
+    con.initialize();
 }
 
 //  fixAll： 全確定はカーソル行表示をそのまま確定させる.
@@ -424,29 +437,29 @@ function fixAll(){  //  変換候補を全FIX.
         "contextID": context_id, 
         "text": fifo.curbuf
     });
-    if( imedata.length > 1 ){
-        for( let depth = 1; depth < imedata.length; depth++ )
-            imedata[0][0] += imedata[depth][0];
-        console.log(`fixAll>${imedata[0][0]}:${fifo.curbuf}`);
+    if( con.data.length > 1 ){
+        for( let depth = 1; depth < con.data.length; depth++ )
+            con.data[0][0] += con.data[depth][0];
+        console.log(`fixAll>${con.data[0][0]}:${fifo.curbuf}`);
 
         // 長文登録は避ける 文字数制限を実施.
-        if( imedata[0][0].length < 16 )
+        if( con.data[0][0].length < 16 )
             SaveNiwaDictEntry( fifo.curbuf );             // 先に変換データを保存.
     }
-    imedata   = [];     // imedataを削除.
+    con.data   = [];    // dataを削除.
     fifo.clear();       // 入力文字も初期化.
     invibleCandidate(); // candidate windowの消去.
     henkanAri = false;
 }
 
 //  別の候補文字を設定する.
-// 呼び出し元はcCandidate.length > 0 を要確認.
+// 呼び出し元はcandidate.length > 0 を要確認.
 function setOtherCandidate( addvalue ){
-    candIndex += addvalue;
-    if( candIndex < 0 ) candIndex = cCandidate.length - 1;
-    else if( candIndex >= cCandidate.length ) candIndex = 0;
+    con.index += addvalue;
+    if( con.index < 0 ) con.index = con.candidate.length - 1;
+    else if( con.index >= con.candidate.length ) con.index = 0;
     henkanAri = true;
-    if( candIndex === 0 && addvalue > 0 ) SelectIME();       // IME切り替え.
+    if( con.index === 0 && addvalue > 0 ) SelectIME();       // IME切り替え.
     else showCompoAndCand();
 }
 
@@ -465,10 +478,10 @@ function translateKanaKana( Hira2Kata ){
         }
         kanabuf += String.fromCharCode(hirachar2);
     }
-    InitialCandidate( kanabuf );
-    cCandidate[0].annotation = fifo.inbuf;
-    imedata = [[ fifo.inbuf, [kanabuf, fifo.inbuf]]];
-    candIndex = 0;
+    con.initialize( kanabuf );
+    con.candidate[0].annotation = fifo.inbuf;
+    con.data = [[ fifo.inbuf, [kanabuf, fifo.inbuf]]];
+    con.index = 0;
     henkanAri = true;
 }
 
@@ -479,14 +492,14 @@ function CommitOne( text ){   // 一文字確定.
         "text": text
     });
     invibleCandidate(); // candidate windowの消去.
-    imedata = [];       // imedata 初期化.
+    con.data = [];       // data 初期化.
     fifo.clear();       // inbuf 初期化.
 }
 
 chrome.input.ime.onCandidateClicked.addListener(
     function(engineID, candidate, button, mouse) {
     	if(cmap.jpmode && button == "left"){
-            candIndex = candidate;                   // set index
+            con.index = candidate;                   // set index
             showComposition();
         }
     }
@@ -497,7 +510,7 @@ chrome.input.ime.onCandidateClicked.addListener(
 /***************************************/
 //  IME を呼ばれた際は cursole lineも作り直しとする。
 //  入力： inbuf
-//  出力： imedata
+//  出力： data
 function rokushikiIME(){
     if( henkanAri ) PrefixOne();    // 先頭が選択済ならFIXさせる.
     imemode = 4;                    // ime再起動状態に設定.
@@ -507,7 +520,7 @@ function rokushikiIME(){
 function SelectIME(){
 //    console.log(`SI:${imemode}`)
     if( imemode != 1 ){
-        InitialCandidate();
+        con.initialize();
         if( !fifo.isEmpty() ){
             if( imemode == 2 ) googleIMEcgi();  // web search
             else if( imemode == 3 ) GetNiwaDictEntry();
@@ -683,18 +696,18 @@ function dictEngage( tagEntry, entryindex ){    // 登録点を探して登録.
 
 /************/
 /* 辞書登録 */
-/* 入力: 検索文字 = imedata[0][0] -> ひらがな           */
+/* 入力: 検索文字 = data[0][0] -> ひらがな           */
 /*       変換文字 = henkancode -> 変換済文字 */
 /******************************************************/
 function SaveNiwaDictEntry( henkancode ){
-    // 異常値のガードをいれておきます. candIndex == 0 は非変換となります.
-    if( cCandidate.length <= 1 || henkancode.length <= 0 || !dictOpen ) return -1;   // 異常値のガード.
+    // 異常値のガードをいれておきます. Index == 0 は非変換となります.
+    if( con.candidate.length <= 1 || henkancode.length <= 0 || !dictOpen ) return -1;   // 異常値のガード.
 
-    var kensakuKey = imedata[0][0];             // 検索キー.　imedataの検索文字で検索要.
+    var kensakuKey = con.data[0][0];            // 検索キー.　dataの検索文字で検索要.
 
     if( kanaOnly( henkancode ) ) return -1;     // かなだけの登録は NG
 
-    console.log(`*Save(${Niwadict.length})=${henkancode}:${kensakuKey}/${candIndex}/${imemode}`);
+    console.log(`*Save(${Niwadict.length})=${henkancode}:${kensakuKey}/${con.index}/${imemode}`);
 
     // Debug codes
     if( henkancode.length > kensakuKey.length * 5 ){
@@ -704,8 +717,8 @@ function SaveNiwaDictEntry( henkancode ){
     }
 
     if( imemode == 3 ){
-        kensakuKey = cCandidate[candIndex].annotation;
-        console.log(`vd:${candIndex}/${kensakuKey}:${cCandidate[candIndex].candidate}/`);
+        kensakuKey = con.candidate[con.index].annotation;
+        console.log(`vd:${con.index}/${kensakuKey}:${con.candidate[con.index].candidate}/`);
     }
     SaveCache( kensakuKey, henkancode );          // 揮発辞書への登録.
 
@@ -733,10 +746,10 @@ function SaveNiwaDictEntry( henkancode ){
 
     // 変換データ以外の候補も必要に応じて登録.
     if( keycode[2] == 0 ){              // 文字を減らした場合は登録回避.
-        for( var koinx = 1; koinx < cCandidate.length; koinx++ ){
-            var tagcand = cCandidate[koinx].candidate;
+        for( let koinx = 1; koinx < con.candidate.length; koinx++ ){
+            let tagcand = con.candidate[koinx].candidate;
             if( !kanaOnly( tagcand ) && !kataOnly( tagcand )){              // かなだけの登録は NG
-                var mojiInx = tagEntry[3].indexOf( tagcand );               // エントリ内を検索.
+                let mojiInx = tagEntry[3].indexOf( tagcand );               // エントリ内を検索.
                 if( mojiInx < 0 ){
                     tagEntry[3].push( tagcand );            // 登録がなければ後ろに追加.
                     break;                                  // 一回に一個だけの登録に留める.   
@@ -748,7 +761,7 @@ function SaveNiwaDictEntry( henkancode ){
     dictEngage( tagEntry, entryindex );                     // 登録点を探してて登録.
 
     if( tagEntry[1] > 64000 ){                              // 更新値上がり過ぎり対策.
-        for( var depth=1; depth < Niwadict.length; depth++ )
+        for( let depth=1; depth < Niwadict.length; depth++ )
             Niwadict[depth][1] >= 1;                        // 値を半分に
     }
     if( rampwait++ >= 16 ){                                 // 辞書へのライト処理をまとめる. 
@@ -760,11 +773,11 @@ function SaveNiwaDictEntry( henkancode ){
     return;
 }
 
-// 辞書から変換文字列を検索し、imedataを作成する.
+// 辞書から変換文字列を検索し、dataを作成する.
 // 入力: inbuf - 変換入力文字
-// 出力: imedata, candIndex
+// 出力: data, Index
 function GetNiwaDictEntry(){
-    imedata = [];
+    con.data = [];
     if( !dictOpen ){        // local 辞書が読まれる前は待つ.
         OpenNiwaDict();
         showLine( fifo.inbuf );      // 辞書が開くまでの暫定表示.
@@ -779,17 +792,17 @@ function GetNiwaDictEntry(){
             if( stoplimit-- <= 0 ){
                 console.log(`*Stop limit* (${stoplimit}):${tagtext}`); 
             }
-            var entryone  = [];     // imedataに展開する1エントリ.
+            var entryone  = [];     // dataに展開する1エントリ.
             for( var depth = 1; depth < Niwadict.length; depth++ ){     // 辞書検索ループ.
                 var etag   = copyEntry( depth );            // etag <- Niwadictの参照
                 var hitpos = tagtext.indexOf( etag[0] );    // 変換文字にヒットするか?
                 if( hitpos >= 0 ){                          // hit
                     if( hitpos == 0 ){                      // 先頭で一致.
                         entryone = [];                  // entryone初期化.
-                        entryone.push( etag[0] );       // imedataにも変換前文字列を入れる.
-                        entryone.push( etag[3] );       // imedataに変換候補郡を入れる.
+                        entryone.push( etag[0] );       // dataにも変換前文字列を入れる.
+                        entryone.push( etag[3] );       // dataに変換候補郡を入れる.
                         entryone[1].unshift( etag[0] ); // 変換候補郡先頭は検索文字.
-                        imedata.push( entryone );       // imedataに1エントリ追加.
+                        con.data.push( entryone );      // dataに1エントリ追加.
  
                         if( tagtext != etag[0] ){           // 前方一致?
                             var newtag = tagtext.slice(( etag[0].length - tagtext.length ));
@@ -802,16 +815,16 @@ function GetNiwaDictEntry(){
                     } else {
                         //console.log( `>> Post hit:(${hitpos})${etag}` );
                         var pretag = tagtext.split( etag[0] )[0];  // hit前の文字列切り出し.
-                        entryone = [ pretag, [pretag] ];        // imedata 1エントリ準備
-                        imedata.push( entryone );               // imedata 1エントリ追加.
+                        entryone = [ pretag, [pretag] ];        // data 1エントリ準備
+                        con.data.push( entryone );              // data 1エントリ追加.
                         var newtag = tagtext.slice( pretag.length ); // 残検索文字の切り出し.
                         tagtext = newtag;
                     }
                 }
             }
             if( entryone.length <= 0 ){             // 一致なし：検索文字そのまま.
-                entryone = [ tagtext, [tagtext] ];    // imedata 1エントリ準備
-                imedata.push( entryone );           // imedata 1エントリ追加.
+                entryone = [ tagtext, [tagtext] ];    // data 1エントリ準備
+                con.data.push( entryone );           // data 1エントリ追加.
                 //console.log( `>> No hit:${tagtext}` );
                 break;
             }
@@ -821,22 +834,22 @@ function GetNiwaDictEntry(){
 
 // Google変換のデータの書式を修正. 
 function googleData2MyIME( data ) {
-    imedata   = data;
+    con.data   = data;
     //  とりあえず、最初の1エントリのみ書式修正.
-    if( imedata[0][0] != imedata[0][1][0] ){                // 先頭が検索文字で無い場合.
-        var pos = imedata[0][1].indexOf( imedata[0][0] );   // 検索文字の位置.
+    if( con.data[0][0] != con.data[0][1][0] ){                // 先頭が検索文字で無い場合.
+        var pos = con.data[0][1].indexOf( con.data[0][0] );   // 検索文字の位置.
         if( pos > 0 ){
-            imedata[0][1].splice( pos, 1 );         // 先頭以外の検索文字は削除.
-            imedata[0][1].unshift( imedata[0][0] ); // 先頭に検索文字を追加.
+            con.data[0][1].splice( pos, 1 );         // 先頭以外の検索文字は削除.
+            con.data[0][1].unshift( con.data[0][0] ); // 先頭に検索文字を追加.
         } else if( pos < 0 ){                       // 検索文字がなかった場合.
-            imedata[0][1].unshift( imedata[0][0] ); // 先頭に検索文字を追加.
+            con.data[0][1].unshift( con.data[0][0] ); // 先頭に検索文字を追加.
         }
     }
 }
 
 // Google IME での検索.
 // 入力: inbuf - 変換入力文字
-// 出力: imedata, candIndex
+// 出力: data, Index
 function googleIMEcgi(){
     if( fifo.isEmpty() ) return;
     var url = "http://google.com/transliterate?langpair=ja-Hira|ja&text=" + fifo.inbuf;
@@ -947,14 +960,14 @@ function SearchCache( tagword ){
     return hitque;
 }
 
-// キャッシュ辞書から imedata を作成.
+// キャッシュ辞書から data を作成.
 function GetCacheDict(){
-    imedata = [[fifo.inbuf,[fifo.inbuf]]];
+    con.data = [[fifo.inbuf,[fifo.inbuf]]];
     var hitque = SearchCache( fifo.inbuf );
     if( hitque.length > 0 ){
         for( var depth = 0; depth < hitque.length; depth++ ){
-            imedata[0][1].push( hitque[depth][1] );
-            imedata[0][1].push( hitque[depth][0] );
+            con.data[0][1].push( hitque[depth][1] );
+            con.data[0][1].push( hitque[depth][0] );
         }
     }
     return (hitque.length > 0);

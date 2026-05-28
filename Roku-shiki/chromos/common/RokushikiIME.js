@@ -1,4 +1,4 @@
-/*  2026.05.27 20:00
+/*  2026.05.28 20:00
   Oya Key shift keyboard (自作キーボード用)
     
     >> Spcial keys << inbuf.length > 0 
@@ -145,6 +145,38 @@ class Converter{
         }
         return false;
     }
+
+    // ひらがな−カタカナ コード変換を行う.
+    // input: Hira2Kata true - カナ2かな, false - かな2カナ.
+    convertKana2( Hira2Kata ){
+        const mojihani = Hira2Kata ? [12353,12439,12445,12446] : [12449,12535,12541,12542];
+        const shiftval = Hira2Kata ? 96 : -96;
+        let kanabuf  = [];
+        for(let ofs = 0; ofs < this.fo.inbuf.length; ofs++ ){
+            let hirachar  = this.fo.inbuf.codePointAt( ofs );
+            let hirachar2 = hirachar;
+            if((mojihani[0] <= hirachar && hirachar <= mojihani[1])
+                ||(mojihani[2] <= hirachar && hirachar <= mojihani[3])){ // 変換文字範囲の場合.
+                hirachar2 += shiftval;
+            }
+            kanabuf += String.fromCharCode(hirachar2);
+        }
+//        console.log(`kana2:/${this.fo.inbuf}/${kanabuf}/`)
+        this.initialize( kanabuf );
+        this.candidate[0].annotation = this.fo.inbuf;
+        this.data = [[ this.fo.inbuf, [kanabuf, this.fo.inbuf]]];
+    }
+
+    //  変換データからCandidateを作成. Indexも作り直し...
+    //  カーソルライン用の文字列作成.
+    makeCandidate( mode ){
+        this.initialize( this.fo.inbuf );   // candidate初期化.
+        if( this.data.length >= 1 )         // dataが存在すれば実行.
+            this.copy( this.data[0][1], mode ); // 一段目の候補を設定: candidateに複製.
+        return;   
+    }
+
+
 }
 
 class Renderer{
@@ -264,40 +296,102 @@ class Renderer{
         return false;
     }
 
+    translateKana2( Hira2Kana ){
+        this.con.convertKana2( Hira2Kana );
+        this.convCandidate = true;
+        this.showComposition();
+    }
+}
+
+class Commit{
+    constructor(render, fifo)
+    {
+        this.rn = render;
+        this.fo = fifo;
+    }
+
     commitText( text ){ // 文字確定.
         chrome.input.ime.commitText({
-            "contextID": this.context, 
+            "contextID": this.rn.context, 
             "text": text
         });
     }
 
     commitOne( moji ){  // 一文字確定
         this.commitText( moji );
-        if( this.con.fo.isEmpty() ){    // FIFO が空の場合
-            this.clearComposition();
+        if( this.fo.isEmpty() ){    // FIFO が空の場合
+            this.rn.clearComposition();
         }
         else{
-            ren.convCandidate = false;  // 空でなくてもこれだけは
+            this.rn.convCandidate = false;  // 空でなくてもこれだけは
         }
     }
 
     commitFO(){                         // FIFOから一個出力
-        const moji = this.con.fo.pullone();
+        const moji = this.fo.pullone();
         if( moji ) this.commitOne( moji );
     }
 
     pushAndCommitIfNeed( moji ){
-        console.log(`pc(${this.con.fo.bufptr}):${moji}`);
-        if( this.con.fo.pushOne( moji )) return false;
+        console.log(`pc(${this.fo.bufptr}):${moji}`);
+        if( this.fo.pushOne( moji )) return false;
         this.commitOne( moji );
         return true;
     }
+
+    //  先頭の検索キーを確定させる
+    preCommit(){
+        //  異状停止: 入力無し状態で呼ばれたくない。デバッグ用に停止コードを仕込む.
+        //if( this.rn.con.data.length <= 0 || this.fo.isEmpty() ){ //---------------------------
+        //    console.log(`@@ Halt-preCommit: data=${this.rn.con.data}, inbuf=${this.fo.inbuf}`);
+        //    while(true);        // debug stop
+        //}   //---------------------------------------------------------------------------
+
+        //  候補選択がない場合は 未変換のまま.
+        const validiate = this.rn.con.candidate[this.rn.con.index].candidate;
+        let optionext = "";
+        console.log( `preCmt>${validiate}-${this.rn.con.candidate[this.rn.con.index].candidate}(${this.rn.con.index})` );
+        this.fo.substr( this.rn.con.data[0][0].length );
+
+        // 確定オプション: data 二段目が 「てにをは」なら二段目も確定させる.
+        if( this.rn.con.data.length > 1 ){
+            const optionmoji = "てにをはのもでがと、。";
+            if( optionmoji.indexOf( this.rn.con.data[1][0] ) >= 0 ){
+                optionext = this.rn.con.data[1][0];      // 二段目を追加確定.
+                this.fo.substr( this.rn.con.data[1][0].length );
+                this.rn.con.data.splice(1,1);            // 二段目も消しておく.
+            }
+        }
+
+        this.commitText( validiate+optionext );
+        return validiate;
+    }
+
+    //  先頭候補確定.
+    commitTopCandidate( mode ){
+        let allclear = false;
+        console.log(`cmtTop>${this.rn.con.data}/${this.fo.inbuf}/${this.rn.con.index}`);
+        // 最前一個を確定させる.
+        const text = this.fo.pullTop();
+        if( text ) this.commitText( text );
+        else if( this.rn.con.data.length > 0 ) PrefixOne();
+        if( !this.fo.isEmpty() ){
+            this.rn.showCompositionAnd( mode );         // 残りの文字を表示.
+        } else {
+            this.rn.clearComposition();
+            allclear = true;
+        }
+        console.log(`cmdTop<${this.rn.con.data}/${this.fo.inbuf}`);
+        return allclear;
+    }
+
 
 }
 
 const fifo = new FIFO();
 const con = new Converter(fifo);
 const ren = new Renderer(con);
+const cmt = new Commit(ren,fifo);
 
 //let context_id = -1;
 
@@ -360,103 +454,47 @@ function menuItemUpdate(){
     });
 }
 
-//  変換データからCandidateを作成. Indexも作り直し...
-//  カーソルライン用の文字列作成.
-function makeCandidate(){
-    con.initialize( fifo.inbuf ); // candidate初期化.
-    if( con.data.length >= 1 )           // dataが存在すれば実行.
-        con.copy( con.data[0][1], imemode ); // 一段目の候補を設定: candidateに複製.
-    return;   
-}
-
 function copyEntry( entryindex ){      // Entryを複製.
-    let array2 = [];
-    let array1 = [];
-    let entry  = Niwadict[entryindex];
-    for( let pos = 0; pos < entry[3].length; pos++ )
-        array2.push( entry[3][pos] );
-    for( let pos = 0; pos < 3; pos++ )
-        array1.push( entry[pos] );
-    array1.push( array2 );
-    return array1;
-}
-
-function showCompoAndCand(){        // バインド関数
-    ren.showCompositionAnd( imemode );
-}
-
-function showCands(){
-    ren.showCandidates( imemode );
+    return structuredClone(Niwadict[entryindex]);
 }
 
 //  先頭候補確定.
-function fixOne(){
-    let allclear = false;
-    console.log(`fixOne>${con.data}/${fifo.inbuf}/${con.index}`);
-    // 最前一個を確定させる.
-    const text = fifo.pullTop();
-    if( text ){
-        chrome.input.ime.commitText({
-            "contextID": ren.context, 
-            "text": text
-        });
-    } 
-    else if( con.data.length > 0 ) PrefixOne();
-    if( !fifo.isEmpty() ){
-        ren.showCompositionAnd( imemode );         // 残りの文字を表示.
-    } else {
-        ren.clearComposition();
-        allclear = true;
-    }
-    console.log(`fixOne<${con.data}/${fifo.inbuf}`);
-    return allclear;
-}
+//function fixOne(){
+//    let allclear = false;
+//    console.log(`fixOne>${con.data}/${fifo.inbuf}/${con.index}`);
+//    // 最前一個を確定させる.
+//    const text = fifo.pullTop();
+//    if( text ) cmt.commitText( text );
+//    else if( con.data.length > 0 ) PrefixOne();
+//    if( !fifo.isEmpty() ){
+//        ren.showCompositionAnd( imemode );         // 残りの文字を表示.
+//    } else {
+//        ren.clearComposition();
+//        allclear = true;
+//    }
+//    console.log(`fixOne<${con.data}/${fifo.inbuf}`);
+//    return allclear;
+//}
 
 //  PrefixOne: 先頭の検索キーを確定させ, 辞書に登録する.
 //  入力: candidate, data, inbuf
 //  出力: data, inbuf
 //  操作: 辞書登録, commitText, 候補窓変更
 function PrefixOne(){   // 先頭確定.
-    //  異状停止: 入力無し状態で呼ばれたくない。デバッグ用に停止コードを仕込む.
-    if( con.data.length <= 0 || fifo.isEmpty() ){ //---------------------------
-        console.log(`@@ Halt-PrefixOne: data=${con.data}, inbuf=${fifo.inbuf}`);
-        while(true);        // debug stop
-    }   //---------------------------------------------------------------------------
-    //  候補選択がない場合は 未変換のまま.
-    let validiate = con.candidate[con.index].candidate;
-    let optionext = "";
-    console.log( `PrefixOne>${validiate}-${con.candidate[con.index].candidate}(${con.index})` );
-    fifo.substr( con.data[0][0].length );
+    const validiate = cmt.preCommit();
 
-    // 確定オプション: data 二段目が 「てにをは」なら二段目も確定させる.
-    if( con.data.length > 1 ){
-        const optionmoji = "てにをはのもでがと、。";
-        if( optionmoji.indexOf( con.data[1][0] ) >= 0 ){
-            optionext = con.data[1][0];      // 二段目を追加確定.
-            fifo.substr( con.data[1][0].length );
-            con.data.splice(1,1);            // 二段目も消しておく.
-        }
-    }
-
-    chrome.input.ime.commitText({
-        "contextID": ren.context, 
-        "text": validiate + optionext
-    });
     SaveNiwaDictEntry( validiate ); // 先に変換データを保存.
     con.data.splice(0,1);           // dataの一段目を削除.
     ren.invibleCandidate();         // candidate windowの消去.
 
-    if( con.data.length > 0 ) makeCandidate();   // candidateの作り直し
-//    henkanAri = false;
+//    if( con.data.length > 0 ) makeCandidate();   // candidateの作り直し
+    con.makeCandidate( imemode );   // candidateの作り直し
     console.log( `PrefixOne<${validiate}:${fifo.inbuf}` );
 }
 
 //  fixAll： 全確定はカーソル行表示をそのまま確定させる.
 function fixAll(){  //  変換候補を全FIX.
-    chrome.input.ime.commitText({
-        "contextID": ren.context, 
-        "text": fifo.curbuf
-    });
+    cmt.commitText( fifo.curbuf );
     if( con.data.length > 1 ){
         for( let depth = 1; depth < con.data.length; depth++ )
             con.data[0][0] += con.data[depth][0];
@@ -477,36 +515,12 @@ function setOtherCandidate( updown ){
     if( ren.otherCandidate( updown, imemode ) ) SelectIME();    // IME切り替え.
 }
 
-// ひらがな−カタカナ コード変換を行う.
-// input: Hira2Kata true - カナ2かな, false - かな2カナ.
-function translateKanaKana( Hira2Kata ){
-    let kanabuf  = [];
-    let mojihani = Hira2Kata ? [12353,12439,12445,12446] : [12449,12535,12541,12542];
-    let shiftval = Hira2Kata ? 96 : -96;
-    for(let ofs = 0; ofs < fifo.inbuf.length; ofs++ ){
-        let hirachar  = fifo.inbuf.codePointAt( ofs );
-        let hirachar2 = hirachar;
-        if((mojihani[0] <= hirachar && hirachar <= mojihani[1])
-            ||(mojihani[2] <= hirachar && hirachar <= mojihani[3])){ // 変換文字範囲の場合.
-            hirachar2 += shiftval;
-        }
-        kanabuf += String.fromCharCode(hirachar2);
-    }
-    con.initialize( kanabuf );
-    con.candidate[0].annotation = fifo.inbuf;
-    con.data = [[ fifo.inbuf, [kanabuf, fifo.inbuf]]];
-    ren.convCandidate = true;
-}
-
-function CommitOne( text ){   // 一文字確定.
-    // 指定された一個を確定させる.
-    chrome.input.ime.commitText({
-        "contextID": ren.context, 
-        "text": text
-    });
-    ren.invibleCandidate(); // candidate windowの消去.
-    con.clearData();    // data 初期化.
-}
+//function CommitOne( text ){   // 一文字確定.
+//    // 指定された一個を確定させる.
+//    ren.commitText( text );
+//    ren.invibleCandidate(); // candidate windowの消去.
+//    con.clearData();    // data 初期化.
+//}
 
 chrome.input.ime.onCandidateClicked.addListener(
     function(engineID, candidate, button, mouse) {
@@ -549,7 +563,7 @@ function SelectIME(){
                     GetNiwaDictEntry();         // キャッシュヒットなし → local search
             }
             if( imemode != 1 ){                 // web 
-                makeCandidate();
+                con.makeCandidate( imemode );   // candidateの作り直し
                 ren.showCompositionAnd( imemode );
             }
             else if( interval < 0 )
@@ -563,7 +577,7 @@ function WebResponceTimer(){
     if( imemode == 0 ){
         clearInterval( interval );
         interval = -1;
-        makeCandidate();
+        con.makeCandidate( imemode );   // candidateの作り直し
         ren.showCompositionAnd( imemode );
     }
 }
@@ -1037,10 +1051,7 @@ function MakeTextNiwadictionary(){
             }
         }
         wbuf += "],\n";               // 改行コード.
-        chrome.input.ime.commitText({
-            "contextID": ren.context, 
-            "text": wbuf
-        });
+        cmt.commitText( wbuf );
     }
     if( imemode == 7 && interval < 0 ){
         interval = setInterval( MakeTextNiwadictionary, 240 );

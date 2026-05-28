@@ -1,4 +1,4 @@
-/*  2026.05.27 20:00
+/*  2026.05.28 20:00
   親指シフトキーボードIME ver 5.2 (JISキーボード用)
     
     カーソル行表示：最初は検索文字（ひらがな）のみの表示、入力増で適度に変換候補筆頭を表示.
@@ -401,7 +401,7 @@ class KeyFlows{
     actShift2Moji(){
         fifo.deleteLastOne();  // 直前の文字確定を取り消す.
         if (!this.map.thumbHW) this.expandLongTimer(); // シフトキーの場合長押し判定時間を延長
-        if( !ren.pushAndCommitIfNeed( this.map.getMoji() ) ) IME_Rokushiki();
+        if( !cmt.pushAndCommitIfNeed( this.map.getMoji() ) ) IME_Rokushiki();
         return true;
     }
 
@@ -412,11 +412,11 @@ class KeyFlows{
         }
         if( this.isMultiTap() ){   // 同一世代かつ同一キーの判定
             if( this.map.thumbHW ) fifo.deleteLastOne();  // 親指シフトキーボードなら直前の文字を消す処理.
-            if( !ren.pushAndCommitIfNeed( this.map.getMojiNext() ) ) IME_Rokushiki();
+            if( !cmt.pushAndCommitIfNeed( this.map.getMojiNext() ) ) IME_Rokushiki();
         }
         else {
             this.syncGeneration();  // Shiftキーの世代を文字キーにセット
-            if( !ren.pushAndCommitIfNeed( this.map.getMoji() ) ) IME_Rokushiki();
+            if( !cmt.pushAndCommitIfNeed( this.map.getMoji() ) ) IME_Rokushiki();
         }
         if( this.map.offset !== 0 ) this.map.jpmode = true; // Mode 復帰
         return true;
@@ -429,7 +429,7 @@ class KeyFlows{
         if( !fifo.isEmpty() && fifo.inbuf[fifo.inbuf.length - 1] === " " ) fixAll();     // 確定
         if( this.map.offset === 0 && (fifo.isEmpty() || fifo.inbuf.length > 5)) this.enterUSmode();   // US modeへ 
         if( this.map.jpmode ){
-            if( !ren.pushAndCommitIfNeed( this.map.getMojiFirst() ) ) IME_Rokushiki();
+            if( !cmt.pushAndCommitIfNeed( this.map.getMojiFirst() ) ) IME_Rokushiki();
         }
         else return false;  // システムへ処理を渡す
         return true;
@@ -438,19 +438,19 @@ class KeyFlows{
     // シフト後処理 親指キーボード未確定
     actShiftFollow(){
         if( fifo.isEmpty() ){
-            if( this.shift.isKeyRepeatActive() ) CommitOne(" ") // SPCをアプリに渡す(キーリピート).
+            if( this.shift.isKeyRepeatActive() ) cmt.commitOne(" ") // SPCをアプリに渡す(キーリピート).
             else this.setLateKeyDown( SPCLateKeyDown );  // シフトの遅延処理をセット
         }
         else if( this.map.offset !== 0 ){
             this.setLateKeyDown( SPCLateKeyDown );  // シフトの遅延処理をセット
         }
-        else if( !ren.pushAndCommitIfNeed(" ") ) IME_Rokushiki();
+        else if( !cmt.pushAndCommitIfNeed(" ") ) IME_Rokushiki();
         return true;
     }
 
     // 英大文字
     actUSLarge(){
-        if( this.map.jpmode && !ren.pushAndCommitIfNeed(this.map.getMoji2( 0 ).toUpperCase())) IME_Rokushiki();
+        if( this.map.jpmode && !cmt.pushAndCommitIfNeed(this.map.getMoji2( 0 ).toUpperCase())) IME_Rokushiki();
         else return false;  // システムへ処理を渡す
         return true;
     }
@@ -467,7 +467,7 @@ class KeyFlows{
 
     actTabSpace(){
         if( this.map.offset !== 0 ){
-            if( this.info.shift ) fixOne(); // Shift付きは先頭確定.
+            if( this.info.shift ) cmt.commitTopCandidate( imemode ); // Shift付きは先頭確定.
             else setOtherCandidate( 1 );    // 先頭変換.
             return true;
         }
@@ -476,7 +476,7 @@ class KeyFlows{
     }
 
     actEnter(){
-        if( this.info.shift || fifo.bufptr < 0 ) fixOne();    // 先頭確定.
+        if( this.info.shift || fifo.bufptr < 0 ) cmt.commitTopCandidate( imemode );    // 先頭確定.
         else fixAll();
         return true;
     }
@@ -494,14 +494,14 @@ class KeyFlows{
     actRight(){
         fifo.bufptr++;                // カーソル右へ.
         if( fifo.bufptr > 0 ) fifo.bufptr = 0;
-        showComposition();
+        ren.showComposition();
         return true;
     }
 
     actLeft(){
         fifo.bufptr--;                // カーソル左へ.
         if( fifo.insbuf.length + fifo.bufptr < 0 ) fifo.bufptr = -fifo.inbuf.length;
-        showComposition();
+        ren.showComposition();
         return true;
     }
 
@@ -515,15 +515,13 @@ class KeyFlows{
 
     // Brightness upの入力 (カタカナ変換) 
     actBrightnessUp(){
-        translateKanaKana( true )
-        showComposition();
+        ren.translateKana2( true )
         return true;
     }
 
     // Brightness Downの入力 (ひらがな変換)
     actBrightnessDown(){
-        translateKanaKana( false );
-        showComposition();
+        ren.translateKana2( false );
         return true;
     }
 
@@ -543,7 +541,7 @@ class KeyFlows{
     // Key 長押し, 確定文字を一つ削除してからオフセット3の文字を確定する
     actLongPress(){
         fifo.deleteLastOne();
-        if( !ren.pushAndCommitIfNeed( this.map.getMoji2( 3 ) ) ) IME_Rokushiki();
+        if( !cmt.pushAndCommitIfNeed( this.map.getMoji2( 3 ) ) ) IME_Rokushiki();
         return true;
     }
 }
@@ -565,10 +563,10 @@ const cflow = new KeyFlows(cinf, cmap); // キーフロー制御
 // シフトの遅延処理
 function SPCLateKeyDown(){
     if( fifo.isEmpty() ){   // inbufが空のときは、SPCをアプリに渡す.
-        CommitOne(" ");   // SPCをアプリに渡す.
+        cmt.commitOne(" ");   // SPCをアプリに渡す.
     }
     else {
-        if( cinf.shift ) fixOne();        // Shift付きは先頭確定.
+        if( cinf.shift ) cmt.commitTopCandidate( imemode );        // Shift付きは先頭確定.
         else setOtherCandidate( 1 );   // 先頭変換.
     }
 }

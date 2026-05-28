@@ -248,7 +248,7 @@ class KeyFlows{
     detectNoKeyBufCase(keyData){
         if (fifo.inbuf.length > 0) return null;
         // Alt + Esc → 辞書テキスト出力
-        if (imemode === 7 && keyData.key === "Esc" && this.info.alt) return this.seen.DICTOUTPUT;
+        if (dic.mode === 7 && keyData.key === "Esc" && this.info.alt) return this.seen.DICTOUTPUT;
         // inbuf が空 → IME 処理不要
         return this.seen.NOKEYBUF;
     }
@@ -467,7 +467,7 @@ class KeyFlows{
 
     actTabSpace(){
         if( this.map.offset !== 0 ){
-            if( this.info.shift ) cmt.commitTopCandidate( imemode ); // Shift付きは先頭確定.
+            if( this.info.shift ) cmt.commitTopCandidate( dic.mode ); // Shift付きは先頭確定.
             else setOtherCandidate( 1 );    // 先頭変換.
             return true;
         }
@@ -476,7 +476,7 @@ class KeyFlows{
     }
 
     actEnter(){
-        if( this.info.shift || fifo.bufptr < 0 ) cmt.commitTopCandidate( imemode );    // 先頭確定.
+        if( this.info.shift || fifo.bufptr < 0 ) cmt.commitTopCandidate( dic.mode );    // 先頭確定.
         else fixAll();
         return true;
     }
@@ -566,7 +566,7 @@ function SPCLateKeyDown(){
         cmt.commitOne(" ");   // SPCをアプリに渡す.
     }
     else {
-        if( cinf.shift ) cmt.commitTopCandidate( imemode );        // Shift付きは先頭確定.
+        if( cinf.shift ) cmt.commitTopCandidate( dic.mode );        // Shift付きは先頭確定.
         else setOtherCandidate( 1 );   // 先頭変換.
     }
 }

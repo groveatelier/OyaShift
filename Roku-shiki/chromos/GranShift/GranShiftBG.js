@@ -1,4 +1,4 @@
-/*  2026.05.28 20:00
+/*  2026.05.29 20:00
   親指シフトキーボードIME ver 5.2 (JISキーボード用)
     
     カーソル行表示：最初は検索文字（ひらがな）のみの表示、入力増で適度に変換候補筆頭を表示.
@@ -8,6 +8,7 @@
 */
 const engine   = "GranShift";
 
+importScripts("Dictionary.js");
 importScripts("RokushikiIME.js");
 
 class KeyInformation{
@@ -424,9 +425,14 @@ class KeyFlows{
 
     // 文字入力
     actMojiFirst(){
-        //console.log(`M1: ${fifo.inbuf.length}/${fifo.inbuf}/${this.map.index}/${this.map.offset}`);
-        // inbufが空では無い時は、inbufの最後の文字が空白であれば確定させる
-        if( !fifo.isEmpty() && fifo.inbuf[fifo.inbuf.length - 1] === " " ) fixAll();     // 確定
+        console.log(`M1:${fifo.inbuf.length}/${fifo.inbuf}/${this.map.index}/${this.map.offset}`);
+        console.log(`M1a:${fifo.isEmpty()}/${fifo.inbuf[fifo.inbuf.length - 1]}/${fifo.curbuf}/`);
+        //x inbufが空では無い時は、inbufの最後の文字が空白であれば確定させる
+        //if( !fifo.isEmpty() && fifo.inbuf[fifo.inbuf.length - 1] === " " ) fixAll();     // 確定
+        if( fifo.inbuf === " " ){
+            fifo.curbuf = fifo.inbuf;
+            fixAll();                   // 確定
+        }
         if( this.map.offset === 0 && (fifo.isEmpty() || fifo.inbuf.length > 5)) this.enterUSmode();   // US modeへ 
         if( this.map.jpmode ){
             if( !cmt.pushAndCommitIfNeed( this.map.getMojiFirst() ) ) IME_Rokushiki();
@@ -500,7 +506,7 @@ class KeyFlows{
 
     actLeft(){
         fifo.bufptr--;                // カーソル左へ.
-        if( fifo.insbuf.length + fifo.bufptr < 0 ) fifo.bufptr = -fifo.inbuf.length;
+        if( fifo.inbuf.length + fifo.bufptr < 0 ) fifo.bufptr = -fifo.inbuf.length;
         ren.showComposition();
         return true;
     }
@@ -509,7 +515,7 @@ class KeyFlows{
         fifo.deleteLastOne();
         ren.convCandidate = false;
         if( fifo.isEmpty() ) ren.clearComposition();
-        else rokushikiIME();
+        else IME_Rokushiki();
         return true;
     }
 
@@ -578,7 +584,7 @@ chrome.input.ime.onKeyEvent.addListener(
         cflow.keyUp( keyData );
     } 
     else if(keyData.type === "keydown"){
-        //console.log(`KD:(${keyData.key}|${keyData.code})`);
+        console.log(`KD:(${keyData.key}|${keyData.code})`);
         enact = cflow.keyDown( keyData );
     }
     return enact;

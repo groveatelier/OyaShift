@@ -361,7 +361,7 @@ function SelectIME(){
 //    console.log(`SI:${dic.mode}`)
     if( dic.mode !== 1 ){
         con.initialize();
-        if( !fifo.isEmpty() ){
+        if( fifo.isAvailable() ){
             if( dic.mode === 2 ) googleIMEcgi();  // web search
             else if( dic.mode === 3 ) GetNiwaDictEntry();
             else {

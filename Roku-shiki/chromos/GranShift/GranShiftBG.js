@@ -198,11 +198,12 @@ class KeyFlowCommon{
 }
 
 class KeyFlows{
-    constructor(info, map){
+    constructor(info, map, fifo){
         this.shift = new KeyFlowCommon(2400);
         this.moji = new KeyFlowCommon(1800);
         this.info = info;   // KeyInformationハンドラ
-        this.map = map;     // MojiMapハンドラ
+        this.map = map;     // MojiMapハンドラハンドラ
+        this.fi = fifo;     // fifoハンドラ
         this.seen = {
             PEND: "pending",
             SHIFT2MOJI: "shiftToMoji",
@@ -247,7 +248,7 @@ class KeyFlows{
     }
 
     detectNoKeyBufCase(keyData){
-        if (fifo.inbuf.length > 0) return null;
+        if (!this.fi.isEmpty()) return null;
         // Alt + Esc → 辞書テキスト出力
         if (dic.mode === 7 && keyData.key === "Esc" && this.info.alt) return this.seen.DICTOUTPUT;
         // inbuf が空 → IME 処理不要
@@ -273,7 +274,7 @@ class KeyFlows{
 
     detectKeyDownAction(keyData){
         const keyindex = this.map.getIndex(keyData);  // キーインデックス検索
-        //console.log(`dkDA: ${keyindex}/${this.map.index}/${this.map.shiftNo}/`);
+        //console.log(`dkDA: ${keyindex}/${this.map.index}/${this.fi.inbuf}/${this.fi.curbuf}/`);
         // 1) 親指シフト or かなキー
         const kanaOrShift = this.detectKanaOrShift(keyindex);
         if (kanaOrShift) return kanaOrShift;
@@ -298,7 +299,8 @@ class KeyFlows{
     }
 
     mojikeyDown(){      // 文字キー押下時の処理
-        if( this.map.index === 0 && fifo.inbuf.trim().length > 0 ) return this.seen.TABSPC;
+        //console.log(`mojikyDown:${this.map.index}`)
+        if( this.map.index === 0 && this.fi.isAvailable() ) return this.seen.TABSPC;
         if( !this.moji.keyDown2( this.map.index ) ) return this.seen.PEND;  // リピート抑止期間中は何もしない
         //if (!this.moji.shouldFire(this.map.index)) return this.seen.PEND;
         if( this.info.shift && this.map.isEiInx( this.map.index )) return this.seen.USLARGE;
@@ -365,7 +367,7 @@ class KeyFlows{
     }
 
     enterUSmode(){
-        if( fifo.inbuf.length > 0 ) fixAll();  // 掃き出し
+        if( !this.fi.isEmpty() ) fixAll();  // 掃き出し
         ren.clearComposition();
         this.map.jpmode = false;
     }
@@ -400,7 +402,7 @@ class KeyFlows{
 
     // シフト契機で文字確定
     actShift2Moji(){
-        fifo.deleteLastOne();  // 直前の文字確定を取り消す.
+        this.fi.deleteLastOne();  // 直前の文字確定を取り消す.
         if (!this.map.thumbHW) this.expandLongTimer(); // シフトキーの場合長押し判定時間を延長
         if( !cmt.pushAndCommitIfNeed( this.map.getMoji() ) ) IME_Rokushiki();
         return true;
@@ -409,10 +411,10 @@ class KeyFlows{
     // 文字キー契機で文字確定
     actMoji2Shift(){
         if( !this.clearDownTimer() && !this.map.thumbHW ){  // シフトの遅延処理クリア
-            fifo.deleteLastOne();  // 親指キーボード未確定なら直前の空白を消す処理.
+            this.fi.deleteLastOne();  // 親指キーボード未確定なら直前の空白を消す処理.
         }
         if( this.isMultiTap() ){   // 同一世代かつ同一キーの判定
-            if( this.map.thumbHW ) fifo.deleteLastOne();  // 親指シフトキーボードなら直前の文字を消す処理.
+            if( this.map.thumbHW ) this.fi.deleteLastOne();  // 親指シフトキーボードなら直前の文字を消す処理.
             if( !cmt.pushAndCommitIfNeed( this.map.getMojiNext() ) ) IME_Rokushiki();
         }
         else {
@@ -425,15 +427,15 @@ class KeyFlows{
 
     // 文字入力
     actMojiFirst(){
-        console.log(`M1:${fifo.inbuf.length}/${fifo.inbuf}/${this.map.index}/${this.map.offset}`);
-        console.log(`M1a:${fifo.isEmpty()}/${fifo.inbuf[fifo.inbuf.length - 1]}/${fifo.curbuf}/`);
+        console.log(`M1:${this.fi.inbuf.length}/${this.fi.inbuf}/${this.map.index}/${this.map.offset}`);
+        //console.log(`M1a:${this.fi.isEmpty()}/${this.fi.inbuf[this.fi.inbuf.length - 1]}/${this.fi.curbuf}/`);
         //x inbufが空では無い時は、inbufの最後の文字が空白であれば確定させる
         //if( !fifo.isEmpty() && fifo.inbuf[fifo.inbuf.length - 1] === " " ) fixAll();     // 確定
-        if( fifo.inbuf === " " ){
-            fifo.curbuf = fifo.inbuf;
-            fixAll();                   // 確定
+        if( this.map.index === 0 && this.fi.isEmpty() ){
+            cmt.commitOne(" ");
+            return true;
         }
-        if( this.map.offset === 0 && (fifo.isEmpty() || fifo.inbuf.length > 5)) this.enterUSmode();   // US modeへ 
+        if( this.map.offset === 0 && (this.fi.isEmpty() || this.fi.inbuf.length > 5)) this.enterUSmode();   // US modeへ 
         if( this.map.jpmode ){
             if( !cmt.pushAndCommitIfNeed( this.map.getMojiFirst() ) ) IME_Rokushiki();
         }
@@ -443,7 +445,7 @@ class KeyFlows{
 
     // シフト後処理 親指キーボード未確定
     actShiftFollow(){
-        if( fifo.isEmpty() ){
+        if( this.fi.isEmpty() ){
             if( this.shift.isKeyRepeatActive() ) cmt.commitOne(" ") // SPCをアプリに渡す(キーリピート).
             else this.setLateKeyDown( SPCLateKeyDown );  // シフトの遅延処理をセット
         }
@@ -482,7 +484,7 @@ class KeyFlows{
     }
 
     actEnter(){
-        if( this.info.shift || fifo.bufptr < 0 ) cmt.commitTopCandidate( dic.mode );    // 先頭確定.
+        if( this.info.shift || this.fi.bufptr < 0 ) cmt.commitTopCandidate( dic.mode );    // 先頭確定.
         else fixAll();
         return true;
     }
@@ -498,23 +500,23 @@ class KeyFlows{
     }
 
     actRight(){
-        fifo.bufptr++;                // カーソル右へ.
-        if( fifo.bufptr > 0 ) fifo.bufptr = 0;
+        this.fi.bufptr++;                // カーソル右へ.
+        if( this.fi.bufptr > 0 ) this.fi.bufptr = 0;
         ren.showComposition();
         return true;
     }
 
     actLeft(){
-        fifo.bufptr--;                // カーソル左へ.
-        if( fifo.inbuf.length + fifo.bufptr < 0 ) fifo.bufptr = -fifo.inbuf.length;
+        this.fi.bufptr--;                // カーソル左へ.
+        if( this.fi.inbuf.length + this.fi.bufptr < 0 ) this.fi.bufptr = -this.fi.inbuf.length;
         ren.showComposition();
         return true;
     }
 
     actBackspace(){
-        fifo.deleteLastOne();
+        this.fi.deleteLastOne();
         ren.convCandidate = false;
-        if( fifo.isEmpty() ) ren.clearComposition();
+        if( this.fi.isEmpty() ) ren.clearComposition();
         else IME_Rokushiki();
         return true;
     }
@@ -532,21 +534,21 @@ class KeyFlows{
     }
 
     actEsc(){
-        if( !fifo.isEmpty() && this.map.offset === 0 ) fixAll();   // US文字は掃き出してから
+        if( !this.fi.isEmpty() && this.map.offset === 0 ) fixAll();   // US文字は掃き出してから
         ren.undoConvert();
         return true;
     }
 
     // 一文字確定. Double Quate
     actQuote(){
-        ren.commitFO();     // 一文字確定＆コミット処理.
+        cmt.commitFO();     // 一文字確定＆コミット処理.
         IME_Rokushiki();
         return true;
     }
 
     // Key 長押し, 確定文字を一つ削除してからオフセット3の文字を確定する
     actLongPress(){
-        fifo.deleteLastOne();
+        this.fi.deleteLastOne();
         if( !cmt.pushAndCommitIfNeed( this.map.getMoji2( 3 ) ) ) IME_Rokushiki();
         return true;
     }
@@ -564,7 +566,7 @@ class KeyFlows{
 
 const cinf = new KeyInformation();  // 入力キー情報管理
 const cmap = new MojiMap();         // キーマップ管理
-const cflow = new KeyFlows(cinf, cmap); // キーフロー制御
+const cflow = new KeyFlows(cinf, cmap, fifo); // キーフロー制御
 
 // シフトの遅延処理
 function SPCLateKeyDown(){

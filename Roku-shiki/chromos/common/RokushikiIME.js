@@ -96,20 +96,6 @@ class Converter{
         this.fo.clear();
     }
 
-    // candidate へのデータ設定.
-    copy( arrayone, mode ){
-        for( let pos = 0; pos < arrayone.length; pos++ ){
-            let idno = this.candidate.length;
-            if( arrayone[pos] !== this.candidate[0].candidate ){
-                if( mode === 3 ){
-                    this.candidate.push({annotation:arrayone[pos+1], candidate:arrayone[pos], id:idno});
-                    pos++;
-                }
-                else this.candidate.push({annotation:"", candidate:arrayone[pos], id:idno});
-            }
-        }
-    }
-
     // カーソル行に表示する文字列を作成 : 適度に変換筆頭文字を加える.
     makeCursolbuf(){
         if( this.data.length > 0 ){
@@ -167,13 +153,26 @@ class Converter{
         this.data = [[ this.fo.inbuf, [kanabuf, this.fo.inbuf]]];
     }
 
-    //  変換データからCandidateを作成. Indexも作り直し...
-    //  カーソルライン用の文字列作成.
+    // candidate 作成.
     makeCandidate( mode ){
         this.initialize( this.fo.inbuf );   // candidate初期化.
         if( this.data.length >= 1 )         // dataが存在すれば実行.
-            this.copy( this.data[0][1], mode ); // 一段目の候補を設定: candidateに複製.
+            this.copyTo( this.data[0][1], mode ); // 一段目の候補を設定: candidateに複製.
         return;   
+    }
+
+    // candidate へのデータ設定.
+    copyTo( arrayone, mode ){
+        for( let pos = 0; pos < arrayone.length; pos++ ){
+            let idno = this.candidate.length;
+            if( arrayone[pos] !== this.candidate[0].candidate ){
+                if( mode === 3 ){
+                    this.candidate.push({annotation:arrayone[pos+1], candidate:arrayone[pos], id:idno});
+                    pos++;
+                }
+                else this.candidate.push({annotation:"", candidate:arrayone[pos], id:idno});
+            }
+        }
     }
 
 
@@ -413,9 +412,6 @@ const ren = new Renderer(con);
 const cmt = new Commit(ren,fifo);
 const mnu = new UIMenu();
 
-//const menuInp  = "minput";
-//let menuArg    = [{"id": menuInp, "label": "かな"}]
-
 chrome.input.ime.onFocus.addListener(function(context) {
     ren.context = context.contextID;
 });
@@ -445,23 +441,14 @@ chrome.input.ime.onMenuItemActivated.addListener(function(eng,name){
     }
 });
 
-/*
-function menuItemRevise(){
-    menuArg[0].label = cmap.jpmode ? "かな" : "英字"; // かな入力モード.
-}
-
-function menuItemUpdate(){
-    menuItemRevise();
-    chrome.input.ime.updateMenuItems({
-        "engineID": engine,
-        "items": menuArg
-    });
-}
-*/
-
-function copyEntry( entryindex ){      // Entryを複製.
-    return structuredClone(dic.rokushiki[entryindex]);
-}
+chrome.input.ime.onCandidateClicked.addListener(
+    function(engineID, candidate, button, mouse) {
+    	if(cmap.jpmode && button == "left"){
+            con.index = candidate;                   // set index
+            ren.showComposition();
+        }
+    }
+);
 
 //  PrefixOne: 先頭の検索キーを確定させ, 辞書に登録する.
 //  入力: candidate, data, inbuf
@@ -486,7 +473,7 @@ function fixAll(){  //  変換候補を全FIX.
     if( con.data.length > 0 ){
         for( let depth = 1; depth < con.data.length; depth++ )
             con.data[0][0] += con.data[depth][0];
-        console.log(`fixAll>${con.data[0][0]}:${fifo.curbuf}:${fifo.inbuf}`);
+        console.log(`fixAll>${fifo.curbuf}`);
 //        console.log(con.data);
 
         // 長文登録は避ける 文字数制限を実施.
@@ -503,15 +490,6 @@ function setOtherCandidate( updown ){
     if( ren.otherCandidate( updown, dic.mode ) ) SelectIME();    // IME切り替え.
 }
 
-chrome.input.ime.onCandidateClicked.addListener(
-    function(engineID, candidate, button, mouse) {
-    	if(cmap.jpmode && button == "left"){
-            con.index = candidate;                   // set index
-            ren.showComposition();
-        }
-    }
-);
-
 // 辞書から変換文字列を検索し、dataを作成する.
 // 入力: inbuf - 変換入力文字
 // 出力: data, Index
@@ -522,8 +500,8 @@ function GetNiwaDictEntry(){
         ren.showLine( fifo.inbuf );      // 辞書が開くまでの暫定表示.
         fifo.curbuf = fifo.inbuf;
     } else {
-        var tagtext  = fifo.inbuf;   // 変換対象文字列.
-        var stoplimit = 64;         // 長文変換の制限.
+        let tagtext  = fifo.inbuf;   // 変換対象文字列.
+        let stoplimit = 64;         // 長文変換の制限.
         dic.mode = 2;                // Rokushiki IME 動作―早めに設定要.
 
         // textの中に変換候補文字列があるか検索.
@@ -531,20 +509,20 @@ function GetNiwaDictEntry(){
             if( stoplimit-- <= 0 ){
                 console.log(`*Stop limit* (${stoplimit}):${tagtext}`); 
             }
-            var entryone  = [];     // dataに展開する1エントリ.
-            for( var depth = 1; depth < dic.rokushiki.length; depth++ ){     // 辞書検索ループ.
-                var etag   = copyEntry( depth );            // etag <- dic.rokushikiの参照
-                var hitpos = tagtext.indexOf( etag[0] );    // 変換文字にヒットするか?
+            let entryone  = [];     // dataに展開する1エントリ.
+            for( let depth = 1; depth < dic.rokushiki.length; depth++ ){     // 辞書検索ループ.
+                let etag   = dic.copyEntry( depth );            // etag <- dic.rokushikiの参照
+                let hitpos = tagtext.indexOf( etag[0] );    // 変換文字にヒットするか?
                 if( hitpos >= 0 ){                          // hit
-                    if( hitpos == 0 ){                      // 先頭で一致.
+                    if( hitpos === 0 ){                     // 先頭で一致.
                         entryone = [];                  // entryone初期化.
                         entryone.push( etag[0] );       // dataにも変換前文字列を入れる.
                         entryone.push( etag[3] );       // dataに変換候補郡を入れる.
                         entryone[1].unshift( etag[0] ); // 変換候補郡先頭は検索文字.
                         con.data.push( entryone );      // dataに1エントリ追加.
  
-                        if( tagtext != etag[0] ){           // 前方一致?
-                            var newtag = tagtext.slice(( etag[0].length - tagtext.length ));
+                        if( tagtext !== etag[0] ){      // 前方一致?
+                            let newtag = tagtext.slice(( etag[0].length - tagtext.length ));
                             tagtext = newtag;               // 残り検索文字設定.
                             //console.log( `>> Rest:${tagtext}(${stoplimit})` );
                         } else {
@@ -553,10 +531,10 @@ function GetNiwaDictEntry(){
                         }
                     } else {
                         //console.log( `>> Post hit:(${hitpos})${etag}` );
-                        var pretag = tagtext.split( etag[0] )[0];  // hit前の文字列切り出し.
+                        let pretag = tagtext.split( etag[0] )[0];  // hit前の文字列切り出し.
                         entryone = [ pretag, [pretag] ];        // data 1エントリ準備
                         con.data.push( entryone );              // data 1エントリ追加.
-                        var newtag = tagtext.slice( pretag.length ); // 残検索文字の切り出し.
+                        let newtag = tagtext.slice( pretag.length ); // 残検索文字の切り出し.
                         tagtext = newtag;
                     }
                 }

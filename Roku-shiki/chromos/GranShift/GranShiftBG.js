@@ -427,10 +427,8 @@ class KeyFlows{
 
     // 文字入力
     actMojiFirst(){
-        console.log(`M1:${this.fi.inbuf.length}/${this.fi.inbuf}/${this.map.index}/${this.map.offset}`);
+        //console.log(`M1:${this.fi.inbuf.length}/${this.fi.inbuf}/${this.map.index}/${this.map.offset}`);
         //console.log(`M1a:${this.fi.isEmpty()}/${this.fi.inbuf[this.fi.inbuf.length - 1]}/${this.fi.curbuf}/`);
-        //x inbufが空では無い時は、inbufの最後の文字が空白であれば確定させる
-        //if( !fifo.isEmpty() && fifo.inbuf[fifo.inbuf.length - 1] === " " ) fixAll();     // 確定
         if( this.map.index === 0 && this.fi.isEmpty() ){
             cmt.commitOne(" ");
             return true;

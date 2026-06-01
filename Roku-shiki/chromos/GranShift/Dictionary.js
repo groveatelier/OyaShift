@@ -81,6 +81,10 @@ class Dictionary{
         return tagEntry;
     }
 
+    copyEntry( entryindex ){
+        return structuredClone(this.rokushiki[entryindex]);
+    }
+
     engage( tagEntry, entryindex ){    // 登録点を探して登録.
         // 検索キーの長さ別に範囲の絞りこむ.
         let kenkey = [tagEntry[0].length, 0, 1 ];
@@ -188,7 +192,7 @@ class Dictionary{
     // キャッシュ辞書の登録.
     saveCache( key, code ){
         let volone = [ key, code, this.kanjiOnly( code ) ];       // 揮発辞書エントリ.
-        console.log(`sC3>:${volone}`);
+        //3 console.log(`sC3>:${volone}`);
         if( this.volatile.length === 0 ) this.volatile.push( volone );
         else {
             let index = -1;
@@ -198,7 +202,7 @@ class Dictionary{
                     break;
                 }
             }
-            console.log(`sC3<:(${index}/${this.volatile.length})${volone}/${this.volatile[0]}`);
+        //3    console.log(`sC3<:(${index}/${this.volatile.length})${volone}/${this.volatile[0]}`);
             if( index >= 0 ) this.volatile.splice( index, 1 );      // 同じエントリは削除.
             this.volatile.push( volone );                           // 末尾に登録.
             while( this.volatile.length > 512 ) this.volatile.splice(0,1);  // 登録数制限 256 先頭から削除
@@ -206,7 +210,7 @@ class Dictionary{
     }
 
     saveRokushiki(){
-        console.log(`**Save Local`);
+        //4 console.log(`**Save Local`);
         return new Promise(resolve => {
             chrome.storage.local.set({ 
                 Rokushiki: this.rokushiki,
@@ -230,14 +234,13 @@ class Dictionary{
 
         // Debug codes
         if( code.length > key.length * 5 ){
-            console.log(`@@ Error : ignore too large code`);
-            console.log(`key:${key} code:${code}`);
+            console.log(`@@ Error : ignore too large code, key:${key} code:${code}`);
             return -1;
         }
 
         if( this.mode === 3 ){              // 揮発辞書
             key = cnv.candidate[cnv.index].annotation;
-            console.log(`vd:${con.index}/${key}:${con.candidate[con.index].candidate}/`);
+        //3    console.log(`vd:${con.index}/${key}:${con.candidate[con.index].candidate}/`);
         }
         this.saveCache( key, code );        // 揮発辞書への登録.
         // 前処理 = ひらがな除外.
@@ -490,14 +493,15 @@ function googleIMEcgi(){
 // キャッシュ辞書から data を作成.
 function GetCacheDict(){
     con.data = [[fifo.inbuf,[fifo.inbuf]]];
-    var hitque = dic.searchCache( fifo.inbuf );
+    let hitque = dic.searchCache( fifo.inbuf );
     if( hitque.length > 0 ){
-        for( var depth = 0; depth < hitque.length; depth++ ){
+        for( let depth = 0; depth < hitque.length; depth++ ){
             con.data[0][1].push( hitque[depth][1] );
             con.data[0][1].push( hitque[depth][0] );
         }
+        return true;
     }
-    return (hitque.length > 0);
+    return false;
 }
 
 // 辞書のテキスト書き出し

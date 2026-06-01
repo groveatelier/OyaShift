@@ -119,3 +119,7 @@ Frontend/Backend共にコードの刷新をやりたい。
     inbufが空白のみの場合は seen を分けて処理も分ける。  
     - inbufが空白のみの場合の処理としてはJISキーの場合普通にある。   
     
+- inbuf, curbuf, data の流れについて
+    - KeyDown → actMojiFirst → pushAndCommitIfNeed (inbufに登録) → commitOne (一文字表示)  
+    → IME_Rokushiki
+

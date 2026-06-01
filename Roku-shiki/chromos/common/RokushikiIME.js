@@ -161,6 +161,16 @@ class Converter{
         return;   
     }
 
+    // candidate 作成.
+    makeCandidate2( imeStep ){
+        this.initialize( this.fo.inbuf );   // candidate初期化.
+        if( this.data.length >= 1 )         // dataが存在すれば実行.
+            this.copyTo2( this.data[0][1], imeStep ); // 一段目の候補を設定: candidateに複製.
+        if( gidata !== null )
+            
+        return;   
+    }
+
     // candidate へのデータ設定.
     copyTo( arrayone, mode ){
         for( let pos = 0; pos < arrayone.length; pos++ ){

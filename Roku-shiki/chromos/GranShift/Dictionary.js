@@ -5,6 +5,7 @@
 class Dictionary{
     constructor(){
         this.mode = 4;          // 0-google, 1-google url応答待ち, 2-不揮発辞書, 3-揮発辞書, 4-起動前, 7-特殊.
+        this.state = 0;         // 0-起動前，1-Cache辞書，2-ローカル辞書+GoogleURL，7-特殊状態
         this.ramp = 0;          // 辞書まとめ書き用変数.
         this.rokushiki = [];    // 辞書 Version 3 以降.
         this.opened = false;    // 辞書がOpen済の判断.
@@ -360,6 +361,18 @@ function IME_Rokushiki(){
     }
 }
 
+//  IME起動
+function ImeEngage( step = false ){
+    con.initialize();
+    if( !fifo.isAvailable() ) return;
+    // 最初に裏でGoogle IMEを呼んでおく
+    loadGoogleIME();
+    if( !step ) step = !GetCacheDict(); // キャッシュ辞書検索
+    if( step ) GetNiwaDictEntry();  // ローカル辞書検索
+    con.makeCandidate2( step );     // candidateの作り直し
+    ren.showCompositionAnd2( step ); // conpositionとcandidate表示
+}
+
 function SelectIME(){
 //    console.log(`SI:${dic.mode}`)
     if( dic.mode !== 1 ){
@@ -456,6 +469,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Google変換のデータの書式を修正. 
 function googleData2MyIME( data ) {
+    console.log(`google:${data[0][0]}/${data[0][1]}/${data[0][1][0]}`);
+    console.log(data);
     con.data   = data;
     //  とりあえず、最初の1エントリのみ書式修正.
     if( con.data[0][0] != con.data[0][1][0] ){                // 先頭が検索文字で無い場合.
@@ -502,6 +517,39 @@ function GetCacheDict(){
         return true;
     }
     return false;
+}
+
+let controller = null;
+let gidata = null;
+
+async function loadGoogleIME() {
+    gidata = null;
+
+    // 前回の通信が残っていればキャンセル
+    if (controller) {
+        controller.abort();
+        console.log("前の通信をキャンセルしました。");
+    }
+
+    controller = new AbortController();
+    const signal = controller.signal;
+    const url = "http://google.com/transliterate?langpair=ja-Hira|ja&text=" + fifo.inbuf;
+
+    try {
+        if( fifo.isAvailable() && navigator.onLine ){
+            const response = await fetch(url, { signal });
+            giata = await response.json();
+            console.log("最新のデータを取得:", gidata);
+        }
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            console.log("リクエストがキャンセルされました。");
+        } else {
+            console.error("エラー:", error);
+        }
+    } finally {
+        controller = null;
+    }
 }
 
 // 辞書のテキスト書き出し

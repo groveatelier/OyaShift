@@ -113,7 +113,7 @@ class Converter{
             }
             this.fo.curbuf = imeline;
         }
-        else this.fo.curbuf = fhis.fo.inbuf;
+        else this.fo.curbuf = this.fo.inbuf;
     }
 
     remakeFIFO(){
@@ -437,7 +437,7 @@ chrome.input.ime.onMenuItemActivated.addListener(function(eng,name){
             cmap.changeJPandUS();
             ren.clearComposition();
         }
-        mnu.menuItemUpdate();       // menu Item update
+        mnu.itemUpdate();       // menu Item update
     }
 });
 

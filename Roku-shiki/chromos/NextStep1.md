@@ -123,3 +123,9 @@ Frontend/Backend共にコードの刷新をやりたい。
     - KeyDown → actMojiFirst → pushAndCommitIfNeed (inbufに登録) → commitOne (一文字表示)  
     → IME_Rokushiki
 
+- IMEの流れを変えたい
+    - GoogleIMEを特別モードとしない。六式から継続して表示する。
+    - メニュー設定にオフラインモードを追加する。  
+    - メニュー設定の「かな」「英字」は不要なので削除。  
+    - オフラインモードになっている場合は GoogleIME を呼ばない。  
+    

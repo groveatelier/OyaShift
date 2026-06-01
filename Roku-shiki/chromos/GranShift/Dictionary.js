@@ -367,6 +367,7 @@ function ImeEngage( step = false ){
     if( !fifo.isAvailable() ) return;
     // 最初に裏でGoogle IMEを呼んでおく
     loadGoogleIME();
+    con.setNetInterval();   // google IME用インターバル起動
     if( !step ) step = !GetCacheDict(); // キャッシュ辞書検索
     if( step ) GetNiwaDictEntry();  // ローカル辞書検索
     con.makeCandidate2( step );     // candidateの作り直し

@@ -12,6 +12,8 @@
             変換候補を表示する.    
 */
 
+//const { cloneElement } = require("react");
+
 class FIFO {
     constructor(){
         this.inbuf = "";    // 入力バッファ
@@ -83,6 +85,7 @@ class Converter{
         this.candidate = [];    // 変換候補 ver2.2以降.
         this.index = -1;        // 変換候補用 index
         this.data = [];         // 変換候補データ IME結果
+        this.netgetid = null;   // google変換待ちタイマーID
         this.initialize();
     }
 
@@ -166,8 +169,7 @@ class Converter{
         this.initialize( this.fo.inbuf );   // candidate初期化.
         if( this.data.length >= 1 )         // dataが存在すれば実行.
             this.copyTo2( this.data[0][1], imeStep ); // 一段目の候補を設定: candidateに複製.
-        if( gidata !== null )
-            
+        this.mergeData()
         return;   
     }
 
@@ -185,6 +187,60 @@ class Converter{
         }
     }
 
+    // candidate へのデータ設定.
+    copyTo2( arrayone, imeStep ){
+        for( let pos = 0; pos < arrayone.length; pos++ ){
+            let idno = this.candidate.length;
+            if( arrayone[pos] !== this.candidate[0].candidate ){
+                if( imeStep === 0 ){
+                    this.candidate.push({annotation:arrayone[pos+1], candidate:arrayone[pos], id:idno});
+                    pos++;
+                }
+                else this.candidate.push({annotation:"", candidate:arrayone[pos], id:idno});
+            }
+        }
+    }
+
+    mergeData(){
+        if( gidata !== null && gidata.length > 0 ){
+            if( this.data.lenght === 0 ){
+                this.data = structuredClone( gidata );
+                // 消してから追加すれば、常に先頭に
+                const nginx = this.data[0][1].indexOf( this.data[0][0] );   
+                if( nginx >= 0 ) this.data[0][1].splice( nginx, 1 );
+                this.data[0][1].unshift( this.data[0][0] );
+            }
+            else{
+                // 現状は簡易的なマージ，一段目のみマージ対象
+                if( this.data[0][0] === gidata[0][0] ){
+                    for( let element = 0; element < gidata[0][1].length; element++ ){
+                        if( !this.data[0][1].includes( gidata[0][1][element]) )
+                            this.data[0][1].push( gidata[0][1][element] );
+                    }
+                }
+            }
+            gidata = null;  // マージ済は削除
+        }
+    }
+
+    // Google IME の出力待ち
+    setNetInterval(){
+        this.clearNetInterval();
+        this.netgetid = setInterval(() => {
+            if( controller === null ){
+                if( gidata === null ) this.clearNetInterval();
+                else {
+                    this.clearNetInterval();
+                    this.mergeData();
+                }
+            }            
+        }, 300);
+    }
+
+    clearNetInterval(){
+        if( this.netgetid ) clearInterval( this.netgetid );
+        netgetid = null;
+    }
 
 }
 
@@ -559,6 +615,14 @@ function GetNiwaDictEntry(){
     }
 }
 
+// Google IME の終了待ち
+function googleConvert(){
+    if( controller === null && gidata === null ) con.clearNetInterval();
+    if( controller === null && gidata ){
+        con.clearNetInterval();
+        con.mergeData();
+    }
+}
 
 //---- 居眠り防止 ------------------------------------
 async function setUpOffscreen() {

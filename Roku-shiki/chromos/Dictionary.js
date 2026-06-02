@@ -293,11 +293,71 @@ class Dictionary{
         return;
     }
 
+    // 辞書から変換文字列を検索し、dataを作成する.
+    // 入力: inbuf - 変換入力文字
+    // 出力: data, Index
+    getData( io, cn, rn ){
+        cn.data = [];
+        if( !this.opened ){        // local 辞書が読まれる前は待つ.
+//            dic.open();
+            rn.showLine( io.inbuf );    // 辞書が開くまでの暫定表示.
+            io.curbuf = io.inbuf;
+        } else {
+            let tagtext  = io.inbuf;    // 変換対象文字列.
+            let stoplimit = 64;         // 長文変換の制限.
+// 要注意           dic.mode = 2;               // Rokushiki IME 動作―早めに設定要.
+
+            // textの中に変換候補文字列があるか検索.
+            while( tagtext.length > 0 ){
+                if( stoplimit-- <= 0 ){
+                    console.log(`*Stop limit* (${stoplimit}):${tagtext}`); 
+                }
+                let entryone  = [];     // dataに展開する1エントリ.
+                for( let depth = 1; depth < this.rokushiki.length; depth++ ){     // 辞書検索ループ.
+                    let etag = this.rokushiki[depth];       // etag <- dic.rokushikiの参照
+                    let hitpos = tagtext.indexOf( etag[0] );    // 変換文字にヒットするか?
+                    //console.log(`gD1:${etag}/${hitpos}/${this.rokushiki[depth]}/${depth}`);
+                    if( hitpos >= 0 ){                          // hit
+                        if( hitpos === 0 ){                     // 先頭で一致.
+                            entryone = [];                  // entryone初期化.
+                            entryone.push( etag[0] );       // dataにも変換前文字列を入れる.
+                            entryone.push( etag[3] );       // dataに変換候補郡を入れる.
+                            entryone[1].unshift( etag[0] ); // 変換候補郡先頭は検索文字.
+                            cn.data.push( structuredClone(entryone) );  // dataに1エントリ追加.
+    
+                            if( tagtext !== etag[0] ){      // 前方一致?
+                                let newtag = tagtext.slice(( etag[0].length - tagtext.length ));
+                                tagtext = newtag;               // 残り検索文字設定.
+                                //console.log( `>> Rest:${tagtext}(${stoplimit})` );
+                            } else {
+                                tagtext = "";                   // 完全一致は残り検索文字無し.
+                                break;
+                            }
+                        } else {
+                            //console.log( `>> Post hit:(${hitpos})${etag}` );
+                            let pretag = tagtext.split( etag[0] )[0];  // hit前の文字列切り出し.
+                            entryone = [ pretag, [pretag] ];    // data 1エントリ準備
+                            cn.data.push( entryone );           // data 1エントリ追加.
+                            let newtag = tagtext.slice( pretag.length ); // 残検索文字の切り出し.
+                            tagtext = newtag;
+                        }
+                    }
+                }
+                if( entryone.length <= 0 ){             // 一致なし：検索文字そのまま.
+                    entryone = [ tagtext, [tagtext] ];          // data 1エントリ準備
+                    cn.data.push( structuredClone(entryone) );  // data 1エントリ追加.
+                    //console.log( `>> No hit:${tagtext}` );
+                    break;
+                }
+            }
+        }
+    }
+
     // @todo kokomade
     // テキスト群を 辞書に展開する. 「＠＠＠」キー入力時.
     // addmode: true - 追加登録, false - 置き換え登録
     saveWords( addmode, words ) {
-        if( this.Rokushiki == undefined ) return;     // 辞書が開いてない場合は 何もしない.
+        if( this.rokushiki == undefined ) return;     // 辞書が開いてない場合は 何もしない.
         let wdary = words.split("]");
         for( let depth = 0; depth < wdary.length; depth++ ){
             if( wdary[depth].indexOf("[") < 0 ) break;
@@ -331,6 +391,7 @@ class Dictionary{
             }
         }
     }
+
 
 
 }
@@ -539,7 +600,7 @@ async function loadGoogleIME() {
     try {
         if( fifo.isAvailable() && navigator.onLine ){
             const response = await fetch(url, { signal });
-            giata = await response.json();
+            gidata = await response.json();
             console.log("最新のデータを取得:", gidata);
         }
     } catch (error) {

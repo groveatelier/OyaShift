@@ -559,6 +559,10 @@ function setOtherCandidate( updown ){
 // 辞書から変換文字列を検索し、dataを作成する.
 // 入力: inbuf - 変換入力文字
 // 出力: data, Index
+function GetNiwaDictEntry_new(){
+    dic.getData( fifo, con, ren );
+}
+
 function GetNiwaDictEntry(){
     con.data = [];
     if( !dic.opened ){        // local 辞書が読まれる前は待つ.

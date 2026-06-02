@@ -6,10 +6,10 @@
             ユーザー意思の変換が実行された後は1行目はinbuf, ２行目以降を imedata１段目の
             変換候補を表示する.    
 */
-const engine   = "GranShift";
 
-importScripts("Dictionary.js");
-importScripts("RokushikiIME.js");
+importScripts("RokushikiIME.js", "Dictionary.js");
+
+const engine   = "GranShift";
 
 class KeyInformation{
     constructor(){

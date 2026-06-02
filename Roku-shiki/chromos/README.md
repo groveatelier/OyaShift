@@ -66,20 +66,18 @@ Altキーは二度押しが必要な場合もあります。
 
 ```
 chromeos/
-├── common/             # 共通処理 (実体)
-|     ├── dictdlg.js        # 辞書入力ダイアログ操作
-|     ├── dictdlg.html      # 辞書入力ダイアログ
-|     ├── offscreen.js      # パワーセーブ対策処理
-|     ├── offscreen.html    # パワーセーブ対策仮ダイアログ
-|     └── RokushikiIME.js   # 入力変換ロジックの中心
-├── GranShift/          # キーボード入力用ロジック
-|     ├── manifest.json     # Chrome 拡張の定義
-|     ├── GranShiftBG.js    # 入力ロジック
-|     ├── rokuicon-*.png    # アイコン画像
-|     ├── RokushikiIME.js   # 入力変換ロジック (リンク)
-|     ├── dictdlg.*         # 辞書入力ダイアログ (リンク)
-|     └── offscreen.*       # パワーセーブ対策 (リンク)
-└── README.md            # このファイル
+ ├── dictdlg.js        # 辞書入力ダイアログ操作
+ ├── dictdlg.html      # 辞書入力ダイアログ
+ ├── offscreen.js      # パワーセーブ対策処理
+ ├── offscreen.html    # パワーセーブ対策仮ダイアログ
+ ├── RokushikiIME.js   # 入力変換ロジックの中心
+ ├── manifest.json     # Chrome 拡張の定義
+ ├── GranShiftBG.js    # 入力ロジック
+ ├── rokuicon-*.png    # アイコン画像
+ ├── RokushikiIME.js   # 入力変換ロジック (リンク)
+ ├── dictdlg.*         # 辞書入力ダイアログ (リンク)
+ ├── offscreen.*       # パワーセーブ対策 (リンク)
+ └── README.md            # このファイル
 ```
 
 ---

@@ -11,6 +11,7 @@
             ユーザー意思の変換が実行された後は1行目はinbuf, ２行目以降を data１段目の
             変換候補を表示する.    
 */
+/*const { cloneElement } = require("react"); */
 
 class FIFO {
     constructor(){
@@ -70,7 +71,7 @@ class FIFO {
             const pulledtext = this.inbuf.slice(0, this.bufptr);
             const restin = this.inbuf.slice(this.inbuf.length+this.bufptr);
             this.inbuf = restin;
-            return pulledtext;
+            return pulledtest;
         }
         return null;
     }
@@ -83,6 +84,7 @@ class Converter{
         this.candidate = [];    // 変換候補 ver2.2以降.
         this.index = -1;        // 変換候補用 index
         this.data = [];         // 変換候補データ IME結果
+        this.netgetid = null;   // google変換待ちタイマーID
         this.initialize();
     }
 
@@ -161,6 +163,15 @@ class Converter{
         return;   
     }
 
+    // candidate 作成.
+    makeCandidate2( imeStep ){
+        this.initialize( this.fo.inbuf );   // candidate初期化.
+        if( this.data.length >= 1 )         // dataが存在すれば実行.
+            this.copyTo2( this.data[0][1], imeStep ); // 一段目の候補を設定: candidateに複製.
+        this.mergeData()
+        return;   
+    }
+
     // candidate へのデータ設定.
     copyTo( arrayone, mode ){
         for( let pos = 0; pos < arrayone.length; pos++ ){
@@ -175,27 +186,61 @@ class Converter{
         }
     }
 
-    // data に指定のデータをマージする，非同期で得たデータを一本化
-    mergeData( additional ){
-        if( additional === null || additional.length === 0 ) return;
-        if( this.data.length == 0 ){
-            this.data = structuredClone( additional );
-        }
-        else{
-            for( let layer = 0; additional.length; layer++ ){
-                if( this.data[layer][0] == additional[layer][0] ){ // 検索キーが一致しているか確認
-                for(let inx = 0; inx < additional[layer][1].length; inx++ ){
-                    if( !this.data[layer][1].inclides( additional[layer][1][inx] ))
-                        this.data[layer][1].push(additional[layer][1][inx]);
+    // candidate へのデータ設定.
+    copyTo2( arrayone, imeStep ){
+        for( let pos = 0; pos < arrayone.length; pos++ ){
+            let idno = this.candidate.length;
+            if( arrayone[pos] !== this.candidate[0].candidate ){
+                if( imeStep === 0 ){
+                    this.candidate.push({annotation:arrayone[pos+1], candidate:arrayone[pos], id:idno});
+                    pos++;
                 }
+                else this.candidate.push({annotation:"", candidate:arrayone[pos], id:idno});
             }
         }
-        for( let layer = 0; additional.length; layer++ ){
-           if( this.data[layer][0] !== this.data[layer][1][0] ) this.data[layer][1].unsift( this.data[layer][0] );
-        }
-        additional = null;  // マージ元を初期化
     }
 
+    mergeData(){
+        if( gidata === null && gidata.length === 0 ) return;  // マージするデータがないときは何もしない.
+        if( this.data.length === 0 ){
+            this.data = structuredClone( gidata );
+            // 消してから追加すれば、常に先頭に
+            const nginx = this.data[0][1].indexOf( this.data[0][0] );   
+            if( nginx >= 0 ) this.data[0][1].splice( nginx, 1 );
+            this.data[0][1].unshift( this.data[0][0] );
+        }
+        else{
+            const maxlayer = this.data.length > gidata.length ? this.data.length : gidata.length;
+            for( let layer = 0; layer < maxlayer; layer++ ){
+                if( this.data[layer] && gidata[layer] && this.data[layer][0] === gidata[layer][0] ){
+                    for( let element = 0; element < gidata[layer][1].length; element++ ){
+                        if( !this.data[layer][1].includes( gidata[layer][1][element]) )
+                            this.data[layer][1].push( gidata[layer][1][element] );
+                    }
+                }
+            }
+         }
+        gidata = null;  // マージ済は削除
+    }
+
+    // Google IME の出力待ち.
+    setNetInterval(){
+        this.clearNetInterval();
+        this.netgetid = setInterval(() => {
+            if( controller === null ){
+                if( gidata === null ) this.clearNetInterval();
+                else {
+                    this.clearNetInterval();
+                    this.mergeData();
+                }
+            }            
+        }, 300);
+    }
+
+    clearNetInterval(){
+        if( this.netgetid ) clearInterval( this.netgetid );
+        this.netgetid = null;
+    }
 
 }
 
@@ -570,6 +615,14 @@ function GetNiwaDictEntry(){
     }
 }
 
+// Google IME の終了待ち
+function googleConvert(){
+    if( controller === null && gidata === null ) con.clearNetInterval();
+    if( controller === null && gidata ){
+        con.clearNetInterval();
+        con.mergeData();
+    }
+}
 
 //---- 居眠り防止 ------------------------------------
 async function setUpOffscreen() {

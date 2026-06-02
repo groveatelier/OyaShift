@@ -164,11 +164,11 @@ class Converter{
     }
 
     // candidate 作成.
-    makeCandidate2( imeStep ){
+    makeCandidate_new( cache ){
         this.initialize( this.fo.inbuf );   // candidate初期化.
         if( this.data.length >= 1 )         // dataが存在すれば実行.
-            this.copyTo2( this.data[0][1], imeStep ); // 一段目の候補を設定: candidateに複製.
-        this.mergeData()
+            this.copyTo_new( this.data[0][1], cache ); // 一段目の候補を設定: candidateに複製.
+//        this.mergeData()
         return;   
     }
 
@@ -187,11 +187,11 @@ class Converter{
     }
 
     // candidate へのデータ設定.
-    copyTo2( arrayone, imeStep ){
+    copyTo_new( arrayone, cache ){
         for( let pos = 0; pos < arrayone.length; pos++ ){
             let idno = this.candidate.length;
             if( arrayone[pos] !== this.candidate[0].candidate ){
-                if( imeStep === 0 ){
+                if( cache ){
                     this.candidate.push({annotation:arrayone[pos+1], candidate:arrayone[pos], id:idno});
                     pos++;
                 }
@@ -201,7 +201,7 @@ class Converter{
     }
 
     mergeData(){
-        if( gidata === null && gidata.length === 0 ) return;  // マージするデータがないときは何もしない.
+        if( gidata === null || gidata.length === 0 ) return;  // マージするデータがないときは何もしない.
         if( this.data.length === 0 ){
             this.data = structuredClone( gidata );
             // 消してから追加すれば、常に先頭に
@@ -219,12 +219,13 @@ class Converter{
                     }
                 }
             }
-         }
+        }
+        this.makeCandidate_new();   // cache mode でなければコールする
         gidata = null;  // マージ済は削除
     }
 
     // Google IME の出力待ち.
-    setNetInterval(){
+/*    setNetInterval(){
         this.clearNetInterval();
         this.netgetid = setInterval(() => {
             if( controller === null ){
@@ -241,7 +242,7 @@ class Converter{
         if( this.netgetid ) clearInterval( this.netgetid );
         this.netgetid = null;
     }
-
+*/
 }
 
 class Renderer{
@@ -343,9 +344,49 @@ class Renderer{
         }
     }
 
+    showCandidates_new( cache ){
+        let auxtext = "六式 IME";
+        let displines = this.convCandidate ? this.con.candidate.length : 2;  // 変換無
+        const curpos = displines <= this.con.index ? displines-1 : this.con.index;
+        if( cache ) auxtext += " cache";
+        if( this.con.candidate.length > 0 ){
+            displines = this.con.candidate.length;
+//          console.log(`sC:${this.con.index}/${curpos}`);
+            if( displines > 10 ) displines = 10;
+            chrome.input.ime.setCandidateWindowProperties({
+                engineID: engine,
+                properties:{
+                    visible: true,
+                    cursorVisible: true,
+                    vertical:true,
+                    pageSize: displines,
+                    totalCandidates: this.con.candidate.length,
+                    currentCandidateIndex: this.con.index,
+                    auxiliaryText: auxtext,
+                    auxiliaryTextVisible: true
+                }
+            });
+            chrome.input.ime.setCandidates({
+                contextID:this.context,
+                candidates:this.con.candidate
+            });
+            if( this.con.index >= 0 ){
+                chrome.input.ime.setCursorPosition({
+                    contextID:this.context,
+                    candidateID:curpos 
+                })
+            }
+        }
+    }
+
     showCompositionAnd( mode ){        // バインド関数
         this.showComposition();
         if (this.con.fo.isAvailable()) this.showCandidates( mode );     // fifo 空白文字以外もあるときは候補表示する
+    }
+
+    showCompositionAnd_new( cache ){     // バインド関数
+        this.showComposition();
+        if (this.con.fo.isAvailable()) this.showCandidates_new( cache );     // fifo 空白文字以外もあるときは候補表示する
     }
 
     undoConvert( mode ){
@@ -358,6 +399,16 @@ class Renderer{
         this.convCandidate = true;
         if( this.con.indexUpDown( updown ) ) return true;   // IME変更要求
         this.showCompositionAnd( mode );
+        return false;
+    }
+
+    otherCandidate_new( updown, cache ){
+        this.convCandidate = true;
+        console.log(`oC:${gidata}`);
+        if( !cache ) this.con.mergeData();   // google IME のマージ
+        console.log(this.con.data);
+        if( this.con.indexUpDown( updown ) ) return true;   // IME変更要求
+        this.showCompositionAnd_new( cache );
         return false;
     }
 
@@ -553,8 +604,13 @@ function fixAll(){  //  変換候補を全FIX.
 //  別の候補文字を設定する.
 // 呼び出し元はcandidate.length > 0 を要確認.
 function setOtherCandidate( updown ){
+    if( ren.otherCandidate_new( updown, ( dic.step === dic.state.CACHE ))) SelectIME();    // IME切り替え.
+}
+
+function setOtherCandidate_old( updown ){
     if( ren.otherCandidate( updown, dic.mode ) ) SelectIME();    // IME切り替え.
 }
+
 
 // 辞書から変換文字列を検索し、dataを作成する.
 // 入力: inbuf - 変換入力文字

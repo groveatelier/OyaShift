@@ -5,7 +5,15 @@
 class Dictionary{
     constructor(){
         this.mode = 4;          // 0-google, 1-google url応答待ち, 2-不揮発辞書, 3-揮発辞書, 4-起動前, 7-特殊.
-        this.state = 0;         // 0-起動前，1-Cache辞書，2-ローカル辞書+GoogleURL，7-特殊状態
+        this.state = {
+            SLEEP: 0,       // 起動前
+            READY: 1,       // 起動完了
+            CACHE: 2,       // cache辞書
+            LOCAL: 3,       // ローカル & Google辞書
+            SPECIAL: 7      // 特殊状態
+        };
+        this.step = this.state.SLEEP;
+//        this.state = 0;         // 0-起動前，1-Cache辞書，2-ローカル辞書+GoogleURL，7-特殊状態
         this.ramp = 0;          // 辞書まとめ書き用変数.
         this.rokushiki = [];    // 辞書 Version 3 以降.
         this.opened = false;    // 辞書がOpen済の判断.
@@ -28,6 +36,7 @@ class Dictionary{
     //            KeyStyle = dic.rokushiki[0][1];
                 console.log(`...Open Rokushiki dictionary`);
                 this.opened = true;
+                this.step = this.state.READY;
             });
         })();
     }
@@ -414,7 +423,7 @@ const dic = new Dictionary();
 //  IME を呼ばれた際は cursole lineも作り直しとする。
 //  入力： inbuf
 //  出力： data
-function IME_Rokushiki(){
+function IME_Rokushiki_old(){
     if( ren.convCandidate ) PrefixOne();    // 先頭が選択済ならFIXさせる.
     if( fifo.isAvailable() ){
         dic.mode = 4;                    // ime再起動状態に設定.
@@ -422,20 +431,38 @@ function IME_Rokushiki(){
     }
 }
 
-//  IME起動
-function ImeEngage( step = false ){
-    con.initialize();
-    if( !fifo.isAvailable() ) return;
-    // 最初に裏でGoogle IMEを呼んでおく
-    loadGoogleIME();
-    con.setNetInterval();   // google IME用インターバル起動
-    if( !step ) step = !GetCacheDict(); // キャッシュ辞書検索
-    if( step ) GetNiwaDictEntry();  // ローカル辞書検索
-    con.makeCandidate2( step );     // candidateの作り直し
-    ren.showCompositionAnd2( step ); // conpositionとcandidate表示
+function IME_Rokushiki(){
+    if( dic.step !== dic.state.SLEEP ){
+        if( ren.convCandidate ) PrefixOne();    // 先頭が選択済ならFIXさせる.
+        if( fifo.isAvailable() ){
+            dic.step = dic.state.READY;         // IME Ready状態に設定.
+            ImeEngage();
+        }
+    }
 }
 
-function SelectIME(){
+//  IME起動
+function ImeEngage(){
+    con.initialize();
+    if( !fifo.isAvailable() ) return;
+    // 最初に裏でGoogle IMEを呼んでおく(ループの度に)
+    loadGoogleIME();
+//    con.setNetInterval();   // google IME用インターバル起動
+    if( dic.step !== dic.state.SLEEP && dic.step !== dic.state.LOCAL ) GetCacheDict_new(); // キャッシュ辞書検索
+    if( dic.step === dic.state.LOCAL ) GetNiwaDictEntry();  // ローカル辞書検索
+    con.makeCandidate_new( dic.step === dic.state.CACHE );     // candidateの作り直し
+    ren.showCompositionAnd_new( dic.step === dic.state.CACHE ); // conpositionとcandidate表示
+}
+
+function SelectIME(){ 
+    if( dic.step !== dic.state.SLEEP ){
+        if( dic.step === dic.state.CACHE ) dic.step = dic.state.LOCAL;
+        else dic.step = dic.state.READY;
+        ImeEngage(); 
+    }
+}
+
+function SelectIME_old(){
 //    console.log(`SI:${dic.mode}`)
     if( dic.mode !== 1 ){
         con.initialize();
@@ -579,6 +606,22 @@ function GetCacheDict(){
         return true;
     }
     return false;
+}
+
+// キャッシュ辞書から data を作成.
+function GetCacheDict_new(){
+    con.data = [[fifo.inbuf,[fifo.inbuf]]];
+    let hitque = dic.searchCache( fifo.inbuf );
+    if( hitque.length > 0 ){
+        for( let depth = 0; depth < hitque.length; depth++ ){
+            con.data[0][1].push( hitque[depth][1] );
+            con.data[0][1].push( hitque[depth][0] );
+        }
+        dic.step = dic.state.CACHE;
+        return;
+    }
+    dic.step = dic.state.LOCAL;
+    return;
 }
 
 let controller = null;

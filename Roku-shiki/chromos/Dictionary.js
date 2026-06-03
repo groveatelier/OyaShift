@@ -78,7 +78,6 @@ class Dictionary{
 
     getEntry( entryindex, code ){
         let tagEntry = structuredClone(this.rokushiki[entryindex]); // entryを複製.対象エントリ用ワーク.
-        //console.log(`**de>${code}::${tagEntry}`);
         // 変換データ側の修正.
         if( code == tagEntry[3][0] ){               // 変換候補筆頭と同じ場合.
             if( tagEntry[2] < 32 ) tagEntry[2]++;   // 強制変換値を変更. エントリはそのままで良い.
@@ -104,7 +103,7 @@ class Dictionary{
     }
 
     engage( tagEntry, entryindex ){    // 登録点を探して登録.
-        console.log(`engage:${tagEntry}/${entryindex}`);
+        //console.log(`engage:${tagEntry}/${entryindex}`);
         // 検索キーの長さ別に範囲の絞りこむ.
         let kenkey = [tagEntry[0].length, 0, 1 ];
         for( let span = 1; span < entryindex; span++ ){
@@ -116,7 +115,6 @@ class Dictionary{
                 kenkey[2] = span;
             }
         }
-        console.log(`eng1:${tagEntry}/${entryindex}/${kenkey}`);
         if( kenkey[1] == 0 ) kenkey[1] = entryindex;    // entryindex制限で範囲検索が終了した場合.
         if( kenkey[2] > kenkey[1] ){ 
             let tagCount = tagEntry[1]; 
@@ -129,7 +127,6 @@ class Dictionary{
                 } else kenkey[1] = cpo+1;
             }
         } else kenkey[2] = kenkey[1];
-        console.log(`eng2:${tagEntry}/${entryindex}/${kenkey}`);
         this.rokushiki.splice( kenkey[2], 0, tagEntry );  // 登録点に…  エントリ追加登録.
         console.log(`*new>(${kenkey[2]})${tagEntry}`);
     }
@@ -180,12 +177,8 @@ class Dictionary{
         let hitque = [];
         let insinx = 0;
         const taglen = tagword.length;
-//        const vlimit = this.volatile.length > 6 ? 6 : this.volatile.length;
         const vlimit = this.volatile.length - 1;
-//        console.log(`sC:${tagword}/${taglen}/${vlimit}`);
-//        this.mode = 3; 
         for( let inx = 0; inx <= vlimit; inx++ ){
-//            console.log(`sC1:${this.volatile[inx]}`);
             if( taglen <= this.volatile[inx][0].length ){
                 if( tagword === this.volatile[inx][0] ){               // 完全一致の場合.
                     hitque.unshift([this.volatile[inx][0],this.volatile[inx][1]]);
@@ -206,14 +199,12 @@ class Dictionary{
                 }
             }
         }
-//        console.log(`sCx:${hitque}`);
         return hitque;
     }
 
     // キャッシュ辞書の登録.
     saveCache( key, code ){
         let volone = [ key, code, this.kanjiOnly( code ) ];       // 揮発辞書エントリ.
-        //3 console.log(`sC3>:${volone}`);
         if( this.volatile.length === 0 ) this.volatile.push( volone );
         else {
             let index = -1;
@@ -223,7 +214,6 @@ class Dictionary{
                     break;
                 }
             }
-        //3    console.log(`sC3<:(${index}/${this.volatile.length})${volone}/${this.volatile[0]}`);
             if( index >= 0 ) this.volatile.splice( index, 1 );      // 同じエントリは削除.
             this.volatile.push( volone );                           // 末尾に登録.
             while( this.volatile.length > 512 ) this.volatile.splice(0,1);  // 登録数制限 256 先頭から削除
@@ -261,7 +251,7 @@ class Dictionary{
 
         if( this.isCacheState() ){              // 揮発辞書
             key = cnv.candidate[cnv.index].annotation;
-            console.log(`vd:${con.index}/${key}:${con.candidate[con.index].candidate}/`);
+            //console.log(`vd:${con.index}/${key}:${con.candidate[con.index].candidate}/`);
         }
         this.saveCache( key, code );        // 揮発辞書への登録.
         // 前処理 = ひらがな除外.
@@ -271,7 +261,6 @@ class Dictionary{
 
         //　検索文字列のエントリを探す.
         let entryindex = this.search( key );  // 検索キー登録場所を探す.
-        console.log(`vd2:${key}/${code}/${entryindex}/`);
         let tagEntry = [];
         if( entryindex <= 0 ){                      // 検索文字が辞書に存在しない場合.
             // -----------------------------------------------------------
@@ -286,7 +275,6 @@ class Dictionary{
             // 辞書のスリム化(変換候補数の制限)
             while( tagEntry[3].length > 256 ) tagEntry[3].pop();    //  一番後ろの候補から削除.
         }
-        console.log(`sv2:${tagEntry}/${entryindex}/${code}`);
         // 変換データ以外の候補も必要に応じて登録.
         if( keycode[2] === 0 ){         // 文字を減らした場合は登録回避.
             for( let koinx = 1; koinx < cnv.candidate.length; koinx++ ){
@@ -332,24 +320,24 @@ class Dictionary{
                     //console.log(`gD1:${etag}/${hitpos}/${this.rokushiki[depth]}/${depth}`);
                     if( hitpos >= 0 ){              // hit
                         let etag = structuredClone( this.rokushiki[this.hitdepth] );    // etag <- dic.rokushikiを複製
-                        console.log(`>> hit0:${tagtext}/${etag}/${hitpos}/${this.rokushiki[this.hitdepth][3]}/${this.hitdepth}`)
+//                        console.log(`>> hit0:${tagtext}/${etag}/${hitpos}/${this.rokushiki[this.hitdepth][3]}/${this.hitdepth}`)
                         if( hitpos === 0 ){                 // 先頭で一致.
                             entryone = [];                  // entryone初期化.
                             entryone.push( etag[0] );       // dataにも変換前文字列を入れる.
                             entryone.push( etag[3] );       // dataに変換候補郡を入れる.
                             entryone[1].unshift( etag[0] ); // 変換候補郡先頭は検索文字.
                             cn.data.push( structuredClone(entryone) );  // dataに1エントリ追加.
-                            console.log(`>> hit:${tagtext}/${etag}/${hitpos}/${this.rokushiki[this.hitdepth]}/${this.hitdepth}`)
+//                            console.log(`>> hit:${tagtext}/${etag}/${hitpos}/${this.rokushiki[this.hitdepth]}/${this.hitdepth}`)
                             if( tagtext !== etag[0] ){  // 前方一致?
                                 let newtag = tagtext.slice(( etag[0].length - tagtext.length ));
                                 tagtext = newtag;       // 残り検索文字設定.
-                                console.log( `>> Rest:${tagtext}(${stoplimit})` );
+//                                console.log( `>> Rest:${tagtext}(${stoplimit})` );
                             } else {
                                 tagtext = "";           // 完全一致は残り検索文字無し.
                                 break;
                             }
                         } else {
-                            console.log( `>> Post hit:(${hitpos})${etag}` );
+//                            console.log( `>> Post hit:(${hitpos})${etag}` );
                             let pretag = tagtext.split( etag[0] )[0];  // hit前の文字列切り出し.
                             entryone = [ pretag, [pretag] ];    // data 1エントリ準備
                             cn.data.push( entryone );           // data 1エントリ追加.
@@ -358,7 +346,7 @@ class Dictionary{
                         }
                     }
                 }
-                console.log(`>> ${entryone.length}/${entryone}/`);
+//                console.log(`>> ${entryone.length}/${entryone}/`);
                 if( entryone.length <= 0 ){             // 一致なし：検索文字そのまま.
                     if( !gidata || gidata.length === 0 ){
                         entryone = [ tagtext, [tagtext] ];          // data 1エントリ準備
@@ -367,11 +355,11 @@ class Dictionary{
                     else {
                         cn.circleCopy();    // gidata を丸コピ
                     }
-                    console.log( `>> No hit:${tagtext}/` );
+//                    console.log( `>> No hit:${tagtext}/` );
                     break;
                 }
             }
-            console.log(`gD>:${cn.data}/`);
+//            console.log(`gD>:${cn.data}/`);
         }
     }
 
@@ -451,7 +439,6 @@ function ImeEngage(){
     con.initialize();
     if( !fifo.isAvailable() ) return;
     // 最初に裏でGoogle IMEを呼んでおく(ローカルに移ってからは呼ばない)
-    console.log(`IE:${dic.step}`);
     if( !dic.isLocalState() ) loadGoogleIME();         
     if( dic.isReadyOrCacheState() ) GetCacheDict_new(); // キャッシュ辞書検索
     if( dic.isLocalState() ) GetNiwaDictEntry_new();  // ローカル辞書検索
@@ -461,12 +448,10 @@ function ImeEngage(){
 
 function SelectIME(){ 
     if( !dic.isSleepState() ){
-        console.log(`SI<:${dic.step}`)
         // キャッシュ辞書ならLocalに
         // ローカルで無いかローカル脱出条件が揃っている場合はReadyに
         if( dic.isCacheState() ) dic.setLocalState();
         else if( !dic.isLocalState() ||( dic.isSearchend() && ( !gidata || gidata.length === 0 ))) dic.setReadyState();
-        console.log(`SI>:${dic.step}`)
         ImeEngage(); 
     }
 }
@@ -571,14 +556,13 @@ async function loadGoogleIME() {
         if( fifo.isAvailable() && navigator.onLine ){
             const response = await fetch(url, { signal });
             gidata = await response.json();
-            console.log("g:get:", gidata);
+//            console.log("g:get:", gidata);
         }
     } catch (error) {
         if (error.name !== 'AbortError') {
             console.error("g:Error:", error);
-        } else {
-            console.log("g:cancel");
         }
+//        else console.log("g:cancel");
     } finally {
         controller = null;
     }

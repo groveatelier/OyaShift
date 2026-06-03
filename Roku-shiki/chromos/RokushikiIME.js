@@ -231,38 +231,11 @@ class Converter{
                 }
             }
         }
-        console.log(`mD:${this.data}/${merged}`);
+//        console.log(`mD:${this.data}/${merged}`);
         if( merged ){
             if( !cache ) this.makeCandidate_new( cache );   // cache mode でなければコールする
             gidata = null;  // マージ済は削除
         }
-    }
-
-    mergeData_org( cache ){
-        if( gidata === null || gidata.length === 0 ) return;  // マージするデータがないときは何もしない.
-        if( this.data.length === 0 ){               // 元が無いケースは丸コピ
-            this.circleCopy();
-        }
-        else{
-            const maxlayer = this.data.length > gidata.length ? this.data.length : gidata.length;
-            for( let layer = 0; layer < maxlayer; layer++ ){
-                if( this.data[layer] && gidata[layer] && this.data[layer][0] === gidata[layer][0] ){
-                    for( let element = 0; element < gidata[layer][1].length; element++ ){
-                        if( !this.data[layer][1].includes( gidata[layer][1][element]) )
-                            this.data[layer][1].push( gidata[layer][1][element] );
-                    }
-                }
-                else{
-                    this.circleCopy();
-                    break;
-                }
-            }
-        }
-        console.log(`mD:${this.data}`);
-        console.log(this.data);
-        console.log(gidata);
-        if( !cache ) this.makeCandidate_new( cache );   // cache mode でなければコールする
-        gidata = null;  // マージ済は削除
     }
 
 }
@@ -426,9 +399,9 @@ class Renderer{
 
     otherCandidate_new( updown, cache ){
         this.convCandidate = true;
-        console.log(`oC:${gidata}/${cache}`);
+//        console.log(`oC:${gidata}/${cache}`);
         if( !cache ) this.con.mergeData( cache );   // google IME のマージ
-        console.log(this.con.data);
+//        console.log(this.con.data);
         if( this.con.indexUpDown( updown ) ) return true;   // IME変更要求
         this.showCompositionAnd_new( cache );
         return false;
@@ -471,7 +444,7 @@ class Commit{
     }
 
     pushAndCommitIfNeed( moji ){
-        console.log(`pc(${this.fo.bufptr}):${moji}`);
+//        console.log(`pc(${this.fo.bufptr}):${moji}`);
         if( this.fo.pushOne( moji )) return false;
         this.commitOne( moji );
         return true;
@@ -488,7 +461,7 @@ class Commit{
         //  候補選択がない場合は 未変換のまま.
         const validiate = this.rn.con.candidate[this.rn.con.index].candidate;
         let optionext = "";
-        console.log( `preCmt>${validiate}-${this.rn.con.candidate[this.rn.con.index].candidate}(${this.rn.con.index})` );
+//        console.log( `preCmt>${validiate}-${this.rn.con.candidate[this.rn.con.index].candidate}(${this.rn.con.index})` );
         this.fo.substr( this.rn.con.data[0][0].length );
 
         // 確定オプション: data 二段目が 「てにをは」なら二段目も確定させる.
@@ -508,7 +481,7 @@ class Commit{
     //  先頭候補確定.
     commitTopCandidate(){
         let allclear = false;
-        console.log(`cmtTop>${this.rn.con.data}/${this.fo.inbuf}/${this.rn.con.index}`);
+//        console.log(`cmtTop>${this.rn.con.data}/${this.fo.inbuf}/${this.rn.con.index}`);
         // 最前一個を確定させる.
         const text = this.fo.pullTop();
         if( text ) this.commitText( text );
@@ -520,7 +493,7 @@ class Commit{
             this.rn.clearComposition();
             allclear = true;
         }
-        console.log(`cmdTop<${this.rn.con.data}/${this.fo.inbuf}`);
+//        console.log(`cmdTop<${this.rn.con.data}/${this.fo.inbuf}`);
         return allclear;
     }
 
@@ -615,7 +588,6 @@ function fixAll(){  //  変換候補を全FIX.
         for( let depth = 1; depth < con.data.length; depth++ )
             con.data[0][0] += con.data[depth][0];
         console.log(`fixAll>${fifo.curbuf}`);
-//        console.log(con.data);
 
         // 長文登録は避ける 文字数制限を実施.
         if( con.data[0][0].length < 16 )

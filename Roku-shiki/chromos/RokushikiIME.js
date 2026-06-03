@@ -238,25 +238,6 @@ class Converter{
         gidata = null;  // マージ済は削除
     }
 
-    // Google IME の出力待ち.
-/*    setNetInterval(){
-        this.clearNetInterval();
-        this.netgetid = setInterval(() => {
-            if( controller === null ){
-                if( gidata === null ) this.clearNetInterval();
-                else {
-                    this.clearNetInterval();
-                    this.mergeData();
-                }
-            }            
-        }, 300);
-    }
-
-    clearNetInterval(){
-        if( this.netgetid ) clearInterval( this.netgetid );
-        this.netgetid = null;
-    }
-*/
 }
 
 class Renderer{
@@ -498,7 +479,7 @@ class Commit{
     }
 
     //  先頭候補確定.
-    commitTopCandidate( mode ){
+    commitTopCandidate(){
         let allclear = false;
         console.log(`cmtTop>${this.rn.con.data}/${this.fo.inbuf}/${this.rn.con.index}`);
         // 最前一個を確定させる.
@@ -506,7 +487,8 @@ class Commit{
         if( text ) this.commitText( text );
         else if( this.rn.con.data.length > 0 ) PrefixOne();
         if( !this.fo.isEmpty() ){
-            this.rn.showCompositionAnd( mode );         // 残りの文字を表示.
+//            this.rn.showCompositionAnd( mode );         // 残りの文字を表示.
+            this.rn.showCompositionAnd_new( dic.step === dic.state.CACHE );         // 残りの文字を表示.
         } else {
             this.rn.clearComposition();
             allclear = true;
@@ -594,7 +576,8 @@ function PrefixOne(){   // 先頭確定.
     ren.invibleCandidate();         // candidate windowの消去.
 
 //    if( con.data.length > 0 ) makeCandidate();   // candidateの作り直し
-    con.makeCandidate( dic.mode );  // candidateの作り直し
+//    con.makeCandidate( dic.mode );  // candidateの作り直し
+    con.makeCandidate_new( dic.step === dic.state.CACHE );  // candidateの作り直し
     console.log( `PrefixOne<${validiate}:${fifo.inbuf}` );
 }
 
@@ -621,81 +604,11 @@ function setOtherCandidate( updown ){
     if( ren.otherCandidate_new( updown, ( dic.step === dic.state.CACHE ))) SelectIME();    // IME切り替え.
 }
 
-function setOtherCandidate_old( updown ){
-    if( ren.otherCandidate( updown, dic.mode ) ) SelectIME();    // IME切り替え.
-}
-
-
 // 辞書から変換文字列を検索し、dataを作成する.
 // 入力: inbuf - 変換入力文字
 // 出力: data, Index
 function GetNiwaDictEntry_new(){
     dic.getData( fifo, con, ren );
-}
-
-function GetNiwaDictEntry(){
-    con.data = [];
-    if( !dic.opened ){        // local 辞書が読まれる前は待つ.
-        dic.open();
-        ren.showLine( fifo.inbuf );      // 辞書が開くまでの暫定表示.
-        fifo.curbuf = fifo.inbuf;
-    } else {
-        let tagtext  = fifo.inbuf;   // 変換対象文字列.
-        let stoplimit = 64;         // 長文変換の制限.
-        dic.mode = 2;                // Rokushiki IME 動作―早めに設定要.
-
-        // textの中に変換候補文字列があるか検索.
-        while( tagtext.length > 0 ){
-            if( stoplimit-- <= 0 ){
-                console.log(`*Stop limit* (${stoplimit}):${tagtext}`); 
-            }
-            let entryone  = [];     // dataに展開する1エントリ.
-            for( let depth = 1; depth < dic.rokushiki.length; depth++ ){     // 辞書検索ループ.
-                let etag   = dic.copyEntry( depth );            // etag <- dic.rokushikiの参照
-                let hitpos = tagtext.indexOf( etag[0] );    // 変換文字にヒットするか?
-                if( hitpos >= 0 ){                          // hit
-                    if( hitpos === 0 ){                     // 先頭で一致.
-                        entryone = [];                  // entryone初期化.
-                        entryone.push( etag[0] );       // dataにも変換前文字列を入れる.
-                        entryone.push( etag[3] );       // dataに変換候補郡を入れる.
-                        entryone[1].unshift( etag[0] ); // 変換候補郡先頭は検索文字.
-                        con.data.push( entryone );      // dataに1エントリ追加.
- 
-                        if( tagtext !== etag[0] ){      // 前方一致?
-                            let newtag = tagtext.slice(( etag[0].length - tagtext.length ));
-                            tagtext = newtag;               // 残り検索文字設定.
-                            //console.log( `>> Rest:${tagtext}(${stoplimit})` );
-                        } else {
-                            tagtext = "";                   // 完全一致は残り検索文字無し.
-                            break;
-                        }
-                    } else {
-                        //console.log( `>> Post hit:(${hitpos})${etag}` );
-                        let pretag = tagtext.split( etag[0] )[0];  // hit前の文字列切り出し.
-                        entryone = [ pretag, [pretag] ];        // data 1エントリ準備
-                        con.data.push( entryone );              // data 1エントリ追加.
-                        let newtag = tagtext.slice( pretag.length ); // 残検索文字の切り出し.
-                        tagtext = newtag;
-                    }
-                }
-            }
-            if( entryone.length <= 0 ){             // 一致なし：検索文字そのまま.
-                entryone = [ tagtext, [tagtext] ];    // data 1エントリ準備
-                con.data.push( entryone );           // data 1エントリ追加.
-                //console.log( `>> No hit:${tagtext}` );
-                break;
-            }
-        }
-    }
-}
-
-// Google IME の終了待ち
-function googleConvert(){
-    if( controller === null && gidata === null ) con.clearNetInterval();
-    if( controller === null && gidata ){
-        con.clearNetInterval();
-        con.mergeData();
-    }
 }
 
 //---- 居眠り防止 ------------------------------------

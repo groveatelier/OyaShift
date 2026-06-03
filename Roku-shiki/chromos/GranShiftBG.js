@@ -225,7 +225,10 @@ class KeyFlows{
             BRIGHTNESSDOWN: "BriteDown",
             QUOTE: "Quote",
             ESC: "Escape",
-            LONGPRESS: "LongPress"
+            LONGPRESS: "LongPress",
+            HOME: "Home",
+            END: "End",
+            PAGE: "Page",
         };
         this.timerID = null;
     }
@@ -268,6 +271,12 @@ class KeyFlows{
             case "BrightnessDown": return this.seen.BRIGHTNESSDOWN;
             case "\"": return this.seen.QUOTE;
             case "Esc": return this.seen.ESC;
+        }
+        switch(keyData.code){
+            case "Home": return this.seen.HOME;
+            case "End": return this.seen.END;
+            case "PageUp": return this.seen.PAGE;
+            case "PageDown": return this.seen.PAGE;
             default: return null;
         }
     }
@@ -375,27 +384,30 @@ class KeyFlows{
     actIfNeeded(seen){
         console.log(`ai:${seen}`);
         switch(seen){
-            case this.seen.PEND:               return true;
-            case this.seen.SHIFT2MOJI:         return this.actShift2Moji();
-            case this.seen.MOJI2SHIFT:         return this.actMoji2Shift();
-            case this.seen.MOJIFIRST:          return this.actMojiFirst();
-            case this.seen.SHIFTFOLLOW:        return this.actShiftFollow();
-            case this.seen.USLARGE:            return this.actUSLarge();
-            case this.seen.DICTOUTPUT:         return this.actDictOutput();
-            case this.seen.NOKEYBUF:           return this.actNoKeyBuf();
-            case this.seen.USMODE:             return false;
-            case this.seen.TABSPC:             return this.actTabSpace();
-            case this.seen.ENTER:              return this.actEnter();
-            case this.seen.UP:                 return this.actUp();
-            case this.seen.DOWN:               return this.actDown();
-            case this.seen.RIGHT:              return this.actRight();
-            case this.seen.LEFT:               return this.actLeft();
-            case this.seen.BACKSPACE:          return this.actBackspace();
-            case this.seen.BRIGHTNESSUP:       return this.actBrightnessUp();
-            case this.seen.BRIGHTNESSDOWN:     return this.actBrightnessDown();
-            case this.seen.ESC:                return this.actEsc();
-            case this.seen.QUOTE:              return this.actQuote();
-            case this.seen.LONGPRESS:          return this.actLongPress();
+            case this.seen.PEND:            return true;
+            case this.seen.SHIFT2MOJI:      return this.actShift2Moji();
+            case this.seen.MOJI2SHIFT:      return this.actMoji2Shift();
+            case this.seen.MOJIFIRST:       return this.actMojiFirst();
+            case this.seen.SHIFTFOLLOW:     return this.actShiftFollow();
+            case this.seen.USLARGE:         return this.actUSLarge();
+            case this.seen.DICTOUTPUT:      return this.actDictOutput();
+            case this.seen.NOKEYBUF:        return this.actNoKeyBuf();
+            case this.seen.USMODE:          return false;
+            case this.seen.TABSPC:          return this.actTabSpace();
+            case this.seen.ENTER:           return this.actEnter();
+            case this.seen.UP:              return this.actUp();
+            case this.seen.DOWN:            return this.actDown();
+            case this.seen.RIGHT:           return this.actRight();
+            case this.seen.LEFT:            return this.actLeft();
+            case this.seen.BACKSPACE:       return this.actBackspace();
+            case this.seen.BRIGHTNESSUP:    return this.actBrightnessUp();
+            case this.seen.BRIGHTNESSDOWN:  return this.actBrightnessDown();
+            case this.seen.ESC:             return this.actEsc();
+            case this.seen.QUOTE:           return this.actQuote();
+            case this.seen.LONGPRESS:       return this.actLongPress();
+            case this.seen.HOME:            return this.actHome();
+            case this.seen.END:             return this.actEnd();
+            case this.seen.PAGE:            return this.actPage();
         }
         return true;
     }
@@ -548,6 +560,23 @@ class KeyFlows{
     actLongPress(){
         this.fi.deleteLastOne();
         if( !cmt.pushAndCommitIfNeed( this.map.getMoji2( 3 ) ) ) IME_Rokushiki();
+        return true;
+    }
+
+    actHome(){
+        this.fi.bufptr = -this.fi.inbuf.length;     // カーソル左端へ.
+        ren.showComposition();
+        return true;
+    }
+
+    actEnd(){
+        this.fi.bufptr = 0;     // カーソル右端へ.
+        ren.showComposition();
+        return true;
+    }
+
+    actPage(){
+        NextIME();
         return true;
     }
 }

@@ -53,7 +53,7 @@ class FIFO {
     deleteLastOne(){
         if( this.bufptr < 0 && this.inbuf.length + this.bufptr > 0){
             const tempbuf = this.inbuf.slice(0, this.bufptr-1) 
-                        + this.inbuf.slice(inbuf.length + this.bufptr);
+                        + this.inbuf.slice(this.inbuf.length + this.bufptr);
             this.inbuf = tempbuf;
             if( this.inbuf.length + this.bufptr < 0 ) this.bufptr = -this.inbuf.length;
         } else this.inbuf = this.inbuf.slice(0,-1);   // javaの仕様上inbufが空でもOK
@@ -71,7 +71,7 @@ class FIFO {
             const pulledtext = this.inbuf.slice(0, this.bufptr);
             const restin = this.inbuf.slice(this.inbuf.length+this.bufptr);
             this.inbuf = restin;
-            return pulledtest;
+            return pulledtext;
         }
         return null;
     }
@@ -156,37 +156,15 @@ class Converter{
     }
 
     // candidate 作成.
-    makeCandidate( mode ){
+    makeCandidate( cache ){
         this.initialize( this.fo.inbuf );   // candidate初期化.
         if( this.data.length >= 1 )         // dataが存在すれば実行.
-            this.copyTo( this.data[0][1], mode ); // 一段目の候補を設定: candidateに複製.
-        return;   
-    }
-
-    // candidate 作成.
-    makeCandidate_new( cache ){
-        this.initialize( this.fo.inbuf );   // candidate初期化.
-        if( this.data.length >= 1 )         // dataが存在すれば実行.
-            this.copyTo_new( this.data[0][1], cache ); // 一段目の候補を設定: candidateに複製.
+            this.copyTo( this.data[0][1], cache ); // 一段目の候補を設定: candidateに複製.
         return;   
     }
 
     // candidate へのデータ設定.
-    copyTo( arrayone, mode ){
-        for( let pos = 0; pos < arrayone.length; pos++ ){
-            let idno = this.candidate.length;
-            if( arrayone[pos] !== this.candidate[0].candidate ){
-                if( mode === 3 ){
-                    this.candidate.push({annotation:arrayone[pos+1], candidate:arrayone[pos], id:idno});
-                    pos++;
-                }
-                else this.candidate.push({annotation:"", candidate:arrayone[pos], id:idno});
-            }
-        }
-    }
-
-    // candidate へのデータ設定.
-    copyTo_new( arrayone, cache ){
+    copyTo( arrayone, cache ){
         for( let pos = 0; pos < arrayone.length; pos++ ){
             let idno = this.candidate.length;
             if( arrayone[pos] !== this.candidate[0].candidate ){
@@ -233,11 +211,10 @@ class Converter{
         }
 //        console.log(`mD:${this.data}/${merged}`);
         if( merged ){
-            if( !cache ) this.makeCandidate_new( cache );   // cache mode でなければコールする
+            if( !cache ) this.makeCandidate( cache );   // cache mode でなければコールする
             gidata = null;  // マージ済は削除
         }
     }
-
 }
 
 class Renderer{
@@ -303,43 +280,7 @@ class Renderer{
         }
     }
 
-    showCandidates( mode ){
-        let auxtext = "六式 IME";
-        let displines = this.convCandidate ? this.con.candidate.length : 2;  // 変換無
-        const curpos = displines <= this.con.index ? displines-1 : this.con.index;
-        if( mode === 0 ) auxtext = "google IME cgi";
-        else if( mode === 3 ) auxtext += " cahce";
-        if( this.con.candidate.length > 0 ){
-            displines = this.con.candidate.length;
-//          console.log(`sC:${this.con.index}/${curpos}`);
-            if( displines > 10 ) displines = 10;
-            chrome.input.ime.setCandidateWindowProperties({
-                engineID: engine,
-                properties:{
-                    visible: true,
-                    cursorVisible: true,
-                    vertical:true,
-                    pageSize: displines,
-                    totalCandidates: this.con.candidate.length,
-                    currentCandidateIndex: this.con.index,
-                    auxiliaryText: auxtext,
-                    auxiliaryTextVisible: true
-                }
-            });
-            chrome.input.ime.setCandidates({
-                contextID:this.context,
-                candidates:this.con.candidate
-            });
-            if( this.con.index >= 0 ){
-                chrome.input.ime.setCursorPosition({
-                    contextID:this.context,
-                    candidateID:curpos 
-                })
-            }
-        }
-    }
-
-    showCandidates_new( cache ){
+    showCandidates( cache ){
         let auxtext = "六式 IME";
         let displines = this.convCandidate ? this.con.candidate.length : 2;  // 変換無
         const curpos = displines <= this.con.index ? displines-1 : this.con.index;
@@ -374,14 +315,9 @@ class Renderer{
         }
     }
 
-    showCompositionAnd( mode ){        // バインド関数
+    showCompositionAnd( cache ){     // バインド関数
         this.showComposition();
-        if (this.con.fo.isAvailable()) this.showCandidates( mode );     // fifo 空白文字以外もあるときは候補表示する
-    }
-
-    showCompositionAnd_new( cache ){     // バインド関数
-        this.showComposition();
-        if (this.con.fo.isAvailable()) this.showCandidates_new( cache );     // fifo 空白文字以外もあるときは候補表示する
+        if (this.con.fo.isAvailable()) this.showCandidates( cache );     // fifo 空白文字以外もあるときは候補表示する
     }
 
     undoConvert( mode ){
@@ -390,20 +326,12 @@ class Renderer{
 
     //  別の候補文字を設定する.
     // 呼び出し元はcandidate.length > 0 を要確認.
-    otherCandidate( updown, mode ){
-        this.convCandidate = true;
-        if( this.con.indexUpDown( updown ) ) return true;   // IME変更要求
-        this.showCompositionAnd( mode );
-        return false;
-    }
-
-    otherCandidate_new( updown, cache ){
+    otherCandidate( updown, cache ){
         this.convCandidate = true;
 //        console.log(`oC:${gidata}/${cache}`);
         if( !cache ) this.con.mergeData( cache );   // google IME のマージ
-//        console.log(this.con.data);
         if( this.con.indexUpDown( updown ) ) return true;   // IME変更要求
-        this.showCompositionAnd_new( cache );
+        this.showCompositionAnd( cache );
         return false;
     }
 
@@ -444,7 +372,6 @@ class Commit{
     }
 
     pushAndCommitIfNeed( moji ){
-//        console.log(`pc(${this.fo.bufptr}):${moji}`);
         if( this.fo.pushOne( moji )) return false;
         this.commitOne( moji );
         return true;
@@ -487,8 +414,7 @@ class Commit{
         if( text ) this.commitText( text );
         else if( this.rn.con.data.length > 0 ) PrefixOne();
         if( !this.fo.isEmpty() ){
-//            this.rn.showCompositionAnd( mode );         // 残りの文字を表示.
-            this.rn.showCompositionAnd_new( dic.step === dic.state.CACHE );         // 残りの文字を表示.
+            this.rn.showCompositionAnd( dic.step === dic.state.CACHE ); // 残りの文字を表示.
         } else {
             this.rn.clearComposition();
             allclear = true;
@@ -496,8 +422,6 @@ class Commit{
 //        console.log(`cmdTop<${this.rn.con.data}/${this.fo.inbuf}`);
         return allclear;
     }
-
-
 }
 
 class UIMenu{
@@ -575,9 +499,7 @@ function PrefixOne(){   // 先頭確定.
     con.data.splice(0,1);           // dataの一段目を削除.
     ren.invibleCandidate();         // candidate windowの消去.
 
-//    if( con.data.length > 0 ) makeCandidate();   // candidateの作り直し
-//    con.makeCandidate( dic.mode );  // candidateの作り直し
-    con.makeCandidate_new( dic.step === dic.state.CACHE );  // candidateの作り直し
+    con.makeCandidate( dic.isCacheState() );  // candidateの作り直し
     console.log( `PrefixOne<${validiate}:${fifo.inbuf}` );
 }
 
@@ -600,13 +522,13 @@ function fixAll(){  //  変換候補を全FIX.
 //  別の候補文字を設定する.
 // 呼び出し元はcandidate.length > 0 を要確認.
 function setOtherCandidate( updown ){
-    if( ren.otherCandidate_new( updown, ( dic.step === dic.state.CACHE ))) SelectIME();    // IME切り替え.
+    if( ren.otherCandidate( updown, ( dic.isCacheState() ))) SelectIME();    // IME切り替え.
 }
 
 // 辞書から変換文字列を検索し、dataを作成する.
 // 入力: inbuf - 変換入力文字
 // 出力: data, Index
-function GetNiwaDictEntry_new(){
+function GetNiwaDictEntry(){
     dic.getData( fifo, con, ren );
 }
 

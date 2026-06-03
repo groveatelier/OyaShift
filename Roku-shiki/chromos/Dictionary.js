@@ -4,7 +4,6 @@
 
 class Dictionary{
     constructor(){
-        this.mode = 4;          // 0-google, 1-google url応答待ち, 2-不揮発辞書, 3-揮発辞書, 4-起動前, 7-特殊.
         this.state = {
             SLEEP: 0,       // 起動前
             READY: 1,       // 起動完了
@@ -13,10 +12,8 @@ class Dictionary{
             SPECIAL: 7      // 特殊状態
         };
         this.step = this.state.SLEEP;
-//        this.state = 0;         // 0-起動前，1-Cache辞書，2-ローカル辞書+GoogleURL，7-特殊状態
         this.ramp = 0;          // 辞書まとめ書き用変数.
         this.rokushiki = [];    // 辞書 Version 3 以降.
-        this.opened = false;    // 辞書がOpen済の判断.
         this.volatile = [];     // 揮発辞書.
         this.hitdepth = 0;      // 辞書検索開始位置-1
 //        this.specialkey = 0;    // 特殊キー対応Index.
@@ -36,7 +33,7 @@ class Dictionary{
 
     open(){
         // debug mode fource initilaize
-        //this.rokushiki = [[4,0]]; this.opened = true; this.step = this.state.READY; return;
+        //this.rokushiki = [[4,0]]; this.step = this.state.READY; return;
 
         // storage.local.get()が非同期で呼ばれるのでasync-awaitを使う
         console.log(`Preparing rokushiki dictionary...`);
@@ -44,10 +41,7 @@ class Dictionary{
             await chrome.storage.local.get(['Rokushiki'], (result) => {
                 this.rokushiki = result.Rokushiki;
                 if(this.rokushiki == undefined) this.rokushiki = [[4,0]];
-    //            if(this.rokushiki[0].length <2) this.rokushiki.splice(0,1,[4,0]);   // Dict ver up
-    //            KeyStyle = dic.rokushiki[0][1];
                 console.log(`...Open Rokushiki dictionary`);
-                this.opened = true;
                 this.step = this.state.READY;
             });
         })();
@@ -295,7 +289,6 @@ class Dictionary{
     // 出力: data, Index
     getData( io, cn, rn ){
         cn.data = [];
-//        if( !this.opened ){        // local 辞書が読まれる前は待つ.
         if( this.isSleepState() ){      // local 辞書が読まれる前は待つ.
             rn.showLine( io.inbuf );    // 辞書が開くまでの暫定表示.
             io.curbuf = io.inbuf;
@@ -359,7 +352,6 @@ class Dictionary{
                     break;
                 }
             }
-//            console.log(`gD>:${cn.data}/`);
         }
     }
 
@@ -401,22 +393,9 @@ class Dictionary{
             }
         }
     }
-
-
-
 }
 
 const dic = new Dictionary();
-
-//let context_id = -1;
-//let imemode  = 4;           // 0-google, 1-google url応答待ち, 2-不揮発辞書, 3-揮発辞書, 4-起動前, 7-特殊. // classed to mode
-//let rampwait = 0;           // 辞書まとめ書き用変数.      // classed to ramp
-//let Niwadict  = [];         // 辞書 Version 3 以降.     // classed to rokushiki 
-//let dictOpen  = false;      // 辞書がOpen済の判断.       // classed to open
-//let Voldict   = [];         // 揮発辞書.                // classed to volatile
-//let spkeyinx = 0;           // 特殊キー対応Index.       // classed to slecialkey
-//let interval  = -1;         // 辞書出力用1              // classed
-//let dictline = 1;           // 辞書出力用2              // classed
 
 /***************************************/
 /* 以下は変換候補サーチ(IME)関連のコード  */
@@ -440,20 +419,27 @@ function ImeEngage(){
     if( !fifo.isAvailable() ) return;
     // 最初に裏でGoogle IMEを呼んでおく(ローカルに移ってからは呼ばない)
     if( !dic.isLocalState() ) loadGoogleIME();         
-    if( dic.isReadyOrCacheState() ) GetCacheDict_new(); // キャッシュ辞書検索
-    if( dic.isLocalState() ) GetNiwaDictEntry_new();  // ローカル辞書検索
-    con.makeCandidate_new( dic.isCacheState() );      // candidateの作り直し
-    ren.showCompositionAnd_new( dic.isCacheState() ); // conpositionとcandidate表示
+    if( dic.isReadyOrCacheState() ) GetCacheDict(); // キャッシュ辞書検索
+    if( dic.isLocalState() ) GetNiwaDictEntry();  // ローカル辞書検索
+    con.makeCandidate( dic.isCacheState() );      // candidateの作り直し
+    ren.showCompositionAnd( dic.isCacheState() ); // conpositionとcandidate表示
 }
 
 function SelectIME(){ 
-    if( !dic.isSleepState() ){
-        // キャッシュ辞書ならLocalに
-        // ローカルで無いかローカル脱出条件が揃っている場合はReadyに
-        if( dic.isCacheState() ) dic.setLocalState();
-        else if( !dic.isLocalState() ||( dic.isSearchend() && ( !gidata || gidata.length === 0 ))) dic.setReadyState();
-        ImeEngage(); 
-    }
+    if( dic.isSleepState() ) return;
+    // キャッシュ辞書ならLocalに
+    // ローカルで無いかローカル脱出条件が揃っている場合はReadyに
+    if( dic.isCacheState() ) dic.setLocalState();
+    else if( !dic.isLocalState() ||( dic.isSearchend() && ( !gidata || gidata.length === 0 ))) dic.setReadyState();
+    ImeEngage(); 
+}
+
+function NextIME(){
+    if( dic.isSleepState() ) return;
+    // キャッシュ辞書ならLocalに、LocalならReadyに
+    if( dic.isLocalState() ) dic.setReadyState();
+    if( dic.isCacheState() ) dic.setLocalState();
+    ImeEngage(); 
 }
 
 /************************/
@@ -461,7 +447,7 @@ function SelectIME(){
 /************************/
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const spkey = "@@@";
-    if( dic.opened ){        // local 辞書が読まれる前は待つ.
+    if( !dic.isSleepState() ){      // local 辞書が読まれる前は待つ.
         var saverequest = false;
         if(message.type === 'removeOne'){
             const name = message.jtext;
@@ -509,7 +495,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             saverequest = true;                     // 辞書保存要求.
         } else if(message.type === 'DictText') {
             console.log(`Special mode`)
-//            dic.mode  = 7;                            // 辞書出力特殊モード. 
             dic.step = dic.state.SPECIAL;            // 辞書出力特殊モード. 
             dic.dictline = 0;
         }    
@@ -521,7 +506,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // キャッシュ辞書から data を作成.
-function GetCacheDict_new(){
+function GetCacheDict(){
     con.data = [[fifo.inbuf,[fifo.inbuf]]];
     let hitque = dic.searchCache( fifo.inbuf );
     if( hitque.length > 0 ){
@@ -542,9 +527,8 @@ let gidata = null;
 async function loadGoogleIME() {
     gidata = null;
 
-    // 前回の通信が残っていればキャンセル
     if (controller) {
-        controller.abort();
+        controller.abort();     // 前回の通信が残っていればキャンセル
 //        console.log("前の通信をキャンセルしました。");
     }
 
@@ -577,7 +561,6 @@ function MakeTextNiwadictionary(){
     dic.dictline = startline+2;
     if( dic.dictline >= dic.rokushiki.length ){
         dic.dictline = dic.rokushiki.length;      // 最後まで出力.
-//        dic.mode = 4;                    // 通常モードに戻しておく.
         dic.step = dic.state.READY;     // 通常モードに戻しておく.
     }
     for( var depth = startline; depth < dic.dictline; depth++ ){

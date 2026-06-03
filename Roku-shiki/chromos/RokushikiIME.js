@@ -200,14 +200,21 @@ class Converter{
         }
     }
 
-    mergeData(){
-        if( gidata === null || gidata.length === 0 ) return;  // マージするデータがないときは何もしない.
-        if( this.data.length === 0 ){
+    // Google IME を丸コピ
+    circleCopy(){
             this.data = structuredClone( gidata );
             // 消してから追加すれば、常に先頭に
             const nginx = this.data[0][1].indexOf( this.data[0][0] );   
             if( nginx >= 0 ) this.data[0][1].splice( nginx, 1 );
             this.data[0][1].unshift( this.data[0][0] );
+    }
+
+    // Google IME のマージ
+    // 階層や解釈がことなるケースの対応を考慮
+    mergeData( cache ){
+        if( gidata === null || gidata.length === 0 ) return;  // マージするデータがないときは何もしない.
+        if( this.data.length === 0 ){               // 元が無いケースは丸コピ
+            this.circleCopy();
         }
         else{
             const maxlayer = this.data.length > gidata.length ? this.data.length : gidata.length;
@@ -218,9 +225,16 @@ class Converter{
                             this.data[layer][1].push( gidata[layer][1][element] );
                     }
                 }
+                else{
+                    this.circleCopy();
+                    break;
+                }
             }
         }
-        this.makeCandidate_new();   // cache mode でなければコールする
+        console.log(`mD:${this.data}`);
+        console.log(this.data);
+        console.log(gidata);
+        if( !cache ) this.makeCandidate_new( cache );   // cache mode でなければコールする
         gidata = null;  // マージ済は削除
     }
 
@@ -404,8 +418,8 @@ class Renderer{
 
     otherCandidate_new( updown, cache ){
         this.convCandidate = true;
-        console.log(`oC:${gidata}`);
-        if( !cache ) this.con.mergeData();   // google IME のマージ
+        console.log(`oC:${gidata}/${cache}`);
+        if( !cache ) this.con.mergeData( cache );   // google IME のマージ
         console.log(this.con.data);
         if( this.con.indexUpDown( updown ) ) return true;   // IME変更要求
         this.showCompositionAnd_new( cache );

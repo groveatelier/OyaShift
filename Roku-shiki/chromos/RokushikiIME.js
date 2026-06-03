@@ -11,7 +11,6 @@
             ユーザー意思の変換が実行された後は1行目はinbuf, ２行目以降を data１段目の
             変換候補を表示する.    
 */
-/*const { cloneElement } = require("react"); */
 
 class FIFO {
     constructor(){
@@ -443,12 +442,6 @@ class UIMenu{
     }
 }
 
-const fifo = new FIFO();
-const con = new Converter(fifo);
-const ren = new Renderer(con);
-const cmt = new Commit(ren,fifo);
-const mnu = new UIMenu();
-
 chrome.input.ime.onFocus.addListener(function(context) {
     ren.context = context.contextID;
 });
@@ -529,7 +522,7 @@ function setOtherCandidate( updown ){
 // 入力: inbuf - 変換入力文字
 // 出力: data, Index
 function GetNiwaDictEntry(){
-    dic.getData( fifo, con, ren );
+    dic.getData( fifo, ren );
 }
 
 //---- 居眠り防止 ------------------------------------

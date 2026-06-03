@@ -3,7 +3,7 @@
 */
 
 class Dictionary{
-    constructor(){
+    constructor(converter){
         this.state = {
             SLEEP: 0,       // 起動前
             READY: 1,       // 起動完了
@@ -11,6 +11,7 @@ class Dictionary{
             LOCAL: 3,       // ローカル & Google辞書
             SPECIAL: 7      // 特殊状態
         };
+        this.cn = converter;
         this.step = this.state.SLEEP;
         this.ramp = 0;          // 辞書まとめ書き用変数.
         this.rokushiki = [];    // 辞書 Version 3 以降.
@@ -287,8 +288,8 @@ class Dictionary{
     // 辞書から変換文字列を検索し、dataを作成する.
     // 入力: inbuf - 変換入力文字
     // 出力: data, Index
-    getData( io, cn, rn ){
-        cn.data = [];
+    getData( io, rn ){
+        this.cn.data = [];
         if( this.isSleepState() ){      // local 辞書が読まれる前は待つ.
             rn.showLine( io.inbuf );    // 辞書が開くまでの暫定表示.
             io.curbuf = io.inbuf;
@@ -319,7 +320,7 @@ class Dictionary{
                             entryone.push( etag[0] );       // dataにも変換前文字列を入れる.
                             entryone.push( etag[3] );       // dataに変換候補郡を入れる.
                             entryone[1].unshift( etag[0] ); // 変換候補郡先頭は検索文字.
-                            cn.data.push( structuredClone(entryone) );  // dataに1エントリ追加.
+                            this.cn.data.push( structuredClone(entryone) );  // dataに1エントリ追加.
 //                            console.log(`>> hit:${tagtext}/${etag}/${hitpos}/${this.rokushiki[this.hitdepth]}/${this.hitdepth}`)
                             if( tagtext !== etag[0] ){  // 前方一致?
                                 let newtag = tagtext.slice(( etag[0].length - tagtext.length ));
@@ -333,7 +334,7 @@ class Dictionary{
 //                            console.log( `>> Post hit:(${hitpos})${etag}` );
                             let pretag = tagtext.split( etag[0] )[0];  // hit前の文字列切り出し.
                             entryone = [ pretag, [pretag] ];    // data 1エントリ準備
-                            cn.data.push( entryone );           // data 1エントリ追加.
+                            this.cn.data.push( entryone );      // data 1エントリ追加.
                             let newtag = tagtext.slice( pretag.length ); // 残検索文字の切り出し.
                             tagtext = newtag;
                         }
@@ -343,10 +344,10 @@ class Dictionary{
                 if( entryone.length <= 0 ){             // 一致なし：検索文字そのまま.
                     if( !gidata || gidata.length === 0 ){
                         entryone = [ tagtext, [tagtext] ];          // data 1エントリ準備
-                        cn.data.push( structuredClone(entryone) );  // data 1エントリ追加.
+                        this.cn.data.push( structuredClone(entryone) );  // data 1エントリ追加.
                     }
                     else {
-                        cn.circleCopy();    // gidata を丸コピ
+                        this.cn.circleCopy();    // gidata を丸コピ
                     }
 //                    console.log( `>> No hit:${tagtext}/` );
                     break;
@@ -394,8 +395,6 @@ class Dictionary{
         }
     }
 }
-
-const dic = new Dictionary();
 
 /***************************************/
 /* 以下は変換候補サーチ(IME)関連のコード  */
@@ -544,7 +543,7 @@ async function loadGoogleIME() {
         }
     } catch (error) {
         if (error.name !== 'AbortError') {
-            console.error("g:Error:", error);
+            console.log("g:Error:", error);
         }
 //        else console.log("g:cancel");
     } finally {

@@ -590,9 +590,15 @@ class KeyFlows{
  IntlYen "¥", "|"
 
 */
-
+//----------------------------------------------------
 const cinf = new KeyInformation();  // 入力キー情報管理
 const cmap = new MojiMap();         // キーマップ管理
+const fifo = new FIFO();
+const con = new Converter(fifo);
+const ren = new Renderer(con);
+const cmt = new Commit(ren,fifo);
+const mnu = new UIMenu();
+const dic = new Dictionary(con);
 const cflow = new KeyFlows(cinf, cmap, fifo); // キーフロー制御
 
 // シフトの遅延処理

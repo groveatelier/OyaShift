@@ -1,4 +1,4 @@
-/*  2026.05.29 20:00
+/*  2026.06.03 20:00
   Oya Key shift keyboard (自作キーボード用)
     
     >> Spcial keys << inbuf.length > 0 
@@ -53,7 +53,7 @@ class FIFO {
     deleteLastOne(){
         if( this.bufptr < 0 && this.inbuf.length + this.bufptr > 0){
             const tempbuf = this.inbuf.slice(0, this.bufptr-1) 
-                        + inbuf.slice(inbuf.length + this.bufptr);
+                        + this.inbuf.slice(inbuf.length + this.bufptr);
             this.inbuf = tempbuf;
             if( this.inbuf.length + this.bufptr < 0 ) this.bufptr = -this.inbuf.length;
         } else this.inbuf = this.inbuf.slice(0,-1);   // javaの仕様上inbufが空でもOK
@@ -168,7 +168,6 @@ class Converter{
         this.initialize( this.fo.inbuf );   // candidate初期化.
         if( this.data.length >= 1 )         // dataが存在すれば実行.
             this.copyTo_new( this.data[0][1], cache ); // 一段目の候補を設定: candidateに複製.
-//        this.mergeData()
         return;   
     }
 
@@ -212,6 +211,34 @@ class Converter{
     // Google IME のマージ
     // 階層や解釈がことなるケースの対応を考慮
     mergeData( cache ){
+        let merged = false;
+        if( gidata === null || gidata.length === 0 ) return;  // マージするデータがないときは何もしない.
+        if( this.data.length === 0 ){               // 元が無いケースは丸コピ
+            this.circleCopy();
+        }
+        else{
+            const maxlayer = this.data.length > gidata.length ? this.data.length : gidata.length;
+            for( let layer = 0; layer < maxlayer; layer++ ){
+                if( this.data[layer] && gidata[layer] && this.data[layer][0] === gidata[layer][0] ){
+                    for( let element = 0; element < gidata[layer][1].length; element++ ){
+                        if( !this.data[layer][1].includes( gidata[layer][1][element]) )
+                            this.data[layer][1].push( gidata[layer][1][element] );
+                    }
+                    merged = true;  // merge 済
+                }
+                else{
+                    break;
+                }
+            }
+        }
+        console.log(`mD:${this.data}/${merged}`);
+        if( merged ){
+            if( !cache ) this.makeCandidate_new( cache );   // cache mode でなければコールする
+            gidata = null;  // マージ済は削除
+        }
+    }
+
+    mergeData_org( cache ){
         if( gidata === null || gidata.length === 0 ) return;  // マージするデータがないときは何もしない.
         if( this.data.length === 0 ){               // 元が無いケースは丸コピ
             this.circleCopy();

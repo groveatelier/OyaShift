@@ -190,6 +190,7 @@ class KeyFlowCommon{
             live = true;
         }
         else{
+//            console.log(`kD2:${this.previous}/${index}/${Date.now()-this.start}/${this.repeatmask}`);
             live = ( this.previous !== index || this.isKeyRepeatActive() );
         }
         this.previous = index;
@@ -199,8 +200,8 @@ class KeyFlowCommon{
 
 class KeyFlows{
     constructor(info, map, fifo){
-        this.shift = new KeyFlowCommon(2400);
-        this.moji = new KeyFlowCommon(1800);
+        this.shift = new KeyFlowCommon(1800);
+        this.moji = new KeyFlowCommon(1200);
         this.info = info;   // KeyInformationハンドラ
         this.map = map;     // MojiMapハンドラハンドラ
         this.fi = fifo;     // fifoハンドラ
@@ -308,7 +309,7 @@ class KeyFlows{
     }
 
     mojikeyDown(){      // 文字キー押下時の処理
-        //console.log(`mojikyDown:${this.map.index}`)
+//        console.log(`mojikyDown:${this.map.index}`)
         if( this.map.index === 0 && this.fi.isAvailable() ) return this.seen.TABSPC;
         if( !this.moji.keyDown2( this.map.index ) ) return this.seen.PEND;  // リピート抑止期間中は何もしない
         //if (!this.moji.shouldFire(this.map.index)) return this.seen.PEND;

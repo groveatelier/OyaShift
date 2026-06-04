@@ -289,13 +289,12 @@ class Dictionary{
     // 辞書から変換文字列を検索し、dataを作成する.
     // 入力: inbuf - 変換入力文字
     // 出力: data, Index
-    getData( io, rn ){
+    getData(){
         this.cn.data = [];
         if( this.isSleepState() ){      // local 辞書が読まれる前は待つ.
-            rn.showLine( io.inbuf );    // 辞書が開くまでの暫定表示.
-            io.curbuf = io.inbuf;
+            this.cn.fo.curbuf = this.cn.fo.inbuf;
         } else {
-            let tagtext  = io.inbuf;    // 変換対象文字列.
+            let tagtext  = this.cn.fo.inbuf;    // 変換対象文字列.
             let stoplimit = 64;         // 長文変換の制限.
 
             // 句読点は排除して検索する → これをすると文字が消えるinbuf作り直し時に
@@ -422,6 +421,42 @@ class Dictionary{
         }
     }
 
+    // キャッシュ辞書から data を作成.
+    getCache(){
+        this.cn.data = [[this.cn.fo.inbuf,[this.cn.fo.inbuf]]];
+        let hitque = this.searchCache( this.cn.fo.inbuf );
+        if( hitque.length > 0 ){
+            for( let depth = 0; depth < hitque.length; depth++ ){
+                this.cn.data[0][1].push( hitque[depth][1] );
+                this.cn.data[0][1].push( hitque[depth][0] );
+            }
+            this.step = this.state.CACHE;
+            return;
+        }
+        this.step = this.state.LOCAL;
+        return;
+    }
+
+    // Googleの先行呼び出しとキャッシュ辞書かローカル辞書を選択して候補群作成
+    makeConvert(){
+        if( !this.isLocalState() ) this.getGoogleData();  // Google先行呼び出し
+        if( this.isReadyOrCacheState() ) this.getCache(); // キャッシュ辞書検索
+        if( this.isLocalState() ) this.getData();         // ローカル辞書検索
+        this.cn.makeCandidate( this.isCacheState() );     // candidateの作り直し
+    }
+
+    // キャッシュ辞書ならLocalに
+    // ローカルで無いかローカル脱出条件が揃っている場合はReadyに    
+    selectCurrentState(){
+        if( this.isCacheState() ) this.setLocalState();
+        else if( !this.isLocalState() ||( this.isSearchend() && !this.cn.isGoogles() )) this.setReadyState();
+    }
+
+    // キャッシュ辞書ならLocalに、LocalならReadyに
+    fourceNextState(){
+        if( this.isLocalState() ) this.setReadyState();
+        if( this.isCacheState() ) this.setLocalState();
+    }
 
 }
 
@@ -445,28 +480,19 @@ function IME_Rokushiki(){
 function ImeEngage(){
     con.initialize();
     if( !fifo.isAvailable() ) return;
-    // 最初に裏でGoogle IMEを呼んでおく(ローカルに移ってからは呼ばない)
-    if( !dic.isLocalState() ) dic.getGoogleData();  
-    if( dic.isReadyOrCacheState() ) GetCacheDict(); // キャッシュ辞書検索
-    if( dic.isLocalState() ) GetNiwaDictEntry();  // ローカル辞書検索
-    con.makeCandidate( dic.isCacheState() );      // candidateの作り直し
+    dic.makeConvert();  // Candidate の作り直し
     ren.showCompositionAnd( dic.isCacheState() ); // conpositionとcandidate表示
 }
 
 function SelectIME(){ 
     if( dic.isSleepState() ) return;
-    // キャッシュ辞書ならLocalに
-    // ローカルで無いかローカル脱出条件が揃っている場合はReadyに
-    if( dic.isCacheState() ) dic.setLocalState();
-    else if( !dic.isLocalState() ||( dic.isSearchend() && !con.isGoogles() )) dic.setReadyState();
+    dic.selectCurrentState();   // 現在のステートに設定
     ImeEngage(); 
 }
 
 function NextIME(){
     if( dic.isSleepState() ) return;
-    // キャッシュ辞書ならLocalに、LocalならReadyに
-    if( dic.isLocalState() ) dic.setReadyState();
-    if( dic.isCacheState() ) dic.setLocalState();
+    dic.fourceNextState();      // 次のステートに設定
     ImeEngage(); 
 }
 
@@ -532,53 +558,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
     }
 });
-
-// キャッシュ辞書から data を作成.
-function GetCacheDict(){
-    con.data = [[fifo.inbuf,[fifo.inbuf]]];
-    let hitque = dic.searchCache( fifo.inbuf );
-    if( hitque.length > 0 ){
-        for( let depth = 0; depth < hitque.length; depth++ ){
-            con.data[0][1].push( hitque[depth][1] );
-            con.data[0][1].push( hitque[depth][0] );
-        }
-        dic.step = dic.state.CACHE;
-        return;
-    }
-    dic.step = dic.state.LOCAL;
-    return;
-}
-
-let controller = null;
-let gidata = null;
-
-async function loadGoogleIME() {
-    gidata = null;
-
-    if (controller) {
-        controller.abort();     // 前回の通信が残っていればキャンセル
-//        console.log("前の通信をキャンセルしました。");
-    }
-
-    controller = new AbortController();
-    const signal = controller.signal;
-    const url = "http://google.com/transliterate?langpair=ja-Hira|ja&text=" + fifo.inbuf;
-
-    try {
-        if( fifo.isAvailable() && navigator.onLine ){
-            const response = await fetch(url, { signal });
-            gidata = await response.json();
-//            console.log("g:get:", gidata);
-        }
-    } catch (error) {
-        if (error.name !== 'AbortError') {
-            console.log("g:Error:", error);
-        }
-//        else console.log("g:cancel");
-    } finally {
-        controller = null;
-    }
-}
 
 // 辞書のテキスト書き出し
 // chromeの拡張機能では Secureの為、ファイルへの書き出しは制限されている.

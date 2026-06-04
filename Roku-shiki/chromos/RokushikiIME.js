@@ -520,13 +520,6 @@ function setOtherCandidate( updown ){
     if( ren.otherCandidate( updown, ( dic.isCacheState() ))) SelectIME();    // IME切り替え.
 }
 
-// 辞書から変換文字列を検索し、dataを作成する.
-// 入力: inbuf - 変換入力文字
-// 出力: data, Index
-function GetNiwaDictEntry(){
-    dic.getData( fifo, ren );
-}
-
 //---- 居眠り防止 ------------------------------------
 async function setUpOffscreen() {
     await chrome.offscreen.createDocument({

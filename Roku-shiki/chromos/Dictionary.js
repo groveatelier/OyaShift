@@ -16,6 +16,7 @@ class Dictionary{
         this.ramp = 0;          // 辞書まとめ書き用変数.
         this.rokushiki = [];    // 辞書 Version 3 以降.
         this.volatile = [];     // 揮発辞書.
+        this.controller = null; // Background処理制御
         this.hitdepth = 0;      // 辞書検索開始位置-1
 //        this.specialkey = 0;    // 特殊キー対応Index.
         this.interval = -1;     // 辞書出力用1
@@ -230,13 +231,13 @@ class Dictionary{
     /* 入力: 検索文字 = data[0][0] -> ひらがな           */
     /*       変換文字 = code -> 変換済文字 */
     /******************************************************/
-    saveEntry2Rokushiki( cnv, code ){
+    saveEntry2Rokushiki( code ){
         // 異常値のガードをいれておきます. Index == 0 は非変換となります.
-        if( cnv.candidate.length <= 1 || code.length <= 0 || !this.open ) return -1;   // 異常値のガード.
+        if( this.cn.candidate.length <= 1 || code.length <= 0 || !this.open ) return -1;   // 異常値のガード.
         if( this.kanaOnly( code ) ) return -1;   // かなだけの登録は NG
 
-        let key = cnv.data[0][0];           // 検索キー.　dataの検索文字で検索要.
-        console.log(`*Save(${this.rokushiki.length})=${code}:${key}/${cnv.index}/${this.step}`);
+        let key = this.cn.data[0][0];           // 検索キー.　dataの検索文字で検索要.
+        console.log(`*Save(${this.rokushiki.length})=${code}:${key}/${this.cn.index}/${this.step}`);
 
         // Debug codes
         if( code.length > key.length * 5 ){
@@ -245,8 +246,8 @@ class Dictionary{
         }
 
         if( this.isCacheState() ){              // 揮発辞書
-            key = cnv.candidate[cnv.index].annotation;
-            //console.log(`vd:${con.index}/${key}:${con.candidate[con.index].candidate}/`);
+            key = this.cn.candidate[this.cn.index].annotation;
+            //console.log(`vd:${this.cn.index}/${key}:${this.cn.candidate[this.cn.index].candidate}/`);
         }
         this.saveCache( key, code );        // 揮発辞書への登録.
         // 前処理 = ひらがな除外.
@@ -272,8 +273,8 @@ class Dictionary{
         }
         // 変換データ以外の候補も必要に応じて登録.
         if( keycode[2] === 0 ){         // 文字を減らした場合は登録回避.
-            for( let koinx = 1; koinx < cnv.candidate.length; koinx++ ){
-                let tagcand = cnv.candidate[koinx].candidate;
+            for( let koinx = 1; koinx < this.cn.candidate.length; koinx++ ){
+                let tagcand = this.cn.candidate[koinx].candidate;
                 if( !this.kanaOnly( tagcand ) && !this.kataOnly( tagcand )){    // かなだけの登録は NG
                     let mojiInx = tagEntry[3].indexOf( tagcand );               // エントリ内を検索.
                     if( mojiInx < 0 ){
@@ -342,12 +343,12 @@ class Dictionary{
                 }
 //                console.log(`>> ${entryone.length}/${entryone}/`);
                 if( entryone.length <= 0 ){             // 一致なし：検索文字そのまま.
-                    if( !gidata || gidata.length === 0 ){
+                    if( !this.cn.isGoogles() ){
                         entryone = [ tagtext, [tagtext] ];          // data 1エントリ準備
                         this.cn.data.push( structuredClone(entryone) );  // data 1エントリ追加.
                     }
                     else {
-                        this.cn.circleCopy();    // gidata を丸コピ
+                        this.cn.circleCopy();    // gooles を丸コピ
                     }
 //                    console.log( `>> No hit:${tagtext}/` );
                     break;
@@ -394,6 +395,34 @@ class Dictionary{
             }
         }
     }
+
+    // Google の試験用URLを使う
+    async getGoogleData() {
+        this.cn.googles = null;
+
+        if (this.controller) this.controller.abort();     // 前回の通信が残っていればキャンセル
+
+        this.controller = new AbortController();
+        const signal = this.controller.signal;
+        const url = "http://google.com/transliterate?langpair=ja-Hira|ja&text=" + this.cn.fo.inbuf;
+
+        try {
+            if( this.cn.fo.isAvailable() && navigator.onLine ){
+                const response = await fetch(url, { signal });
+                this.cn.googles = await response.json();
+    //            console.log("g:get:", this.cn.googles);
+            }
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                console.log("g:Error:", error);
+            }
+    //        else console.log("g:cancel");
+        } finally {
+            this.controller = null;
+        }
+    }
+
+
 }
 
 /***************************************/
@@ -417,7 +446,7 @@ function ImeEngage(){
     con.initialize();
     if( !fifo.isAvailable() ) return;
     // 最初に裏でGoogle IMEを呼んでおく(ローカルに移ってからは呼ばない)
-    if( !dic.isLocalState() ) loadGoogleIME();         
+    if( !dic.isLocalState() ) dic.getGoogleData();  
     if( dic.isReadyOrCacheState() ) GetCacheDict(); // キャッシュ辞書検索
     if( dic.isLocalState() ) GetNiwaDictEntry();  // ローカル辞書検索
     con.makeCandidate( dic.isCacheState() );      // candidateの作り直し
@@ -429,7 +458,7 @@ function SelectIME(){
     // キャッシュ辞書ならLocalに
     // ローカルで無いかローカル脱出条件が揃っている場合はReadyに
     if( dic.isCacheState() ) dic.setLocalState();
-    else if( !dic.isLocalState() ||( dic.isSearchend() && ( !gidata || gidata.length === 0 ))) dic.setReadyState();
+    else if( !dic.isLocalState() ||( dic.isSearchend() && !con.isGoogles() )) dic.setReadyState();
     ImeEngage(); 
 }
 

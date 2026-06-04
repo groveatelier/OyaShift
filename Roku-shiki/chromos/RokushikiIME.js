@@ -83,7 +83,7 @@ class Converter{
         this.candidate = [];    // 変換候補 ver2.2以降.
         this.index = -1;        // 変換候補用 index
         this.data = [];         // 変換候補データ IME結果
-        this.netgetid = null;   // google変換待ちタイマーID
+        this.googles = null;    // Google変換データ結果
         this.initialize();
     }
 
@@ -96,6 +96,8 @@ class Converter{
         this.data = [];
         this.fo.clear();
     }
+
+    isGoogles(){ return ( this.googles && this.googles.length !== 0 ); }
 
     // カーソル行に表示する文字列を作成 : 適度に変換筆頭文字を加える.
     makeCursolbuf(){
@@ -178,7 +180,7 @@ class Converter{
 
     // Google IME を丸コピ
     circleCopy(){
-            this.data = structuredClone( gidata );
+            this.data = structuredClone( this.googles );
             // 消してから追加すれば、常に先頭に
             const nginx = this.data[0][1].indexOf( this.data[0][0] );   
             if( nginx >= 0 ) this.data[0][1].splice( nginx, 1 );
@@ -189,17 +191,17 @@ class Converter{
     // 階層や解釈がことなるケースの対応を考慮
     mergeData( cache ){
         let merged = false;
-        if( gidata === null || gidata.length === 0 ) return;  // マージするデータがないときは何もしない.
-        if( this.data.length === 0 ){               // 元が無いケースは丸コピ
+        if( !this.isGoogles() ) return; // マージするデータがないときは何もしない.
+        if( this.data.length === 0 ){   // 元が無いケースは丸コピ
             this.circleCopy();
         }
         else{
-            const maxlayer = this.data.length > gidata.length ? this.data.length : gidata.length;
+            const maxlayer = this.data.length > this.googles.length ? this.data.length : this.googles.length;
             for( let layer = 0; layer < maxlayer; layer++ ){
-                if( this.data[layer] && gidata[layer] && this.data[layer][0] === gidata[layer][0] ){
-                    for( let element = 0; element < gidata[layer][1].length; element++ ){
-                        if( !this.data[layer][1].includes( gidata[layer][1][element]) )
-                            this.data[layer][1].push( gidata[layer][1][element] );
+                if( this.data[layer] && this.googles[layer] && this.data[layer][0] === this.googles[layer][0] ){
+                    for( let element = 0; element < this.googles[layer][1].length; element++ ){
+                        if( !this.data[layer][1].includes( this.googles[layer][1][element]) )
+                            this.data[layer][1].push( this.googles[layer][1][element] );
                     }
                     merged = true;  // merge 済
                 }
@@ -211,7 +213,7 @@ class Converter{
 //        console.log(`mD:${this.data}/${merged}`);
         if( merged ){
             if( !cache ) this.makeCandidate( cache );   // cache mode でなければコールする
-            gidata = null;  // マージ済は削除
+            this.googles = null;  // マージ済は削除
         }
     }
 }
@@ -327,7 +329,7 @@ class Renderer{
     // 呼び出し元はcandidate.length > 0 を要確認.
     otherCandidate( updown, cache ){
         this.convCandidate = true;
-//        console.log(`oC:${gidata}/${cache}`);
+//        console.log(`oC:${con.googles}/${cache}`);
         if( !cache ) this.con.mergeData( cache );   // google IME のマージ
         if( this.con.indexUpDown( updown ) ) return true;   // IME変更要求
         this.showCompositionAnd( cache );
@@ -488,7 +490,7 @@ function PrefixOne(){   // 先頭確定.
     const validiate = cmt.preCommit();
     console.log(`Prefix:${validiate}`);
 
-    dic.saveEntry2Rokushiki( con, validiate ); // 先に変換データを保存.
+    dic.saveEntry2Rokushiki( validiate ); // 先に変換データを保存.
     con.data.splice(0,1);           // dataの一段目を削除.
     ren.invibleCandidate();         // candidate windowの消去.
 
@@ -506,7 +508,7 @@ function fixAll(){  //  変換候補を全FIX.
 
         // 長文登録は避ける 文字数制限を実施.
         if( con.data[0][0].length < 16 )
-            dic.saveEntry2Rokushiki( con, fifo.curbuf );    // 先に変換データを保存.
+            dic.saveEntry2Rokushiki( fifo.curbuf );    // 先に変換データを保存.
     }
     con.clearData();    // dataを削除.
     ren.invibleCandidate(); // candidate windowの消去.

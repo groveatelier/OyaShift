@@ -145,6 +145,5 @@ Frontend/Backend共にコードの刷新をやりたい。
     世界なので、三番目の解釈が一致するまで保留にするのを選ぶ。  
 
 - 既知の問題
-    - キーリピートが seen.PENDING になって効かない状態。
     - DictionaryクラスにgoogleIME，SelectIMEを取り込む  
     

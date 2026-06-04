@@ -514,12 +514,6 @@ function fixAll(){  //  変換候補を全FIX.
     ren.invibleCandidate(); // candidate windowの消去.
 }
 
-//  別の候補文字を設定する.
-// 呼び出し元はcandidate.length > 0 を要確認.
-function setOtherCandidate( updown ){
-    if( ren.otherCandidate( updown, ( dic.isCacheState() ))) SelectIME();    // IME切り替え.
-}
-
 //---- 居眠り防止 ------------------------------------
 async function setUpOffscreen() {
     await chrome.offscreen.createDocument({

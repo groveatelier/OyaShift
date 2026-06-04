@@ -8,8 +8,7 @@ class Dictionary{
             SLEEP: 0,       // 起動前
             READY: 1,       // 起動完了
             CACHE: 2,       // cache辞書
-            LOCAL: 3,       // ローカル & Google辞書
-            SPECIAL: 7      // 特殊状態
+            LOCAL: 3        // ローカル & Google辞書
         };
         this.cn = converter;
         this.step = this.state.SLEEP;
@@ -18,9 +17,6 @@ class Dictionary{
         this.volatile = [];     // 揮発辞書.
         this.controller = null; // Background処理制御
         this.hitdepth = 0;      // 辞書検索開始位置-1
-//        this.specialkey = 0;    // 特殊キー対応Index.
-        this.interval = -1;     // 辞書出力用1
-        this.dictline = 1;      // 辞書出力用2
         this.open();
         this.openCache();
     }
@@ -43,7 +39,7 @@ class Dictionary{
             await chrome.storage.local.get(['Rokushiki'], (result) => {
                 this.rokushiki = result.Rokushiki;
                 if(this.rokushiki == undefined) this.rokushiki = [[4,0]];
-                console.log(`...Open Rokushiki dictionary`);
+                console.log(`...Open Rokushiki dictionary:${this.rokushiki.length}`);
                 this.step = this.state.READY;
             });
         })();
@@ -56,7 +52,7 @@ class Dictionary{
             await chrome.storage.local.get(['Voldict'], (result) => {
                 this.volatile = result.Voldict;
                 if(this.volatile === undefined) this.volatile = [];
-                console.log(`...Loaded Cache table`);
+                console.log(`...Loaded Cache table:${this.volatile.length}`);
             });
         })();
     }
@@ -284,6 +280,18 @@ class Dictionary{
                 }
             }
         }
+
+        this.engage( tagEntry, entryindex );                     // 登録点を探してて登録.
+
+        if( tagEntry[1] > 64000 ){                              // 更新値上がり過ぎり対策.
+            for( let depth=1; depth < this.rokushiki.length; depth++ )
+                this.rokushiki[depth][1] >= 1;                        // 値を半分に
+        }
+        if( this.ramp++ >= 16 ){    // 辞書へのライト処理をまとめる. 
+            this.saveRokushiki();   // 保存処理.
+            this.ramp = 0;
+        }
+        return;
     }
 
     // 辞書から変換文字列を検索し、dataを作成する.
@@ -458,6 +466,86 @@ class Dictionary{
         if( this.isCacheState() ) this.setLocalState();
     }
 
+    // 辞書のテキスト書き出し
+    async exportStorageToTextFile() {
+        try {
+            // 1. chrome.storage.local からデータを取得
+            const allData = await chrome.storage.local.get(null);
+            if (Object.keys(allData).length === 0) {
+                console.log("ストレージにデータがありません。");
+                return;
+            }
+            // 2. データを「.txt」用にテキスト文字列へ整形する
+            let textContent = "--- OyaShift 拡張機能 ストレージエクスポート ---\n";
+            textContent += `出力日時: ${new Date().toLocaleString()}\n\n`;
+            for (const [key, value] of Object.entries(allData)) {
+                // 値がオブジェクトや配列の場合は、見やすいように文字列化する
+                if (typeof value === 'object' && value !== null) {
+                    textContent += `[${key}]\n${JSON.stringify(value, null, 2)}\n\n`;
+                } else {
+                    textContent += `${key}: ${value}\n`;
+                }
+            }
+            // 3. テキスト用の「Blob（データの塊）」を作成 (MIMEタイプを text/plain に指定)
+            const blob = new Blob([textContent], { type: "text/plain;charset=utf-8" });
+            // 4. Blob から一時的な URL を生成
+            const reader = new FileReader();
+            reader.onloadend = function () {
+                const dataUrl = reader.result;
+            // 5. chrome.downloads API を使って .txt ファイルとして保存
+                chrome.downloads.download({
+                    url: dataUrl,
+                    filename: "Rokushiki-Jisho.txt", // 拡張子を .txt に指定
+                    saveAs: true // 保存先ダイアログを表示
+                }, (downloadId) => {
+                    if (chrome.runtime.lastError) {
+                    console.error("書き出し失敗:", chrome.runtime.lastError);
+                    }
+                });
+            };
+            // 変換スタート
+            reader.readAsDataURL(blob);
+        } 
+        catch (error) {
+            console.error("テキストエクスポート中にエラーが発生しました:", error);
+        }
+    }
+
+    // コアロジック：パース ＆ マージ関数
+    async executeMerge(text) {
+        const parsedData = {};
+        // 1. テキストを1行ずつに分解してパース
+        const lines = text.split(/\r?\n/);
+        for (const line of lines) {
+            const trimmedLine = line.trim();
+            
+            // 空行やコメント行はスキップ
+            if (!trimmedLine || trimmedLine.startsWith('#') || trimmedLine.startsWith('-')) {
+                continue;
+            }
+
+            const eqIndex = trimmedLine.indexOf('=');
+            if (eqIndex === -1) continue; 
+
+            const key = trimmedLine.substring(0, eqIndex).trim();
+            let value = trimmedLine.substring(eqIndex + 1).trim();
+
+            // 型の復元
+            if (value === "true") value = true;
+            else if (value === "false") value = false;
+            else if (!isNaN(value) && value !== "") value = Number(value);
+
+            if (key) {
+                parsedData[key] = value;
+            }
+        }
+        // 2. 現在のストレージデータとマージ
+        const currentData = await chrome.storage.local.get(null);
+        const mergedData = { ...currentData, ...parsedData };
+        // 3. ストレージに保存
+        await chrome.storage.local.set(mergedData);
+        console.log("Background側でマージ完了:", mergedData);
+    }
 }
 
 /***************************************/
@@ -496,11 +584,17 @@ function NextIME(){
     ImeEngage(); 
 }
 
+//  別の候補文字を設定する. 呼び出し元はcandidate.length > 0 を要確認.
+function setOtherCandidate( updown ){
+    if( ren.otherCandidate( updown, ( dic.isCacheState() ))) SelectIME();    // IME切り替え.
+}
+
 /************************/
 /* 以下は辞書関連のコード */
 /************************/
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const spkey = "@@@";
+    console.log(`listener:${message}`);
     if( !dic.isSleepState() ){      // local 辞書が読まれる前は待つ.
         var saverequest = false;
         if(message.type === 'removeOne'){
@@ -547,53 +641,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             ConvertOldtoNewDict();                  // 辞書内の整理.
         } else if(message.type === 'Save') {
             saverequest = true;                     // 辞書保存要求.
-        } else if(message.type === 'DictText') {
-            console.log(`Special mode`)
-            dic.step = dic.state.SPECIAL;            // 辞書出力特殊モード. 
-            dic.dictline = 0;
+        } else if(message.type === 'Write') {
+            console.log(`辞書の書き出し`);
+            dic.exportStorageToTextFile();
+        } else if(message.action === "parseAndMergeText") {
+            console.log(`辞書入力＆マージ`);
+            // 非同期処理（async/await）を行うため、即座に関数を実行する
+            dic.executeMerge(message.text)
+            .then(() => {
+                sendResponse({ success: true });
+            })
+            .catch((error) => {
+                console.error("マージ処理エラー:", error);
+                sendResponse({ success: false, error: error.message });
+            });
+            return true;  // 💡 非同期で sendResponse を返すために必須の return
         }    
-        if( saverequest ){
-            dic.saveRokushiki();
-            console.log(dic.rokushiki);
-        }
+        if( saverequest ) dic.saveRokushiki();
     }
 });
-
-// 辞書のテキスト書き出し
-// chromeの拡張機能では Secureの為、ファイルへの書き出しは制限されている.
-// ファイルの書き出しは実行できないが、Text化して sendTextしてみる.
-function MakeTextNiwadictionary(){
-    if( dic.rokushiki == undefined ) return;     // 辞書が開いてない場合は 何もしない.
-    var startline = dic.dictline;
-    dic.dictline = startline+2;
-    if( dic.dictline >= dic.rokushiki.length ){
-        dic.dictline = dic.rokushiki.length;      // 最後まで出力.
-        dic.step = dic.state.READY;     // 通常モードに戻しておく.
-    }
-    for( var depth = startline; depth < dic.dictline; depth++ ){
-        var wbuf  = "[";
-        if( depth == 0 ){
-            wbuf += dic.rokushiki[depth][0].toString() + "," + dic.rokushiki[depth][1];
-        }
-        else if( dic.rokushiki[depth][0].indexOf(",") < 0 ){                  // ',' があるばあいはファイル出力しない.
-            wbuf += dic.rokushiki[depth][0].toString() + "," + dic.rokushiki[depth][1] + "," + dic.rokushiki[depth][2];
-            for( var pos = 0; pos < dic.rokushiki[depth][3].length; pos++ ){
-                if( dic.rokushiki[depth][3][pos].indexOf(",") < 0 ){     // ',' があるばあいはファイル出力しない.
-                    wbuf += ",";
-                    wbuf += dic.rokushiki[depth][3][pos].toString();
-                }
-            }
-        }
-        wbuf += "],\n";               // 改行コード.
-        cmt.commitText( wbuf );
-    }
-    if( dic.step === dic.state.SPECIAL && dic.interval < 0 ){
-        dic.interval = setInterval( MakeTextNiwadictionary, 240 );
-    } else if( dic.step !== dic.state.SPECIAL && dic.interval >= 0 ){
-        clearInterval( dic.interval );
-        dic.interval = -1;
-    }
-}
 
 // 辞書版数のコンバート.
 function ConvertOldtoNewDict(){
@@ -602,3 +668,4 @@ function ConvertOldtoNewDict(){
         return;
     }
 }
+

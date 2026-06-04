@@ -213,7 +213,7 @@ class KeyFlows{
             SHIFTFOLLOW: "shiftafter",
             USLARGE: "USLLetter",
             USMODE: "USMode",
-            DICTOUTPUT: "DictoOutput",
+//            DICTOUTPUT: "DictoOutput",
             NOKEYBUF: "NoKeybuf",
             TABSPC: "TabAndSpace",
             ENTER: "Enter",
@@ -254,7 +254,7 @@ class KeyFlows{
     detectNoKeyBufCase(keyData){
         if (!this.fi.isEmpty()) return null;
         // Alt + Esc → 辞書テキスト出力
-        if (dic.step === dic.state.SPECIAL && keyData.key === "Esc" && this.info.alt) return this.seen.DICTOUTPUT;
+//        if (dic.step === dic.state.SPECIAL && keyData.key === "Esc" && this.info.alt) return this.seen.DICTOUTPUT;
         // inbuf が空 → IME 処理不要
         return this.seen.NOKEYBUF;
     }
@@ -391,7 +391,7 @@ class KeyFlows{
             case this.seen.MOJIFIRST:       return this.actMojiFirst();
             case this.seen.SHIFTFOLLOW:     return this.actShiftFollow();
             case this.seen.USLARGE:         return this.actUSLarge();
-            case this.seen.DICTOUTPUT:      return this.actDictOutput();
+//            case this.seen.DICTOUTPUT:      return this.actDictOutput();
             case this.seen.NOKEYBUF:        return this.actNoKeyBuf();
             case this.seen.USMODE:          return false;
             case this.seen.TABSPC:          return this.actTabSpace();
@@ -474,10 +474,10 @@ class KeyFlows{
         return true;
     }
 
-    actDictOutput(){
-        MakeTextNiwadictionary();   // 辞書のテキスト出力.
-        return this.actNoKeyBuf();
-    }
+//    actDictOutput(){
+//        MakeTextNiwadictionary();   // 辞書のテキスト出力.
+//        return this.actNoKeyBuf();
+//    }
 
     actNoKeyBuf(){
         ren.clearComposition();

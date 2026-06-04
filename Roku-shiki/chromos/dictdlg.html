@@ -9,6 +9,27 @@
       min-width: 5em;
       background: rgb(193, 222, 207);
     }
+    #ime-btn {
+      border: none;
+      background-color: rgb(193, 222, 207);
+      color: #202020;
+     
+      padding: 9px 16px;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+
+    #ime-btn:hover {
+      background-color: rgb(203, 232, 217); /* わずかに明るくする */
+      color: #ffffff;
+    }
+
+    #ime-btn:active {
+      background-color: #222222;
+    }
   </style>
 </head>
 <body><form id="dictDialog" name="dictDialog" action="">
@@ -18,17 +39,16 @@
         <td rowspan="2" valign="bottom"><img src="rokuicon-s.png" alt="ime ICON"></td>
         <td align="center">　親指シフト キーボード</td>
       </tr>
-      <tr><td align="right" valign="top"><small><div id="ver">x</div></small>
-      </td></tr>
+      <tr><td align="right" valign="top"><small><div id="ver">x</div></small></td></tr>
     </table>
   </p><hr>
   <input type="text" id="Kanji" placeholder="登録文字"><br/>
   <input type="text" id="Kana" placeholder="よみかた"><br/>
   <p align="center"><button id="Remove">抹消</button>　<button id="Engage">登録</button></p>
   <hr>
-  <p align="center"><button id="Clean">整理</button>　<button id="Save">保存</button></p>
-  <hr>
-  <p align="center"><small>六式 ime　version 4</small>　<button id="DictText">辞書出力</button></p>
+  <div class="option-tab">
+    <p align="center"><button id="ime-btn">六式　ime　version 4</button></p>
+  </div>
   <script src="dictdlg.js"></script>
 </form></body>
 </html>

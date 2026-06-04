@@ -1,0 +1,49 @@
+<!-- dictdlg.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>六式 IME version 4.0</title>
+  <style>
+    html { background: rgb(89, 160, 123); }
+    body { width: 250px; padding: 15px; font-family: sans-serif; }
+    .btn-container { text-align: center; }
+    /* ボタンの見た目を整える（オプション） */
+    .optbtn {
+      padding: 8px 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .optbtn:hover { background-color: #0056b3; }  
+  </style>
+</head>
+<body>
+  <p>
+    <table align="left">
+      <tr>
+        <td valign="bottom"><img src="rokuicon-s.png" alt="ime ICON"></td>
+        <td align="left">　親指シフト 入力<br/>　　六式 IME version 4</td>
+      </tr>
+    </table>
+  </p>
+  <br/>
+  <br/>
+  <br/>
+  <hr/>
+  <div class="btn-container">
+    <p>
+      <button class="optbtn" id="Clean">ローカル 整理</button>　
+      <button class="optbtn" id="Save">ローカル 保存</button>
+    </p>
+    <p>
+      <button class="optbtn" id="Merge">辞書 マージ</button>　
+      <button class="optbtn" id="Write">辞書 書き出し</button>
+    </p>
+    <input type="file" id="import-file-input" accept=".txt" style="display: none;">
+  </div>
+  <script src="options.js"></script>
+</form></body>
+</html>

@@ -5,9 +5,7 @@ const rbutton = document.getElementById('Remove');
 const ebutton = document.getElementById('Engage');
 const kanjiInput = document.getElementById('Kanji');
 const kanaInput = document.getElementById('Kana');
-const cbutton = document.getElementById('Clean');
-const sbutton = document.getElementById('Save');
-const obutton = document.getElementById('DictText');
+const ibutton = document.getElementById('ime-btn');
 
 // --- ボタンイベント ---
 rbutton.addEventListener('click', () => {
@@ -20,16 +18,10 @@ ebutton.addEventListener('click', () => {
     chrome.runtime.sendMessage({ type: 'engageOne', jtext });
 });
 
-cbutton.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'Clean' });
-});
-
-sbutton.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'Save' });
-});
-
-obutton.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'DictText' });
+ibutton.addEventListener('click', () => {
+    // オプション画面（設定ページ）を新しいタブで開く
+    chrome.runtime.openOptionsPage();    
+//    fileInput.click();  // 隠れているファイル選択画面をトリガー（強制クリック）する
 });
 
 // --- バージョン表示（安全な初期化） ---

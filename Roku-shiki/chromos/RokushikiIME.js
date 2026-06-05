@@ -1,4 +1,4 @@
-/*  2026.06.03 20:00
+/*  2026.06.05 20:00
   Oya Key shift keyboard (自作キーボード用)
     
     >> Spcial keys << inbuf.length > 0 
@@ -425,23 +425,6 @@ class Commit{
     }
 }
 
-//class UIMenu{
-//    constructor(){
-//        this.menuInp = "minput";
-//        this.menuArg = [{"id": this.menuInp, "label": "かな"}];
-//    }
-//    itemRevise( isjp ){
-//        this.menuArg[0].label = isjp ? "かな" : "英字"; // かな入力モード.
-//    }
-//    itemUpdate( isjp ){
-//        this.itemRevise( isjp );
-//        chrome.input.ime.updateMenuItems({
-//            "engineID": engine,
-//            "items": this.menuArg
-//        });
-//    }
-//}
-
 chrome.input.ime.onFocus.addListener(function(context) {
     ren.context = context.contextID;
 });
@@ -452,24 +435,9 @@ chrome.input.ime.onBlur.addListener(function(context) {
     console.log(`onBlur`);
 });
 
-//chrome.input.ime.onActivate.addListener(function(eng,scrtype){
-//    console.log(`onActivate:${eng}/${scrtype}`);
-//    mnu.itemRevise( cmap.jpmode );   // menu item 更新.
-//    chrome.input.ime.setMenuItems({
-//        "engineID": engine,
-//        "items": mnu.menuArg
-//    });
-//});
-
-//chrome.input.ime.onMenuItemActivated.addListener(function(eng,name){
-//    if( eng == engine ){
-//        if( name == mnu.menuInp ){  // 入力モードがクリックされた.
-//            cmap.changeJPandUS();
-//            ren.clearComposition();
-//        }
-//        mnu.itemUpdate();       // menu Item update
-//    }
-//});
+chrome.input.ime.onActivate.addListener(function(eng,scrtype){
+    console.log(`onActivate:${eng}/${scrtype}`);
+});
 
 chrome.input.ime.onCandidateClicked.addListener(
     function(engineID, candidate, button, mouse) {

@@ -1,4 +1,4 @@
-/*  2026.06.03 20:00
+/*  2026.06.05 20:00
   親指シフトキーボードIME ver 5.2 (JISキーボード用)
     
     カーソル行表示：最初は検索文字（ひらがな）のみの表示、入力増で適度に変換候補筆頭を表示.
@@ -157,17 +157,7 @@ class MojiMap {
         return ( index <= this.eimojiline );
     }
 
-//    changeJPandUS(){
-//        if( this.jpmode ){
-//            this.jpmode = false;
-//            this.offset = 0;
-//        }
-//        else{
-//            this.jpmode = true;
-//            this.offset = 1;
-//        }
-//    }
-//}
+}
 
 class KeyFlowCommon{
     constructor(repeatmask){
@@ -474,11 +464,6 @@ class KeyFlows{
         return true;
     }
 
-//    actDictOutput(){
-//        MakeTextNiwadictionary();   // 辞書のテキスト出力.
-//        return this.actNoKeyBuf();
-//    }
-
     actNoKeyBuf(){
         ren.clearComposition();
         return false;
@@ -598,7 +583,6 @@ const fifo = new FIFO();
 const con = new Converter(fifo);
 const ren = new Renderer(con);
 const cmt = new Commit(ren,fifo);
-const mnu = new UIMenu();
 const dic = new Dictionary(con);
 const cflow = new KeyFlows(cinf, cmap, fifo); // キーフロー制御
 

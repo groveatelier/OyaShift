@@ -157,17 +157,17 @@ class MojiMap {
         return ( index <= this.eimojiline );
     }
 
-    changeJPandUS(){
-        if( this.jpmode ){
-            this.jpmode = false;
-            this.offset = 0;
-        }
-        else{
-            this.jpmode = true;
-            this.offset = 1;
-        }
-    }
-}
+//    changeJPandUS(){
+//        if( this.jpmode ){
+//            this.jpmode = false;
+//            this.offset = 0;
+//        }
+//        else{
+//            this.jpmode = true;
+//            this.offset = 1;
+//        }
+//    }
+//}
 
 class KeyFlowCommon{
     constructor(repeatmask){

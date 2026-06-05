@@ -1,4 +1,4 @@
-/*  2026.06.05 20:00
+/*  2026.06.05 23:00
   Oya Key shift keyboard (自作キーボード用)
     
     >> Spcial keys << inbuf.length > 0 

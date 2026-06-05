@@ -1,4 +1,4 @@
-/*  2026.06.05 20:00
+/*  2026.06.05 23:00
     六式IME‐辞書
 */
 
@@ -593,6 +593,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const spkey = "@@@";
     if( !dic.isSleepState() ){      // local 辞書が読まれる前は待つ.
         var saverequest = false;
+//        console.log(`onMsg:${message}`);
         if(message.type === 'removeOne'){
             const name = message.jtext;
             console.log(`Remove:${name}`);
@@ -645,7 +646,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             dic.executeMerge(message.text);
             sendResponse({ success: true });
             return true;  // 💡 非同期で sendResponse を返すために必須の return
-        }    
+        } 
+//        else if( message === 'heartbeet' ){
+//            console.log(`heartbeet`);
+//        }
+
         if( saverequest ) dic.saveRokushiki();
     }
 });

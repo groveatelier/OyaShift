@@ -454,14 +454,14 @@ chrome.input.ime.onCandidateClicked.addListener(
 //  操作: 辞書登録, commitText, 候補窓変更
 function PrefixOne(){   // 先頭確定.
     const validiate = cmt.preCommit();
-    console.log(`Prefix:${validiate}`);
+    //1console.log(`Prefix:${validiate}`);
 
     dic.saveEntry2Rokushiki( validiate ); // 先に変換データを保存.
     con.data.splice(0,1);           // dataの一段目を削除.
     ren.invibleCandidate();         // candidate windowの消去.
 
     con.makeCandidate( dic.isCacheState() );  // candidateの作り直し
-    console.log( `PrefixOne<${validiate}:${fifo.inbuf}` );
+    //1console.log( `PrefixOne<${validiate}:${fifo.inbuf}` );
 }
 
 //  fixAll： 全確定はカーソル行表示をそのまま確定させる.
@@ -470,7 +470,7 @@ function fixAll(){  //  変換候補を全FIX.
     if( con.data.length > 0 ){
         for( let depth = 1; depth < con.data.length; depth++ )
             con.data[0][0] += con.data[depth][0];
-        console.log(`fixAll>${fifo.curbuf}`);
+        //1console.log(`fixAll>${fifo.curbuf}`);
 
         // 長文登録は避ける 文字数制限を実施.
         if( con.data[0][0].length < 16 )

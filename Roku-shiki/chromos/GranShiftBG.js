@@ -373,7 +373,7 @@ class KeyFlows{
     }
 
     actIfNeeded(seen){
-        console.log(`ai:${seen}`);
+        //1console.log(`ai:${seen}`);
         switch(seen){
             case this.seen.PEND:            return true;
             case this.seen.SHIFT2MOJI:      return this.actShift2Moji();
@@ -604,7 +604,7 @@ chrome.input.ime.onKeyEvent.addListener(
         cflow.keyUp( keyData );
     } 
     else if(keyData.type === "keydown"){
-        console.log(`KD:(${keyData.key}|${keyData.code})`);
+        //1console.log(`KD:(${keyData.key}|${keyData.code})`);
         enact = cflow.keyDown( keyData );
     }
     return enact;

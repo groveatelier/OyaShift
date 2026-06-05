@@ -120,7 +120,7 @@ class Dictionary{
             }
         } else kenkey[2] = kenkey[1];
         this.rokushiki.splice( kenkey[2], 0, tagEntry );  // 登録点に…  エントリ追加登録.
-        console.log(`*new>(${kenkey[2]})${tagEntry}`);
+        //1console.log(`*new>(${kenkey[2]})${tagEntry}`);
     }
 
     // ひらがな文字判斷　: 文字列がひらがなだけの場合は true
@@ -233,7 +233,7 @@ class Dictionary{
         if( this.kanaOnly( code ) ) return -1;   // かなだけの登録は NG
 
         let key = this.cn.data[0][0];           // 検索キー.　dataの検索文字で検索要.
-        console.log(`*Save(${this.rokushiki.length})=${code}:${key}/${this.cn.index}/${this.step}`);
+        //1console.log(`*Save(${this.rokushiki.length})=${code}:${key}/${this.cn.index}/${this.step}`);
 
         // Debug codes
         if( code.length > key.length * 5 ){

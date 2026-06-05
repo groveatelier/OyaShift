@@ -536,7 +536,7 @@ class Dictionary{
 
             let keyvalue = trimmedLine.split(',');
             if( keyvalue.length < 3 ) continue;     // versionはスキップ
-            for( let pos = 3; pos < keyvalue.length; pos++ ){
+            for( let pos = keyvalue.length-1; pos >= 3; pos-- ){    // 逆順にしないと後で登録された物が前になるよ
                 let entryData = this.prepareEntryEngage( keyvalue[0], keyvalue[pos] ); 
                 if( entryData != null ) this.engage( entryData[0], entryData[1] );  // 登録点を探して登録.
             }

@@ -37,11 +37,8 @@ fileInput.addEventListener("change", (event) => {
             }, (response) => {
                 // background.js からの返事を受け取る
                 if (response && response.success) {
-                    alert("設定を正常にマージインポートしました！");
-                } else {
-                    alert("インポートに失敗しました: " + (response?.error || "Unknown"));
-                }
-            
+                    alert("マージインポートしました！(未保存)");
+                } 
                 // 連続選択できるようにインプットをリセット
                 fileInput.value = "";
         });

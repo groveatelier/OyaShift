@@ -31,10 +31,10 @@
   },
   "input_components": [
     {
-      "name": "GranShift KB",
+      "name": "親指シフト (日本語) キー入力",
       "type": "ime",
       "id": "GranShift",
-      "description": "GranShift keyboard input", 
+      "description": "親指シフト キー入力", 
       "language": "GS", 
       "layouts": ["us"] 
     }

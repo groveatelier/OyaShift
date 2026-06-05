@@ -1,4 +1,4 @@
-/*  2026.06.03 20:00
+/*  2026.06.05 20:00
     六式IME‐辞書
 */
 
@@ -252,21 +252,10 @@ class Dictionary{
         code = keycode[1];
 
         //　検索文字列のエントリを探す.
-        let entryindex = this.search( key );  // 検索キー登録場所を探す.
-        let tagEntry = [];
-        if( entryindex <= 0 ){                      // 検索文字が辞書に存在しない場合.
-            // -----------------------------------------------------------
-            // (注意)検索キー 未登録 且つ 変換文字が同一であれば 何もせずに終了.
-            if( key === code )  return 0;
-            // -----------------------------------------------------------
-            tagEntry = [ key, 0, 0, [code]];   // 登録エントリ
-            if( this.rokushiki.length > 65000 ) this.rokushiki.pop();  // 辞書の肥大化防止.
-            entryindex = this.rokushiki.length;
-        } else {
-            tagEntry = this.getEntry( entryindex, code );
-            // 辞書のスリム化(変換候補数の制限)
-            while( tagEntry[3].length > 256 ) tagEntry[3].pop();    //  一番後ろの候補から削除.
-        }
+        const entryData = this.prepareEntryEngage( key, code );
+        if( entryData == null ) return;    // 登録不要の場合は終了.
+        let entryindex = entryData[1];
+        let tagEntry = entryData[0];
         // 変換データ以外の候補も必要に応じて登録.
         if( keycode[2] === 0 ){         // 文字を減らした場合は登録回避.
             for( let koinx = 1; koinx < this.cn.candidate.length; koinx++ ){
@@ -292,6 +281,27 @@ class Dictionary{
             this.ramp = 0;
         }
         return;
+    }
+
+    prepareEntryEngage( key, code ){
+        //　検索文字列のエントリを探す.
+        let entryindex = this.search( key );  // 検索キー登録場所を探す.
+        let tagEntry = [];
+        if( entryindex <= 0 ){      // 検索文字が辞書に存在しない場合.
+            // -----------------------------------------------------------
+            // (注意)検索キー 未登録 且つ 変換文字が同一であれば 何もせずに終了.
+            if( key === code )  return null;
+            // -----------------------------------------------------------
+            tagEntry = [ key, 0, 0, [code]];    // 登録エントリ作成
+            if( this.rokushiki.length > 65000 ) this.rokushiki.pop();   // 辞書の肥大化防止.
+        } else {
+            tagEntry = this.getEntry( entryindex, code );   // 既存エントリの取得＆code追加.
+            // 辞書のスリム化(変換候補数の制限)
+            while( tagEntry[3].length > 256 ) tagEntry[3].pop();    //  一番後ろの候補から削除.
+        }
+        entryindex = this.rokushiki.length;
+        if( entryindex > 128 ) entryindex >= 1; // 適当な位置に登録 
+        return [tagEntry, entryindex];
     }
 
     // 辞書から変換文字列を検索し、dataを作成する.
@@ -470,21 +480,22 @@ class Dictionary{
     async exportStorageToTextFile() {
         try {
             // 1. chrome.storage.local からデータを取得
-            const allData = await chrome.storage.local.get(null);
+//            const allData = await chrome.storage.local.get(null);
+            const allData = dic.rokushiki;
             if (Object.keys(allData).length === 0) {
-                console.log("ストレージにデータがありません。");
+                console.log("辞書データがありません。");
                 return;
             }
             // 2. データを「.txt」用にテキスト文字列へ整形する
-            let textContent = "--- OyaShift 拡張機能 ストレージエクスポート ---\n";
-            textContent += `出力日時: ${new Date().toLocaleString()}\n\n`;
+            let textContent = "--- 六式 親指シフト 拡張機能 ストレージエクスポート ---\n";
+            textContent += `#出力日時: ${new Date().toLocaleString()}\n\n`;
             for (const [key, value] of Object.entries(allData)) {
-                // 値がオブジェクトや配列の場合は、見やすいように文字列化する
+//                console.log(`Exporting key:${key} value:${value}`);
+                // 文字列化する
                 if (typeof value === 'object' && value !== null) {
-                    textContent += `[${key}]\n${JSON.stringify(value, null, 2)}\n\n`;
-                } else {
-                    textContent += `${key}: ${value}\n`;
+                    textContent += `${value}\n`;
                 }
+//                console.log(`out:${textContent}`);
             }
             // 3. テキスト用の「Blob（データの塊）」を作成 (MIMEタイプを text/plain に指定)
             const blob = new Blob([textContent], { type: "text/plain;charset=utf-8" });
@@ -512,9 +523,8 @@ class Dictionary{
     }
 
     // コアロジック：パース ＆ マージ関数
-    async executeMerge(text) {
-        const parsedData = {};
-        // 1. テキストを1行ずつに分解してパース
+    executeMerge(text) {
+        // テキストを1行ずつに分解してパース
         const lines = text.split(/\r?\n/);
         for (const line of lines) {
             const trimmedLine = line.trim();
@@ -524,27 +534,14 @@ class Dictionary{
                 continue;
             }
 
-            const eqIndex = trimmedLine.indexOf('=');
-            if (eqIndex === -1) continue; 
-
-            const key = trimmedLine.substring(0, eqIndex).trim();
-            let value = trimmedLine.substring(eqIndex + 1).trim();
-
-            // 型の復元
-            if (value === "true") value = true;
-            else if (value === "false") value = false;
-            else if (!isNaN(value) && value !== "") value = Number(value);
-
-            if (key) {
-                parsedData[key] = value;
+            let keyvalue = trimmedLine.split(',');
+            if( keyvalue.length < 3 ) continue;     // versionはスキップ
+            for( let pos = 3; pos < keyvalue.length; pos++ ){
+                let entryData = this.prepareEntryEngage( keyvalue[0], keyvalue[pos] ); 
+                if( entryData != null ) this.engage( entryData[0], entryData[1] );  // 登録点を探して登録.
             }
         }
-        // 2. 現在のストレージデータとマージ
-        const currentData = await chrome.storage.local.get(null);
-        const mergedData = { ...currentData, ...parsedData };
-        // 3. ストレージに保存
-        await chrome.storage.local.set(mergedData);
-        console.log("Background側でマージ完了:", mergedData);
+        console.log("マージ完了");
     }
 }
 
@@ -594,7 +591,6 @@ function setOtherCandidate( updown ){
 /************************/
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const spkey = "@@@";
-    console.log(`listener:${message}`);
     if( !dic.isSleepState() ){      // local 辞書が読まれる前は待つ.
         var saverequest = false;
         if(message.type === 'removeOne'){
@@ -646,15 +642,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             dic.exportStorageToTextFile();
         } else if(message.action === "parseAndMergeText") {
             console.log(`辞書入力＆マージ`);
-            // 非同期処理（async/await）を行うため、即座に関数を実行する
-            dic.executeMerge(message.text)
-            .then(() => {
-                sendResponse({ success: true });
-            })
-            .catch((error) => {
-                console.error("マージ処理エラー:", error);
-                sendResponse({ success: false, error: error.message });
-            });
+            dic.executeMerge(message.text);
+            sendResponse({ success: true });
             return true;  // 💡 非同期で sendResponse を返すために必須の return
         }    
         if( saverequest ) dic.saveRokushiki();

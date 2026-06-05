@@ -1,4 +1,4 @@
-// 27秒ごとにchrome.runtime.sendMessageを呼ぶ.
+// 23秒ごとにchrome.runtime.sendMessageを呼ぶ.
 setInterval(() => {
   chrome.runtime.sendMessage("heartbeet");
 }, 23284);

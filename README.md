@@ -11,7 +11,7 @@ OyaShiftKey は、quietgrove が育てている
 ---
 
 📦 最新版のダウンロードは Releases からどうぞ  
-https://github.com/groveatelier/OyaShift/releases/tag/六式-v1.1.0
+https://github.com/groveatelier/OyaShift/releases/tag/六式-v1.3.2
 
 ---
 

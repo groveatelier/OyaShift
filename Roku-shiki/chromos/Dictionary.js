@@ -1,4 +1,4 @@
-/*  2026.06.05 23:00
+/*  2026.06.06 23:00
     六式IME‐辞書
 */
 
@@ -276,7 +276,7 @@ class Dictionary{
             for( let depth=1; depth < this.rokushiki.length; depth++ )
                 this.rokushiki[depth][1] >= 1;                        // 値を半分に
         }
-        if( this.ramp++ >= 16 ){    // 辞書へのライト処理をまとめる. 
+        if( this.ramp++ >= 32 ){    // 辞書へのライト処理をまとめる. 
             this.saveRokushiki();   // 保存処理.
             this.ramp = 0;
         }
@@ -638,6 +638,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             ConvertOldtoNewDict();                  // 辞書内の整理.
         } else if(message.type === 'Save') {
             saverequest = true;                     // 辞書保存要求.
+            sendResponse({ success: true });
         } else if(message.type === 'Write') {
             console.log(`辞書の書き出し`);
             dic.exportStorageToTextFile();

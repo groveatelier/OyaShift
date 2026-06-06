@@ -10,7 +10,13 @@ cbutton.addEventListener('click', () => {
 });
 
 sbutton.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'Save' });
+    chrome.runtime.sendMessage({ type: 'Save' }, 
+        (response) => { // background.js からの返事を受け取る
+            if (response && response.success) {
+                alert("ストレージローカルに保存します！");
+            }
+        }
+    );
 });
 
 obutton.addEventListener('click', () => {

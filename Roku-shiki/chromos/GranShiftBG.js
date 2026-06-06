@@ -1,4 +1,4 @@
-/*  2026.06.05 20:00
+/*  2026.06.06 20:00
   親指シフトキーボードIME ver 5.2 (JISキーボード用)
     
     カーソル行表示：最初は検索文字（ひらがな）のみの表示、入力増で適度に変換候補筆頭を表示.
@@ -610,4 +610,30 @@ chrome.input.ime.onKeyEvent.addListener(
     return enact;
   }
 );
+
+/***************************************/
+/* 以下は変換候補サーチ(IME)呼び出し関連コード  */
+/***************************************/
+function IME_Rokushiki(){
+    if( ren.convCandidate ) PrefixOne();    // 先頭が選択済ならFIXさせる.
+    ren.showCompositionAnd( dic.readyEngage() ); // conpositionとcandidate表示
+}
+
+//  IME起動
+function ImeEngage(){
+    ren.showCompositionAnd( dic.imeEngage() ); // conpositionとcandidate表示
+}
+
+function SelectIME(){ 
+    ren.showCompositionAnd( dic.selectEngage() ); // conpositionとcandidate表示
+}
+
+function NextIME(){
+    ren.showCompositionAnd( dic.fourceEngage() ); // conpositionとcandidate表示
+}
+
+//  別の候補文字を設定する. 呼び出し元はcandidate.length > 0 を要確認.
+function setOtherCandidate( updown ){
+    if( ren.otherCandidate( updown, dic.isCacheState() )) SelectIME();    // IME切り替え.
+}
 

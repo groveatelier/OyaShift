@@ -463,17 +463,23 @@ class Dictionary{
         this.cn.makeCandidate( this.isCacheState() );     // candidateの作り直し
     }
 
-    // キャッシュ辞書ならLocalに
-    // ローカルで無いかローカル脱出条件が揃っている場合はReadyに    
-    selectCurrentState(){
+    // IMEを選んでEngage    
+    selectEngage(){
+        if( this.isSleepState() ) return null;
+        // キャッシュ辞書ならLocalに
+        // ローカルで無いかローカル脱出条件が揃っている場合はReadyに    
         if( this.isCacheState() ) this.setLocalState();
         else if( !this.isLocalState() ||( this.isSearchend() && !this.cn.isGoogles() )) this.setReadyState();
+        return this.imeEngage();
     }
 
-    // キャッシュ辞書ならLocalに、LocalならReadyに
-    fourceNextState(){
+    // 次のIMEを選択してEngage
+    fourceEngage(){
+        if( this.isSleepState() ) return null;
+        // キャッシュ辞書ならLocalに、LocalならReadyに
         if( this.isLocalState() ) this.setReadyState();
         if( this.isCacheState() ) this.setLocalState();
+        return this.imeEngage();
     }
 
     // 辞書のテキスト書き出し
@@ -543,47 +549,21 @@ class Dictionary{
         }
         console.log("マージ完了");
     }
-}
 
-/***************************************/
-/* 以下は変換候補サーチ(IME)関連のコード  */
-/***************************************/
-//  IME を呼ばれた際は cursole lineも作り直しとする。
-//  入力： inbuf
-//  出力： data
-function IME_Rokushiki(){
-    if( !dic.isSleepState() ){
-        if( ren.convCandidate ) PrefixOne();    // 先頭が選択済ならFIXさせる.
-        if( fifo.isAvailable() ){
-            dic.setReadyState();        // IME Ready状態に設定.
-            ImeEngage();
-        }
+    //  IME起動
+    imeEngage(){
+        this.cn.initialize();
+        if( !this.cn.fo.isAvailable() ) return null;
+        this.makeConvert();         // Candidate の作り直し
+        return this.isCacheState(); // IME状態を応答
     }
-}
 
-//  IME起動
-function ImeEngage(){
-    con.initialize();
-    if( !fifo.isAvailable() ) return;
-    dic.makeConvert();  // Candidate の作り直し
-    ren.showCompositionAnd( dic.isCacheState() ); // conpositionとcandidate表示
-}
+    readyEngage(){
+        if( this.isSleepState() ) return null;
+        this.setReadyState();        // IME Ready状態に設定.
+        return this.imeEngage();
+    }
 
-function SelectIME(){ 
-    if( dic.isSleepState() ) return;
-    dic.selectCurrentState();   // 現在のステートに設定
-    ImeEngage(); 
-}
-
-function NextIME(){
-    if( dic.isSleepState() ) return;
-    dic.fourceNextState();      // 次のステートに設定
-    ImeEngage(); 
-}
-
-//  別の候補文字を設定する. 呼び出し元はcandidate.length > 0 を要確認.
-function setOtherCandidate( updown ){
-    if( ren.otherCandidate( updown, ( dic.isCacheState() ))) SelectIME();    // IME切り替え.
 }
 
 /************************/

@@ -1,4 +1,4 @@
-/*  2026.06.05 23:00
+/*  2026.06.06 23:00
   Oya Key shift keyboard (自作キーボード用)
     
     >> Spcial keys << inbuf.length > 0 
@@ -316,7 +316,8 @@ class Renderer{
         }
     }
 
-    showCompositionAnd( cache ){     // バインド関数
+    showCompositionAnd( cache ){      // バインド関数
+        if( cache === null ) return;  // cache が null のときは何もしない.
         this.showComposition();
         if (this.con.fo.isAvailable()) this.showCandidates( cache );     // fifo 空白文字以外もあるときは候補表示する
     }

@@ -74,10 +74,11 @@ chromeos/
  ├── manifest.json     # Chrome 拡張の定義
  ├── GranShiftBG.js    # 入力ロジック
  ├── rokuicon-*.png    # アイコン画像
- ├── RokushikiIME.js   # 入力変換ロジック (リンク)
- ├── dictdlg.*         # 辞書入力ダイアログ (リンク)
- ├── offscreen.*       # パワーセーブ対策 (リンク)
- └── README.md            # このファイル
+ ├── RokushikiIME.js   # 入力変換ロジック
+ ├── dictdlg.*         # 辞書入力ダイアログ
+ ├── options.*         # 辞書保存＆マージダイアログ
+ ├── offscreen.*       # パワーセーブ対策
+ └── README.md         # このファイル
 ```
 
 ---

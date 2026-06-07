@@ -1,6 +1,6 @@
 {
   "name": "六式 親指シフトキー入力",
-  "version": "1.3.2",
+  "version": "1.4.0",
   "manifest_version": 3,
   "description": "親指シフトキー入力を実現します。",
   "action": {

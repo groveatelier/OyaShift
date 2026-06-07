@@ -1,54 +1,59 @@
 <!-- dictdlg.html -->
 <!DOCTYPE html>
-<html>
+<html lang="ja">
+  <head>
     <meta charset="UTF-8">
-<head>
-  <style>
-    html {
-      min-height: 5em;
-      min-width: 5em;
-      background: rgb(193, 222, 207);
-    }
-    #ime-btn {
-      border: none;
-      background-color: rgb(193, 222, 207);
-      color: #202020;
-     
-      padding: 9px 16px;
-      font-size: 13px;
-      letter-spacing: 0.5px;
-      border-radius: 3px;
-      cursor: pointer;
-      transition: background-color 0.15s ease;
-    }
-
-    #ime-btn:hover {
-      background-color: rgb(203, 232, 217); /* わずかに明るくする */
-      color: #ffffff;
-    }
-
-    #ime-btn:active {
-      background-color: #222222;
-    }
-  </style>
-</head>
-<body><form id="dictDialog" name="dictDialog" action="">
-  <p>
-    <table align="center">
-      <tr>
-        <td rowspan="2" valign="bottom"><img src="rokuicon-s.png" alt="ime ICON"></td>
-        <td align="center">　親指シフト キー入力</td>
-      </tr>
-      <tr><td align="right" valign="top"><small><div id="ver">x</div></small></td></tr>
-    </table>
-  </p><hr>
-  <input type="text" id="Kanji" placeholder="登録文字"><br/>
-  <input type="text" id="Kana" placeholder="よみかた"><br/>
-  <p align="center"><button id="Remove">抹消</button>　<button id="Engage">登録</button></p>
-  <hr>
-  <div class="option-tab">
-    <p align="center"><button id="ime-btn">六式　ime　version 4</button></p>
-  </div>
-  <script src="dictdlg.js"></script>
-</form></body>
+    <style>
+      html {
+        min-height: 5em;
+        min-width: 5em;
+        background: rgb(193, 222, 207);
+      }
+      .btn-group {
+        display: flex;
+        gap: 8px;
+      }
+      .flat-btn {
+        flex: 1;
+        border: none;
+        outline: none;
+        box-shadow: none;
+        color: white;
+        padding: 4px;
+        font-size: 12px;
+        font-weight: bold;
+        border-radius: 2px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+      .btn-green { background-color: #4CAF50; }
+      .btn-green:hover { background-color: #388E3C; }
+      .btn-option { background-color: #2196F3; }
+      .btn-option:hover { background-color: #1976D2; }
+    </style>
+  </head>
+  <body>
+    <form id="dictDialog" name="dictDialog" action="">
+      <p>
+        <table align="center">
+          <tr>
+            <td rowspan="2" valign="bottom"><img src="rokuicon-s.png" alt="ime ICON"></td>
+            <td align="center">　親指シフト キー入力</td>
+          </tr>
+          <tr>
+            <td align="right" valign="top"><small><div id="ver">x</div></small></td>
+          </tr>
+        </table>
+      </p><hr>
+      <input type="text" id="Kanji" placeholder="登録文字"><br/>
+      <input type="text" id="Kana" placeholder="よみかた"><br/>
+      <script src="dictdlg.js"></script>
+    </form>
+    <br/>
+    <div class="btn-group">
+      <button id="remove-btn" class="flat-btn btn-green" type="button">抹消</button>
+      <button id="engage-btn" class="flat-btn btn-green" type="button">登録</button>
+      <button id="option-btn" class="flat-btn btn-option" type="button">高度</button>
+    </div>
+  </body>
 </html>

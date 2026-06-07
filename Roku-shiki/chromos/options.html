@@ -1,48 +1,78 @@
 <!-- dictdlg.html -->
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>六式 IME version 4.0</title>
+  <title>六式 IME オプション</title>
   <style>
-    html { background: rgb(89, 160, 123); }
-    body { width: 250px; padding: 15px; font-family: sans-serif; }
-    .btn-container { text-align: center; }
-    /* ボタンの見た目を整える（オプション） */
-    .optbtn {
-      padding: 8px 16px;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
+    html, body {      /* ウィンドウ全体にフィットさせる設定 */
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color:#122516;
+      color: #c0e0c0;
+      font-family: sans-serif;
+      overflow: hidden; /* 無駄なスクロールバーを消す */
     }
-    .optbtn:hover { background-color: #0056b3; }  
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+      box-sizing: border-box;
+      width: 100%;
+      height: 100%;
+    }
+    #input-area {   /* 入力エリアをウインドウの高さに合わせて伸縮させる */
+      width: 100%;
+      flex: 1; 
+      padding: 8px;
+      box-sizing: border-box;
+      background-color: #2d2d2d;
+      color: #c0e0c0;           
+      border: 1px solid #444444;
+      border-radius: 4px;
+      font-size: 14px;
+      resize: none;
+      outline: none;
+    }
+    #input-area:focus {
+      border-color: #007acc;
+    }
+    .btn-group {
+      display: flex;
+      gap: 8px;
+    }
+    .flat-btn {
+      flex: 1;
+      border: none;
+      outline: none;
+      box-shadow: none;
+      color: white;
+      padding: 4px;
+      font-size: 12px;
+      font-weight: bold;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .btn-blue { background-color: #2196F3; }
+    .btn-blue:hover { background-color: #1976D2; }
+    .btn-green { background-color: #4CAF50; }
+    .btn-green:hover { background-color: #388E3C; }
   </style>
 </head>
 <body>
-  <p>
-    <table align="left">
-      <tr>
-        <td valign="bottom"><img src="rokuicon-s.png" alt="ime ICON"></td>
-        <td align="left">　親指シフト 入力<br/>　　六式 IME version 4</td>
-      </tr>
-    </table>
-  </p>
-  <br/>
-  <br/>
-  <br/>
-  <hr/>
-  <div class="btn-container">
-    <p>
-      <button class="optbtn" id="Clean">ローカル 整理</button>　
-      <button class="optbtn" id="Save">ローカル 保存</button>
-    </p>
-    <p>
-      <button class="optbtn" id="Merge">辞書 マージ</button>　
-      <button class="optbtn" id="Write">辞書 書き出し</button>
-    </p>
-    <input type="file" id="import-file-input" accept=".txt" style="display: none;">
+  <div class="container">
+    <textarea id="input-area" placeholder="テスト入力…Shift+Enterでクリップボード"></textarea>
+    <div class="btn-group">
+      <button id="btn-clean" class="flat-btn btn-blue" type="button">ローカル 整理</button>
+      <button id="btn-save" class="flat-btn btn-blue" type="button">ローカル 保存</button>
+      <button id="btn-merge" class="flat-btn btn-green" type="button">辞書 マージ</button>
+      <button id="btn-write" class="flat-btn btn-green" type="button">辞書 書き出し</button>
+      <input type="file" id="import-file-input" accept=".txt" style="display: none;">
+    </div>
   </div>
   <script src="options.js"></script>
 </form></body>

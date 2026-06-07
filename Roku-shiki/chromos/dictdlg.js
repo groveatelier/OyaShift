@@ -32,14 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     optionbtn.addEventListener('click', () => {
-        // オプション画面（設定ページ）を新しいタブで開く
-        chrome.windows.create({
-            url: "options.html",
-            type: "popup",
-            width: 480,
-            height: 160,
-            focused: true
-        });
+        chrome.runtime.sendMessage({ action: 'openSettings' });
         window.close();
     });
 });

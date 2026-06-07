@@ -585,6 +585,7 @@ const ren = new Renderer(con);
 const cmt = new Commit(ren,fifo);
 const dic = new Dictionary(con);
 const cflow = new KeyFlows(cinf, cmap, fifo); // キーフロー制御
+let settingsWindowId = null;        // 設定窓のID 多重オープン抑止
 
 // シフトの遅延処理
 function SPCLateKeyDown(){

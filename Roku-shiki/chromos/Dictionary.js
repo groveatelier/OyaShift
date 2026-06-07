@@ -567,13 +567,13 @@ class Dictionary{
 }
 
 /************************/
-/* 以下は辞書関連のコード */
+/* 辞書ダイアログ関連のコード */
 /************************/
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const spkey = "@@@";
     if( !dic.isSleepState() ){      // local 辞書が読まれる前は待つ.
         var saverequest = false;
-//        console.log(`onMsg:${message}`);
+        console.log(`onMsg:${message}`);
         if(message.type === 'removeOne'){
             const name = message.jtext;
             console.log(`Remove:${name}`);
@@ -627,20 +627,52 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             dic.executeMerge(message.text);
             sendResponse({ success: true });
             return true;  // 💡 非同期で sendResponse を返すために必須の return
-        } 
+        } else if(message.action === "openSettings") {
+                // 1. すでに窓を開いた記録がある場合
+            if (settingsWindowId !== null) {
+                // そのID のウィンドウが存在するかチェック（コールバック方式でエラーを安全に検知）
+                chrome.windows.get(settingsWindowId, (window) => {
+                    if (chrome.runtime.lastError || !window) {
+                        // ウィンドウが存在しない場合はエラーになるので、ここに飛びます。
+                        settingsWindowId = null; // 記録をリセット
+                        createSettingsWindow(); // 新しく窓を作成
+                    } else {
+                        // 窓が存在していたら、フォーカスを当てて処理を終了（ガード成功）
+                        chrome.windows.update(settingsWindowId, { focused: true });
+                    }
+                });
+            }
+            else {
+                // 2. 最初から記録がない場合は新規作成
+                createSettingsWindow(); // 新しく窓を作成
+            }
+        }
 //        else if( message === 'heartbeet' ){
 //            console.log(`heartbeet`);
 //        }
-
         if( saverequest ) dic.saveRokushiki();
     }
 });
 
+function createSettingsWindow() {
+        // 2. 窓が開いていない（または閉じられていた）場合は新しく作成
+    chrome.windows.create({
+            url: "options.html",
+            type: "popup",      // アドレスバー等のない純粋な「枠」だけ
+            width: 480,
+            height: 160,
+            focused: true
+        }, (window) => {
+        settingsWindowId = window.id;   // 作成されたウィンドウの ID を変数に保存しておく
+    });
+}
+
 // 辞書版数のコンバート.
 function ConvertOldtoNewDict(){
-    if( dic.rokushiki.length <= 0 ){
+//    if( dic.rokushiki.length <= 0 ){
         dic.rokushiki = [[4,0]];       // ver.4　辞書初期化.
+        console.log(`** Debug operation: initialized **`);
         return;
-    }
+//    }
 }
 

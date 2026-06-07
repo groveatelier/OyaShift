@@ -64,7 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
         reader.onload = function (e) {
             const fileText = e.target.result;
 
-            // 💡 background.js へテキストデータを送信する
+            // background.js へテキストデータを送信する
             chrome.runtime.sendMessage({
                 action: "parseAndMergeText",
                 text: fileText

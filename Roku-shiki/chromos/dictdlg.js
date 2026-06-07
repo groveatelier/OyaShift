@@ -13,15 +13,22 @@ document.addEventListener("DOMContentLoaded", () => {
         verElem.textContent = "version " + chrome.runtime.getManifest().version;
     }
 
+    function clearInputFields() {
+        kanjiInput.value = '';
+        kanaInput.value = '';
+    }
+
     // --- ボタンイベント ---
     removebtn.addEventListener('click', () => {
         const jtext = kanaInput.value + "\t" + kanjiInput.value;
         chrome.runtime.sendMessage({ type: 'removeOne', jtext });
+        clearInputFields();
     });
 
     engagebtn.addEventListener('click', () => {
         const jtext = kanaInput.value + "\t" + kanjiInput.value;
         chrome.runtime.sendMessage({ type: 'engageOne', jtext });
+        clearInputFields();
     });
 
     optionbtn.addEventListener('click', () => {

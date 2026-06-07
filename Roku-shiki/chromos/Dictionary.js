@@ -120,7 +120,7 @@ class Dictionary{
             }
         } else kenkey[2] = kenkey[1];
         this.rokushiki.splice( kenkey[2], 0, tagEntry );  // 登録点に…  エントリ追加登録.
-        //1console.log(`*new>(${kenkey[2]})${tagEntry}`);
+        console.log(`*new>(${kenkey[2]})${tagEntry[3][0]}`);
     }
 
     // ひらがな文字判斷　: 文字列がひらがなだけの場合は true
@@ -213,7 +213,7 @@ class Dictionary{
     }
 
     saveRokushiki(){
-        //4 console.log(`**Save Local`);
+        console.log(`**Save Local`);
         return new Promise(resolve => {
             chrome.storage.local.set({ 
                 Rokushiki: this.rokushiki,
@@ -257,7 +257,7 @@ class Dictionary{
         let entryindex = entryData[1];
         let tagEntry = entryData[0];
         // 変換データ以外の候補も必要に応じて登録.
-        if( keycode[2] === 0 ){         // 文字を減らした場合は登録回避.
+        if( this.isLocalState() && keycode[2] === 0 ){  // ローカルモードで他に候補があれば…
             for( let koinx = 1; koinx < this.cn.candidate.length; koinx++ ){
                 let tagcand = this.cn.candidate[koinx].candidate;
                 if( !this.kanaOnly( tagcand ) && !this.kataOnly( tagcand )){    // かなだけの登録は NG
@@ -269,7 +269,7 @@ class Dictionary{
                 }
             }
         }
-
+        //console.log(`*Before Engage>(${entryindex})${tagEntry}`);
         this.engage( tagEntry, entryindex );                     // 登録点を探してて登録.
 
         if( tagEntry[1] > 64000 ){                              // 更新値上がり過ぎり対策.
@@ -299,8 +299,9 @@ class Dictionary{
             // 辞書のスリム化(変換候補数の制限)
             while( tagEntry[3].length > 256 ) tagEntry[3].pop();    //  一番後ろの候補から削除.
         }
+        //console.log(`*prepare>(${entryindex})${tagEntry}`);
         entryindex = this.rokushiki.length;
-        if( entryindex > 128 ) entryindex >= 1; // 適当な位置に登録 
+        if( entryindex > 128 ) entryindex >>= 1; // 適当な位置に登録 
         return [tagEntry, entryindex];
     }
 
@@ -427,13 +428,11 @@ class Dictionary{
             if( this.cn.fo.isAvailable() && navigator.onLine ){
                 const response = await fetch(url, { signal });
                 this.cn.googles = await response.json();
-    //            console.log("g:get:", this.cn.googles);
             }
         } catch (error) {
             if (error.name !== 'AbortError') {
                 console.log("g:Error:", error);
             }
-    //        else console.log("g:cancel");
         } finally {
             this.controller = null;
         }
@@ -485,8 +484,7 @@ class Dictionary{
     // 辞書のテキスト書き出し
     async exportStorageToTextFile() {
         try {
-            // 1. chrome.storage.local からデータを取得
-//            const allData = await chrome.storage.local.get(null);
+            // 1. データを取得
             const allData = dic.rokushiki;
             if (Object.keys(allData).length === 0) {
                 console.log("辞書データがありません。");
@@ -496,7 +494,6 @@ class Dictionary{
             let textContent = "--- 六式 親指シフト 拡張機能 ストレージエクスポート ---\n";
             textContent += `#出力日時: ${new Date().toLocaleString()}\n\n`;
             for (const [key, value] of Object.entries(allData)) {
-//                console.log(`Exporting key:${key} value:${value}`);
                 // 文字列化する
                 if (typeof value === 'object' && value !== null) {
                     textContent += `${value}\n`;
@@ -573,7 +570,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const spkey = "@@@";
     if( !dic.isSleepState() ){      // local 辞書が読まれる前は待つ.
         var saverequest = false;
-        console.log(`onMsg:${message}`);
+//        console.log(`onMsg:${message}`);
         if(message.type === 'removeOne'){
             const name = message.jtext;
             console.log(`Remove:${name}`);
@@ -654,8 +651,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 });
 
+// 設定オプション窓を開く
 function createSettingsWindow() {
-        // 2. 窓が開いていない（または閉じられていた）場合は新しく作成
     chrome.windows.create({
             url: "options.html",
             type: "popup",      // アドレスバー等のない純粋な「枠」だけ
@@ -669,10 +666,10 @@ function createSettingsWindow() {
 
 // 辞書版数のコンバート.
 function ConvertOldtoNewDict(){
-//    if( dic.rokushiki.length <= 0 ){
+    if( dic.rokushiki.length <= 0 ){
         dic.rokushiki = [[4,0]];       // ver.4　辞書初期化.
         console.log(`** Debug operation: initialized **`);
         return;
-//    }
+    }
 }
 

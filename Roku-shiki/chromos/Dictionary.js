@@ -1,4 +1,4 @@
-/*  2026.06.06 23:00
+/*  2026.06.08 23:00
     六式IME‐辞書
 */
 
@@ -17,6 +17,7 @@ class Dictionary{
         this.volatile = [];     // 揮発辞書.
         this.controller = null; // Background処理制御
         this.hitdepth = 0;      // 辞書検索開始位置-1
+        this.spkey = "@@@";
         this.open();
         this.openCache();
     }
@@ -29,32 +30,23 @@ class Dictionary{
     setLocalState(){ this.step = this.state.LOCAL; this.hitdepth = 0; }
     isSearchend(){ return (this.hitdepth === this.rokushiki.length); }
 
-    open(){
+    async open(){
         // debug mode fource initilaize
         //this.rokushiki = [[4,0]]; this.step = this.state.READY; return;
-
-        // storage.local.get()が非同期で呼ばれるのでasync-awaitを使う
         console.log(`Preparing rokushiki dictionary...`);
-        (async () => {
-            await chrome.storage.local.get(['Rokushiki'], (result) => {
-                this.rokushiki = result.Rokushiki;
-                if(this.rokushiki == undefined) this.rokushiki = [[4,0]];
-                console.log(`...Open Rokushiki dictionary:${this.rokushiki.length}`);
-                this.step = this.state.READY;
-            });
-        })();
+        const result = await chrome.storage.local.get(['Rokushiki']);
+        // Null合体演算子（??）で undefined 時の初期化も1行に
+        this.rokushiki = result.Rokushiki ?? [[4, 0]]; 
+        console.log(`...Open Rokushiki dictionary:${this.rokushiki.length}`);
+        this.step = this.state.READY;
     }
 
     // キャッシュ辞書のロード.
-    openCache(){
+    async openCache(){
         console.log(`Preparing Cache table...`);
-        (async () => {
-            await chrome.storage.local.get(['Voldict'], (result) => {
-                this.volatile = result.Voldict;
-                if(this.volatile === undefined) this.volatile = [];
-                console.log(`...Loaded Cache table:${this.volatile.length}`);
-            });
-        })();
+        const result = await chrome.storage.local.get(['Voldict']);
+        this.volatile = result.Voldict ?? [];
+        console.log(`...Loaded Cache table:${this.volatile.length}`);
     }
 
     search( key ){
@@ -84,10 +76,10 @@ class Dictionary{
                 tagEntry[2]--;                  // 強制変換値を減算.
             }
         }
-        for( let pos = 0; pos < 5; pos++ ){     // loop数の5回は failsafe設計.
-            let mojiInx = tagEntry[3].indexOf( code, 2 );   // 2以降の変換確定文字を削除.
-            if( mojiInx >= 0 ) tagEntry[3].splice( mojiInx, 1 );  // 同じ要素を削除.
-        }
+        // 3番目（インデックス2）以降の候補から、重複する code を綺麗に排除する
+        const head = tagEntry[3].slice(0, 2);
+        const tail = tagEntry[3].slice(2).filter(c => c !== code);
+        tagEntry[3] = [...head, ...tail];
 
         tagEntry[1] += 1;                   // エントリ更新カウントをアップ.
         this.rokushiki.splice( entryindex, 1 );   // 変換対象エントリを一旦削除.
@@ -125,17 +117,20 @@ class Dictionary{
 
     // ひらがな文字判斷　: 文字列がひらがなだけの場合は true
     kanaOnly( tagmoji ){
-        return (tagmoji.match(/^[ぁ-ゞ]+$/g) != null);  // ひらがな範囲のみの構成かを判断.
+        //return /^[ぁ-ゞ]+$/g.test(tagmoji);  // ひらがな範囲のみの構成かを判断.
+        return /^[ぁ-ん]+$/g.test(tagmoji);
     }
 
     // カタカナ文字判斷　: 文字列がカタカナだけの場合は true
     kataOnly( tagmoji ){
-        return (tagmoji.match(/^[ァ-ヾ]+$/g) != null);  // ひらがな範囲のみの構成かを判断.
+        //return /^[ァ-ヾ]+$/g.test(tagmoji);  // カタカナ範囲のみの構成かを判断.
+        return /^[ァ-ヶ]+$/g.test(tagmoji);
     }
 
     // 漢字文字判斷　: 文字列が漢字だけの場合は true
     kanjiOnly( tagmoji ){
-        return (tagmoji.match(/^[一-鿯]+$/g) != null);  // 漢字範囲のみの構成かを判断.
+        //return /^[一-鿯]+$/g.test(tagmoji);  // 漢字範囲のみの構成かを判断.
+        return /^[一-龠々]+$/g.test(tagmoji);
     }
 
     // 前後一致を回避 : 二文字は出来るだけ残す.
@@ -144,16 +139,16 @@ class Dictionary{
     //    console.log(`reKa>${henkan}/${kakutei}`)
         for( let limit = 0; limit < henkan.length; limit++ ){
             if( henkan.charCodeAt(0) == kakutei.charCodeAt(0) ){    // 元と同じ?
-                henkan  = henkan.substr( 1 );
-                kakutei = kakutei.substr( 1 );
+                henkan  = henkan.slice( 1 );
+                kakutei = kakutei.slice( 1 );
                 removed++;
             } else break;
         }
         for( let limit = henkan.length; limit > 0; limit-- ){
             if( henkan.length <= 2 ) break;             // 二文字は残したい.
             if( henkan.charCodeAt(henkan.length-1) == kakutei.charCodeAt(kakutei.length-1) ){    // 元と同じ?
-                henkan  = henkan.substr( 0, henkan.length-1 );
-                kakutei = kakutei.substr( 0, kakutei.length-1 );
+                henkan  = henkan.slice( 0, -1 );    // 後ろから一文字削除.
+                kakutei = kakutei.slice( 0, -1 );
                 removed++;
             } else break;
         }
@@ -208,7 +203,9 @@ class Dictionary{
             }
             if( index >= 0 ) this.volatile.splice( index, 1 );      // 同じエントリは削除.
             this.volatile.push( volone );                           // 末尾に登録.
-            while( this.volatile.length > 512 ) this.volatile.splice(0,1);  // 登録数制限 256 先頭から削除
+            if (this.volatile.length > 512) {
+                this.volatile = this.volatile.slice(-512); // 末尾から512個だけ残す 登録数制限 512
+            }
         }
     }
 
@@ -229,7 +226,7 @@ class Dictionary{
     /******************************************************/
     saveEntry2Rokushiki( code ){
         // 異常値のガードをいれておきます. Index == 0 は非変換となります.
-        if( this.cn.candidate.length <= 1 || code.length <= 0 || !this.open ) return -1;   // 異常値のガード.
+        if( this.cn.candidate.length <= 1 || code.length <= 0 ) return -1;   // 異常値のガード.
         if( this.kanaOnly( code ) ) return -1;   // かなだけの登録は NG
 
         let key = this.cn.data[0][0];           // 検索キー.　dataの検索文字で検索要.
@@ -375,7 +372,6 @@ class Dictionary{
         }
     }
 
-    // @todo kokomade
     // テキスト群を 辞書に展開する. 「＠＠＠」キー入力時.
     // addmode: true - 追加登録, false - 置き換え登録
     saveWords( addmode, words ) {
@@ -462,25 +458,6 @@ class Dictionary{
         this.cn.makeCandidate( this.isCacheState() );     // candidateの作り直し
     }
 
-    // IMEを選んでEngage    
-    selectEngage(){
-        if( this.isSleepState() ) return null;
-        // キャッシュ辞書ならLocalに
-        // ローカルで無いかローカル脱出条件が揃っている場合はReadyに    
-        if( this.isCacheState() ) this.setLocalState();
-        else if( !this.isLocalState() ||( this.isSearchend() && !this.cn.isGoogles() )) this.setReadyState();
-        return this.imeEngage();
-    }
-
-    // 次のIMEを選択してEngage
-    fourceEngage(){
-        if( this.isSleepState() ) return null;
-        // キャッシュ辞書ならLocalに、LocalならReadyに
-        if( this.isLocalState() ) this.setReadyState();
-        if( this.isCacheState() ) this.setLocalState();
-        return this.imeEngage();
-    }
-
     // 辞書のテキスト書き出し
     async exportStorageToTextFile() {
         try {
@@ -547,18 +524,87 @@ class Dictionary{
         console.log("マージ完了");
     }
 
-    //  IME起動
+    // IME起動
+    IME_Open(cm){
+        //console.log(`IME Opened.`);
+        if( cm.rn.convCandidate ) cm.prefixOne();    // 先頭が選択済ならFIXさせる.
+        if( this.isSleepState() ) return;
+        this.setReadyState();        // IME Ready状態に設定.
+        cm.rn.showCompositionAnd( this.imeEngage() );  // conpositionとcandidate表示
+    }
+
+    // IMEを選んでEngage
+    IME_Select(rn){
+        //console.log(`IME Selected.`);
+        if( this.isSleepState() ) return;
+        // キャッシュ辞書ならLocalに
+        // ローカルで無いかローカル脱出条件が揃っている場合はReadyに    
+        if( this.isCacheState() ) this.setLocalState();
+        else if( !this.isLocalState() ||( this.isSearchend() && !this.cn.isGoogles() )) this.setReadyState();
+        rn.showCompositionAnd( this.imeEngage() );
+    }
+
+    // 次のIMEを選択してEngage
+    IME_Next(rn){
+        //console.log(`IME Next.`);
+        if( this.isSleepState() ) return;
+        // キャッシュ辞書ならLocalに、LocalならReadyに
+        if( this.isLocalState() ) this.setReadyState();
+        if( this.isCacheState() ) this.setLocalState();
+        rn.showCompositionAnd( this.imeEngage() );
+    }
+
     imeEngage(){
+        //console.log(`IME Engage.`);
         this.cn.initialize();
         if( !this.cn.fo.isAvailable() ) return null;
         this.makeConvert();         // Candidate の作り直し
         return this.isCacheState(); // IME状態を応答
     }
 
-    readyEngage(){
-        if( this.isSleepState() ) return null;
-        this.setReadyState();        // IME Ready状態に設定.
-        return this.imeEngage();
+    removeOneEntry( keyname ){
+        let saverequest = false;
+        console.log(`Remove:${keyname}`);
+        let sakujyo = keyname.split("\t");
+        if( sakujyo[1] == this.spkey ){              // 登録キー.
+            this.saveWords( false, sakujyo[0] ); // 置き換え登録.
+        } else if( sakujyo.length == 2 && sakujyo[0].length > 0 && sakujyo[1].length > 0 ){
+            let entryindex = this.search( sakujyo[0] );
+            if( entryindex > 0 ){
+                for( let limit = 0; limit < 10; limit++ ){
+                    let sakupos = this.rokushiki[entryindex][3].indexOf( sakujyo[1] );
+                    if( sakupos < 0 ) sakupos = this.rokushiki[entryindex][3].indexOf( this.rokushiki[entryindex][0] );
+                    if( sakupos >= 0 ){
+                        this.rokushiki[entryindex][3].splice( sakupos, 1 );   // 候補削除.
+                    }
+                }
+                saverequest = true;                             // 辞書保存要求
+            }
+            if( this.rokushiki[entryindex].length >=3 && this.rokushiki[entryindex][3].length <= 0 )   // 候補が全てなくなった.
+                this.rokushiki.splice( entryindex,1 );
+        }
+        return saverequest;
+    }
+
+    addOneEntry( keyname ){
+        let saverequest = false;
+        console.log(`Engage:${keyname}`);
+        let touroku = keyname.split("\t");
+        if( touroku[1] == this.spkey ){              // 登録キー.
+            this.saveWords( true, touroku[0] );  // 追加登録.
+        } else if( touroku.length == 2 && touroku[0].length > 0 && touroku[1].length > 0 ){
+            let tagEntry   = [];
+            let entryindex = this.search( touroku[0] );
+            if( entryindex <= 0 ){
+                tagEntry = [ touroku[0], 0, 0, [touroku[1]]];   // 登録エントリ
+                entryindex = this.rokushiki.length;
+            } else {
+                tagEntry = this.getEntry( entryindex, touroku[1] );
+            }
+            this.engage( tagEntry, entryindex );                 // 登録点を探してて登録.
+            saverequest = true;                                 // 辞書保存要求.
+        }
+        return saverequest;
     }
 
 }
@@ -567,65 +613,38 @@ class Dictionary{
 /* 辞書ダイアログ関連のコード */
 /************************/
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    const spkey = "@@@";
-    if( !dic.isSleepState() ){      // local 辞書が読まれる前は待つ.
-        var saverequest = false;
-//        console.log(`onMsg:${message}`);
-        if(message.type === 'removeOne'){
-            const name = message.jtext;
-            console.log(`Remove:${name}`);
-            var sakujyo = name.split("\t");
-            if( sakujyo[1] == spkey ){              // 登録キー.
-                dic.saveWords( false, sakujyo[0] ); // 置き換え登録.
-            } else if( sakujyo.length == 2 && sakujyo[0].length > 0 && sakujyo[1].length > 0 ){
-                var entryindex = dic.search( sakujyo[0] );
-                if( entryindex > 0 ){
-                    for( var limit = 0; limit < 10; limit++ ){
-                        var sakupos = dic.rokushiki[entryindex][3].indexOf( sakujyo[1] );
-                        if( sakupos < 0 ) sakupos = dic.rokushiki[entryindex][3].indexOf( dic.rokushiki[entryindex][0] );
-                        if( sakupos >= 0 ){
-                            dic.rokushiki[entryindex][3].splice( sakupos, 1 );   // 候補削除.
-                        }
-                    }
-                    saverequest = true;                             // 辞書保存要求
-                }
-                if( dic.rokushiki[entryindex].length >=3 && dic.rokushiki[entryindex][3].length <= 0 )   // 候補が全てなくなった.
-                    dic.rokushiki.splice( entryindex,1 );
-            }
-        } else if(message.type === 'engageOne') {
-            const name = message.jtext;
-            console.log(`Engage:${name}`);
-            var touroku = name.split("\t");
-            if( touroku[1] == spkey ){              // 登録キー.
-                dic.saveWords( true, touroku[0] );  // 追加登録.
-            } else if( touroku.length == 2 && touroku[0].length > 0 && touroku[1].length > 0 ){
-                var tagEntry   = [];
-                var entryindex = dic.search( touroku[0] );
-                if( entryindex <= 0 ){
-                    tagEntry = [ touroku[0], 0, 0, [touroku[1]]];   // 登録エントリ
-                    entryindex = dic.rokushiki.length;
-                } else {
-                    tagEntry = dic.getEntry( entryindex, touroku[1] );
-                }
-                dic.engage( tagEntry, entryindex );                 // 登録点を探してて登録.
-                saverequest = true;                                 // 辞書保存要求.
-            }
-        } else if(message.type === 'Clean') {
-            console.log(`Debug ope.`);          // 暫定コード : 辞書の整理.
-            ConvertOldtoNewDict();                  // 辞書内の整理.
-        } else if(message.type === 'Save') {
-            saverequest = true;                     // 辞書保存要求.
+    if( dic.isSleepState() ) return;   // local 辞書が読まれる前は待つ.
+        //console.log(`onMsg:${message}/${message.type}/${message.action}/`);
+    switch(message.type) {
+        case 'removeOne':
+            if( dic.removeOneEntry( message.jtext )) dic.saveRokushiki();
+            return;
+        case 'engageOne':
+            if( dic.addOneEntry( message.jtext )) dic.saveRokushiki();
+            return;
+        default:
+            break;
+    }
+    switch(message.action) {
+        case 'Clean':
+            console.log(`Debug ope.`);      // 暫定コード : 辞書の整理.
+            ConvertOldtoNewDict();          // 辞書内の整理.
+            break;
+        case 'Save':
             sendResponse({ success: true });
-        } else if(message.type === 'Write') {
+            dic.saveRokushiki();            // 辞書保存.
+            break;
+        case 'Write':
             console.log(`辞書の書き出し`);
             dic.exportStorageToTextFile();
-        } else if(message.action === "parseAndMergeText") {
+            break;
+        case 'parseAndMergeText':
             console.log(`辞書入力＆マージ`);
             dic.executeMerge(message.text);
             sendResponse({ success: true });
-            return true;  // 💡 非同期で sendResponse を返すために必須の return
-        } else if(message.action === "openSettings") {
-                // 1. すでに窓を開いた記録がある場合
+            break;
+        case 'openSettings':
+            // 1. すでに窓を開いた記録がある場合
             if (settingsWindowId !== null) {
                 // そのID のウィンドウが存在するかチェック（コールバック方式でエラーを安全に検知）
                 chrome.windows.get(settingsWindowId, (window) => {
@@ -643,12 +662,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 // 2. 最初から記録がない場合は新規作成
                 createSettingsWindow(); // 新しく窓を作成
             }
-        }
-//        else if( message === 'heartbeet' ){
+            break;
+//        case 'hertbeet':
 //            console.log(`heartbeet`);
-//        }
-        if( saverequest ) dic.saveRokushiki();
+//            break;
+        default:
+            break;
     }
+    return true;    // 非同期で sendResponse を呼び出すために必要
 });
 
 // 設定オプション窓を開く

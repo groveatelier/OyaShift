@@ -1,4 +1,4 @@
-/*  2026.06.06 20:00
+/*  2026.06.08 20:00
   親指シフトキーボードIME ver 5.2 (JISキーボード用)
     
     カーソル行表示：最初は検索文字（ひらがな）のみの表示、入力増で適度に変換候補筆頭を表示.
@@ -132,8 +132,11 @@ class MojiMap {
     }
 
     detectIntlKey(keyData){
-        if (keyData.code === "IntlYen") { this.index = this.iYen; return this.index; }
-        if (keyData.code === "IntlRo") { this.index = this.iRo; return this.index; }
+        const intlMap = { "IntlYen": this.iYen, "IntlRo": this.iRo };
+        if (keyData.code in intlMap) {
+            this.index = intlMap[keyData.code];
+            return this.index;
+        }
         return -1;
     }
 
@@ -153,7 +156,7 @@ class MojiMap {
         return ( index < this.oyaubiline );
     }
 
-    isEiInx( index ){
+    isEiInx(index){
         return ( index <= this.eimojiline );
     }
 
@@ -189,37 +192,38 @@ class KeyFlowCommon{
 }
 
 class KeyFlows{
-    constructor(info, map, fifo){
+    constructor(dic, cmt, info, map, fifo){
         this.shift = new KeyFlowCommon(1800);
         this.moji = new KeyFlowCommon(1200);
+        this.di = dic;      // 辞書ハンドラ
+        this.cm = cmt;      // コミットハンドラ
         this.info = info;   // KeyInformationハンドラ
         this.map = map;     // MojiMapハンドラハンドラ
         this.fi = fifo;     // fifoハンドラ
         this.seen = {
             PEND: "pending",
-            SHIFT2MOJI: "shiftToMoji",
-            MOJI2SHIFT: "mojiToShift",
-            MOJIFIRST: "moji1st",
-            SHIFTFOLLOW: "shiftafter",
-            USLARGE: "USLLetter",
+            SHIFT2MOJI: "shift2Moji",
+            MOJI2SHIFT: "moji2Shift",
+            MOJIFIRST: "mojiFirst",
+            SHIFTFOLLOW: "shiftFollow",
+            USLARGE: "USLarge",
             USMODE: "USMode",
-//            DICTOUTPUT: "DictoOutput",
-            NOKEYBUF: "NoKeybuf",
-            TABSPC: "TabAndSpace",
-            ENTER: "Enter",
-            UP: "Up",
-            DOWN: "Down",
-            RIGHT: "Right",
-            LEFT: "Left",
-            BACKSPACE: "BS",
-            BRIGHTNESSUP: "BriteUp",
-            BRIGHTNESSDOWN: "BriteDown",
-            QUOTE: "Quote",
-            ESC: "Escape",
-            LONGPRESS: "LongPress",
-            HOME: "Home",
-            END: "End",
-            PAGE: "Page",
+            NOKEYBUF: "noKeyBuf",
+            TABSPC: "tabSpace",
+            ENTER: "enter",
+            UP: "up",
+            DOWN: "down",
+            RIGHT: "right",
+            LEFT: "left",
+            BACKSPACE: "backspace",
+            BRIGHTNESSUP: "brightnessUp",
+            BRIGHTNESSDOWN: "brightnessDown",
+            QUOTE: "quote",
+            ESC: "esc",
+            LONGPRESS: "longPress",
+            HOME: "home",
+            END: "end",
+            PAGE: "page",
         };
         this.timerID = null;
     }
@@ -239,14 +243,6 @@ class KeyFlows{
         if (this.map.isOyaInx(keyindex)) return this.shiftkeyDown();
         // かなキー
         return this.mojikeyDown();
-    }
-
-    detectNoKeyBufCase(keyData){
-        if (!this.fi.isEmpty()) return null;
-        // Alt + Esc → 辞書テキスト出力
-//        if (dic.step === dic.state.SPECIAL && keyData.key === "Esc" && this.info.alt) return this.seen.DICTOUTPUT;
-        // inbuf が空 → IME 処理不要
-        return this.seen.NOKEYBUF;
     }
 
     detectSpecialKey(keyData){
@@ -278,9 +274,8 @@ class KeyFlows{
         // 1) 親指シフト or かなキー
         const kanaOrShift = this.detectKanaOrShift(keyindex);
         if (kanaOrShift) return kanaOrShift;
-        // 2) inbuf が空のときの特別処理 (辞書出力暫定コード)
-        const noKeyBuf = this.detectNoKeyBufCase(keyData);
-        if (noKeyBuf) return noKeyBuf;
+        // 2) inbuf が空のとき
+        if ( this.fi.isEmpty() ) return this.seen.NOKEYBUF;
         // 3) 特殊キー（Tab, Enter, BS, 矢印など）
         return this.detectSpecialKey(keyData);
     }
@@ -302,8 +297,7 @@ class KeyFlows{
 //        console.log(`mojikyDown:${this.map.index}`)
         if( this.map.index === 0 && this.fi.isAvailable() ) return this.seen.TABSPC;
         if( !this.moji.keyDown2( this.map.index ) ) return this.seen.PEND;  // リピート抑止期間中は何もしない
-        //if (!this.moji.shouldFire(this.map.index)) return this.seen.PEND;
-        if( this.info.shift && this.map.isEiInx( this.map.index )) return this.seen.USLARGE;
+        if( this.info.shift && this.map.isEiInx(this.map.index) ) return this.seen.USLARGE;
         if( this.shift.active ) return this.seen.MOJI2SHIFT; // シフトキーあり＋文字キー → 文字確定
         if( !this.map.jpmode ) return this.seen.USMODE; // US入力モード → システム
         return this.seen.MOJIFIRST;
@@ -358,56 +352,47 @@ class KeyFlows{
         this.moji.generation = this.shift.generation;   // 世代管理
     }
 
-    setLateKeyDown( callback ){
+    setLateKeyDown(){
         if( this.timerID ) clearTimeout(this.timerID);  // 既存のタイマーがあればクリア
         this.timerID = setTimeout( () => {
-            callback();            // 遅延実行するコールバック関数を呼び出す
-            this.timerID = null;   // タイマーIDをリセット
+            this.lateKeyDown4space();   // 遅延実行するコールバック関数を呼び出す
+            this.timerID = null;        // タイマーIDをリセット
         }, 250);  // 250msの遅延
     }
 
+    // シフトの遅延処理
+    lateKeyDown4space(){
+        if( this.fi.isEmpty() ){   // inbufが空のときは、SPCをアプリに渡す.
+            this.cm.commitOne(" ");   // SPCをアプリに渡す.
+        }
+        else {
+            if( this.info.shift ) this.cm.commitTopCandidate();  // Shift付きは先頭確定.
+            else this.cm.rn.otherCandidate( 1 );   // 先頭変換.
+        }
+    }
+
     enterUSmode(){
-        if( !this.fi.isEmpty() ) fixAll();  // 掃き出し
-        ren.clearComposition();
+        if( !this.fi.isEmpty() ) this.cm.fixAll();  // 掃き出し
+        this.cm.rn.clearComposition();
         this.map.jpmode = false;
     }
 
     actIfNeeded(seen){
-        //1console.log(`ai:${seen}`);
-        switch(seen){
-            case this.seen.PEND:            return true;
-            case this.seen.SHIFT2MOJI:      return this.actShift2Moji();
-            case this.seen.MOJI2SHIFT:      return this.actMoji2Shift();
-            case this.seen.MOJIFIRST:       return this.actMojiFirst();
-            case this.seen.SHIFTFOLLOW:     return this.actShiftFollow();
-            case this.seen.USLARGE:         return this.actUSLarge();
-//            case this.seen.DICTOUTPUT:      return this.actDictOutput();
-            case this.seen.NOKEYBUF:        return this.actNoKeyBuf();
-            case this.seen.USMODE:          return false;
-            case this.seen.TABSPC:          return this.actTabSpace();
-            case this.seen.ENTER:           return this.actEnter();
-            case this.seen.UP:              return this.actUp();
-            case this.seen.DOWN:            return this.actDown();
-            case this.seen.RIGHT:           return this.actRight();
-            case this.seen.LEFT:            return this.actLeft();
-            case this.seen.BACKSPACE:       return this.actBackspace();
-            case this.seen.BRIGHTNESSUP:    return this.actBrightnessUp();
-            case this.seen.BRIGHTNESSDOWN:  return this.actBrightnessDown();
-            case this.seen.ESC:             return this.actEsc();
-            case this.seen.QUOTE:           return this.actQuote();
-            case this.seen.LONGPRESS:       return this.actLongPress();
-            case this.seen.HOME:            return this.actHome();
-            case this.seen.END:             return this.actEnd();
-            case this.seen.PAGE:            return this.actPage();
+        // seen が "shiftToMoji" なら "actShiftToMoji" というメソッド名を作る
+        // 先頭を大文字にするための処理
+        const methodName = "act" + seen.charAt(0).toUpperCase() + seen.slice(1);
+//        console.log(`ai:${seen}->${methodName}`);
+        if (typeof this[methodName] === "function") {
+            return this[methodName]();
         }
-        return true;
+        return true;    // システムには処理させない 
     }
 
     // シフト契機で文字確定
     actShift2Moji(){
         this.fi.deleteLastOne();  // 直前の文字確定を取り消す.
         if (!this.map.thumbHW) this.expandLongTimer(); // シフトキーの場合長押し判定時間を延長
-        if( !cmt.pushAndCommitIfNeed( this.map.getMoji() ) ) IME_Rokushiki();
+        if( !this.cm.pushAndCommitIfNeed( this.map.getMoji() ) ) this.di.IME_Open(this.cm);
         return true;
     }
 
@@ -418,11 +403,11 @@ class KeyFlows{
         }
         if( this.isMultiTap() ){   // 同一世代かつ同一キーの判定
             if( this.map.thumbHW ) this.fi.deleteLastOne();  // 親指シフトキーボードなら直前の文字を消す処理.
-            if( !cmt.pushAndCommitIfNeed( this.map.getMojiNext() ) ) IME_Rokushiki();
+            if( !this.cm.pushAndCommitIfNeed( this.map.getMojiNext() ) ) this.di.IME_Open(this.cm);
         }
         else {
             this.syncGeneration();  // Shiftキーの世代を文字キーにセット
-            if( !cmt.pushAndCommitIfNeed( this.map.getMoji() ) ) IME_Rokushiki();
+            if( !this.cm.pushAndCommitIfNeed( this.map.getMoji() ) ) this.di.IME_Open(this.cm);
         }
         if( this.map.offset !== 0 ) this.map.jpmode = true; // Mode 復帰
         return true;
@@ -433,12 +418,12 @@ class KeyFlows{
         //console.log(`M1:${this.fi.inbuf.length}/${this.fi.inbuf}/${this.map.index}/${this.map.offset}`);
         //console.log(`M1a:${this.fi.isEmpty()}/${this.fi.inbuf[this.fi.inbuf.length - 1]}/${this.fi.curbuf}/`);
         if( this.map.index === 0 && this.fi.isEmpty() ){
-            cmt.commitOne(" ");
+            this.cm.commitOne(" ");
             return true;
         }
         if( this.map.offset === 0 && (this.fi.isEmpty() || this.fi.inbuf.length > 5)) this.enterUSmode();   // US modeへ 
         if( this.map.jpmode ){
-            if( !cmt.pushAndCommitIfNeed( this.map.getMojiFirst() ) ) IME_Rokushiki();
+            if( !this.cm.pushAndCommitIfNeed( this.map.getMojiFirst() ) ) this.di.IME_Open(this.cm);
         }
         else return false;  // システムへ処理を渡す
         return true;
@@ -447,123 +432,131 @@ class KeyFlows{
     // シフト後処理 親指キーボード未確定
     actShiftFollow(){
         if( this.fi.isEmpty() ){
-            if( this.shift.isKeyRepeatActive() ) cmt.commitOne(" ") // SPCをアプリに渡す(キーリピート).
-            else this.setLateKeyDown( SPCLateKeyDown );  // シフトの遅延処理をセット
+            if( this.shift.isKeyRepeatActive() ) this.cm.commitOne(" ") // SPCをアプリに渡す(キーリピート).
+            else this.setLateKeyDown();  // シフトの遅延処理をセット
         }
         else if( this.map.offset !== 0 ){
-            this.setLateKeyDown( SPCLateKeyDown );  // シフトの遅延処理をセット
+            this.setLateKeyDown();  // シフトの遅延処理をセット
         }
-        else if( !cmt.pushAndCommitIfNeed(" ") ) IME_Rokushiki();
+        else if( !this.cm.pushAndCommitIfNeed(" ") ) this.di.IME_Open(this.cm);  // シフト単独はスペース確定
         return true;
     }
 
     // 英大文字
     actUSLarge(){
-        if( this.map.jpmode && !cmt.pushAndCommitIfNeed(this.map.getMoji2( 0 ).toUpperCase())) IME_Rokushiki();
+        if( this.map.jpmode && !this.cm.pushAndCommitIfNeed(this.map.getMoji2( 0 ).toUpperCase())) this.di.IME_Open(this.cm);
         else return false;  // システムへ処理を渡す
         return true;
     }
 
     actNoKeyBuf(){
-        ren.clearComposition();
+        this.cm.rn.clearComposition();
         return false;
     }
 
     actTabSpace(){
         if( this.map.offset !== 0 ){
-            if( this.info.shift ) cmt.commitTopCandidate(); // Shift付きは先頭確定.
-            else setOtherCandidate( 1 );    // 先頭変換.
+            if( this.info.shift ) this.cm.commitTopCandidate(); // Shift付きは先頭確定.
+            else this.cm.rn.otherCandidate( 1 );    // 先頭変換.
             return true;
         }
-        fixAll();
+        this.cm.fixAll();
         return false;  // システムへ処理を渡す
     }
 
     actEnter(){
-        if( this.info.shift || this.fi.bufptr < 0 ) cmt.commitTopCandidate();    // 先頭確定.
-        else fixAll();
+        if( this.info.shift || this.fi.bufptr < 0 ) this.cm.commitTopCandidate();    // 先頭確定.
+        else this.cm.fixAll();
         return true;
     }
 
     actUp(){
-        setOtherCandidate( -1 );    // 先頭変換
+        this.cm.rn.otherCandidate( -1 );    // 先頭変換
         return true;
     }
 
     actDown(){
-        setOtherCandidate( 1 );     // 先頭変換
+        this.cm.rn.otherCandidate( 1 );     // 先頭変換
         return true;
     }
 
     actRight(){
         this.fi.bufptr++;                // カーソル右へ.
         if( this.fi.bufptr > 0 ) this.fi.bufptr = 0;
-        ren.showComposition();
+        this.cm.rn.showComposition();
         return true;
     }
 
     actLeft(){
         this.fi.bufptr--;                // カーソル左へ.
         if( this.fi.inbuf.length + this.fi.bufptr < 0 ) this.fi.bufptr = -this.fi.inbuf.length;
-        ren.showComposition();
+        this.cm.rn.showComposition();
         return true;
     }
 
     actBackspace(){
         this.fi.deleteLastOne();
-        ren.convCandidate = false;
-        if( this.fi.isEmpty() ) ren.clearComposition();
-        else IME_Rokushiki();
+        this.cm.rn.convCandidate = false;
+        if( this.fi.isEmpty() ) this.cm.rn.clearComposition();
+        else this.di.IME_Open(this.cm);
         return true;
     }
 
     // Brightness upの入力 (カタカナ変換) 
     actBrightnessUp(){
-        ren.translateKana2( true )
+        this.cm.rn.translateKana2( true )
         return true;
     }
 
     // Brightness Downの入力 (ひらがな変換)
     actBrightnessDown(){
-        ren.translateKana2( false );
+        this.cm.rn.translateKana2( false );
         return true;
     }
 
     actEsc(){
-        if( !this.fi.isEmpty() && this.map.offset === 0 ) fixAll();   // US文字は掃き出してから
-        ren.undoConvert();
+        if( !this.fi.isEmpty() && this.map.offset === 0 ) this.cm.fixAll();   // US文字は掃き出してから
+        this.cm.rn.undoConvert();
         return true;
     }
 
     // 一文字確定. Double Quate
     actQuote(){
-        cmt.commitFO();     // 一文字確定＆コミット処理.
-        IME_Rokushiki();
+        this.cm.commitFO();     // 一文字確定＆コミット処理.
+        this.di.IME_Open(this.cm);
         return true;
     }
 
     // Key 長押し, 確定文字を一つ削除してからオフセット3の文字を確定する
     actLongPress(){
         this.fi.deleteLastOne();
-        if( !cmt.pushAndCommitIfNeed( this.map.getMoji2( 3 ) ) ) IME_Rokushiki();
+        if( !this.cm.pushAndCommitIfNeed( this.map.getMoji2( 3 ) ) ) this.di.IME_Open(this.cm);
         return true;
     }
 
     actHome(){
         this.fi.bufptr = -this.fi.inbuf.length;     // カーソル左端へ.
-        ren.showComposition();
+        this.cm.rn.showComposition();
         return true;
     }
 
     actEnd(){
         this.fi.bufptr = 0;     // カーソル右端へ.
-        ren.showComposition();
+        this.cm.rn.showComposition();
         return true;
     }
 
     actPage(){
-        NextIME();
+        this.di.IME_Next(this.cm.rn);  // IMEを切り替え
         return true;
+    }
+
+    actUSMode(){
+        return false;   // システムへ処理を渡す
+    }
+
+    actPending(){
+        return true;    // システムには処理させない 
     }
 }
 
@@ -581,22 +574,11 @@ const cinf = new KeyInformation();  // 入力キー情報管理
 const cmap = new MojiMap();         // キーマップ管理
 const fifo = new FIFO();
 const con = new Converter(fifo);
-const ren = new Renderer(con);
-const cmt = new Commit(ren,fifo);
 const dic = new Dictionary(con);
-const cflow = new KeyFlows(cinf, cmap, fifo); // キーフロー制御
+const ren = new Renderer(dic, con);
+const cmt = new Commit(ren,fifo);
+const cflow = new KeyFlows(dic, cmt, cinf, cmap, fifo); // キーフロー制御
 let settingsWindowId = null;        // 設定窓のID 多重オープン抑止
-
-// シフトの遅延処理
-function SPCLateKeyDown(){
-    if( fifo.isEmpty() ){   // inbufが空のときは、SPCをアプリに渡す.
-        cmt.commitOne(" ");   // SPCをアプリに渡す.
-    }
-    else {
-        if( cinf.shift ) cmt.commitTopCandidate();  // Shift付きは先頭確定.
-        else setOtherCandidate( 1 );   // 先頭変換.
-    }
-}
 
 chrome.input.ime.onKeyEvent.addListener(
   function(engineID, keyData) {
@@ -611,30 +593,4 @@ chrome.input.ime.onKeyEvent.addListener(
     return enact;
   }
 );
-
-/***************************************/
-/* 以下は変換候補サーチ(IME)呼び出し関連コード  */
-/***************************************/
-function IME_Rokushiki(){
-    if( ren.convCandidate ) PrefixOne();    // 先頭が選択済ならFIXさせる.
-    ren.showCompositionAnd( dic.readyEngage() ); // conpositionとcandidate表示
-}
-
-//  IME起動
-function ImeEngage(){
-    ren.showCompositionAnd( dic.imeEngage() ); // conpositionとcandidate表示
-}
-
-function SelectIME(){ 
-    ren.showCompositionAnd( dic.selectEngage() ); // conpositionとcandidate表示
-}
-
-function NextIME(){
-    ren.showCompositionAnd( dic.fourceEngage() ); // conpositionとcandidate表示
-}
-
-//  別の候補文字を設定する. 呼び出し元はcandidate.length > 0 を要確認.
-function setOtherCandidate( updown ){
-    if( ren.otherCandidate( updown, dic.isCacheState() )) SelectIME();    // IME切り替え.
-}
 

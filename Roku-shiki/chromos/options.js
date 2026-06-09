@@ -33,22 +33,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // イベント割り当て
     cleanButton.addEventListener('click', () => {
-        chrome.runtime.sendMessage({ type: 'Clean' });
+        chrome.runtime.sendMessage({ action: 'Clean' });
     });
 
     saveButton.addEventListener('click', () => {
-        chrome.runtime.sendMessage({ type: 'Save' }, 
+        chrome.runtime.sendMessage({ action: 'Save' }, 
             (response) => { // background.js からの返事を受け取る
                 if (response && response.success) {
                     alert("ストレージローカルに保存します！");
                 }
-                window.close();
+//                window.close();
             }
         );
     });
 
     writeButton.addEventListener('click', () => {
-        chrome.runtime.sendMessage({ type: 'Write' });
+        chrome.runtime.sendMessage({ action: 'Write' });
     });
 
     mergeButton.addEventListener('click', () => {

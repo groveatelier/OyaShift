@@ -658,6 +658,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             console.log(`辞書入力＆マージ`);
             dic.executeMerge(message.text);
             sendResponse({ success: true });
+            return true;    // 非同期で sendResponse を呼び出すために必要
             break;
         case 'openSettings':
             // 1. すでに窓を開いた記録がある場合
@@ -685,7 +686,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         default:
             break;
     }
-    return true;    // 非同期で sendResponse を呼び出すために必要
+    return false;
 });
 
 // 設定オプション窓を開く

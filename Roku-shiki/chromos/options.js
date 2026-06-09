@@ -49,10 +49,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     writeButton.addEventListener('click', () => {
         chrome.runtime.sendMessage({ action: 'Write' });
+        return false; // フォーム送信を防止
     });
 
     mergeButton.addEventListener('click', () => {
         fileInput.click();  // 隠れているファイル選択画面をトリガー（強制クリック）する
+        return false; // フォーム送信を防止
     });
 
     // ファイルが選択されたらテキストとして読み込む
@@ -75,9 +77,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     } 
                     // 連続選択できるようにインプットをリセット
                     fileInput.value = "";
-                    window.close();
             });
         };
         reader.readAsText(file, "UTF-8");
+        return false; // フォーム送信を防止
     });
 });

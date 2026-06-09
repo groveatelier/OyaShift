@@ -514,7 +514,23 @@ class Dictionary{
                 continue;
             }
 
-            let keyvalue = trimmedLine.split(',');
+            let keyvalue = trimmedLine.split('/');
+            if( keyvalue.length > 2 ) {             // SKK 辞書かも？
+                keyvalue[0] = keyvalue[0].trim();
+                keyvalue = keyvalue.slice(0, -1);   // key と value のみを残す
+                // keyvalue[0] の最後の文字が英小文字の場合は最後の文字を削除
+                let lastChar = keyvalue[0].charAt(keyvalue[0].length - 1);
+                if( keyvalue[0].length > 0 && lastChar >= 'a' && lastChar <= 'z' ) {
+                    keyvalue[0] = keyvalue[0].slice(0, -1);
+                }
+                // keyvalue[0]とkeyvalue[1]の間に 0,0 を挿入する
+                keyvalue.splice(1, 0, "0", "0");
+                //console.log(`keyvalue: ${keyvalue}/${keyvalue.length}`);
+            }
+            else{
+                keyvalue = trimmedLine.split(',');
+            }   
+
             if( keyvalue.length < 3 ) continue;     // versionはスキップ
             for( let pos = keyvalue.length-1; pos >= 3; pos-- ){    // 逆順にしないと後で登録された物が前になるよ
                 let entryData = this.prepareEntryEngage( keyvalue[0], keyvalue[pos] ); 

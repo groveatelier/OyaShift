@@ -87,7 +87,7 @@ class Dictionary{
     }
 
     engage( tagEntry, entryindex ){    // 登録点を探して登録.
-        console.log(`engage:${tagEntry}/${entryindex}`);
+        //console.log(`engage:${tagEntry}/${entryindex}`);
         if( tagEntry[0] === '' ) return;     // Null文字の登録は不可
         // 検索キーの長さ別に範囲の絞りこむ.
         let kenkey = [tagEntry[0].length, 0, 1 ];
@@ -113,7 +113,7 @@ class Dictionary{
             }
         } else kenkey[2] = kenkey[1];
         this.rokushiki.splice( kenkey[2], 0, tagEntry );  // 登録点に…  エントリ追加登録.
-        console.log(`*new>(${kenkey[2]})${tagEntry[3][0]}/${tagEntry[0]}/`);
+        console.log(`*new>(${kenkey[2]})${tagEntry[3][0]}/`);
     }
 
     // ひらがな文字判斷　: 文字列がひらがなだけの場合は true
@@ -326,7 +326,6 @@ class Dictionary{
                 }
 
                 let entryone  = [];     // dataに展開する1エントリ.
-                //console.log(`検索文字:${tagtext}/${this.hitdepth}`);
                 for( this.hitdepth++; this.hitdepth < this.rokushiki.length; this.hitdepth++ ){   // 辞書検索ループ.
                     let hitpos = tagtext.indexOf( this.rokushiki[this.hitdepth][0] );   // 変換文字にヒットするか?
                     //console.log(`gD1:${etag}/${hitpos}/${this.rokushiki[depth]}/${depth}`);

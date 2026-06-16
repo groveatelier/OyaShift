@@ -1,4 +1,4 @@
-/*  2026.06.08 23:00
+/*  2026.06.16 23:00
     六式IME‐辞書
 */
 
@@ -87,7 +87,8 @@ class Dictionary{
     }
 
     engage( tagEntry, entryindex ){    // 登録点を探して登録.
-        //console.log(`engage:${tagEntry}/${entryindex}`);
+        console.log(`engage:${tagEntry}/${entryindex}`);
+        if( tagEntry[0] === '' ) return;     // Null文字の登録は不可
         // 検索キーの長さ別に範囲の絞りこむ.
         let kenkey = [tagEntry[0].length, 0, 1 ];
         for( let span = 1; span < entryindex; span++ ){
@@ -112,7 +113,7 @@ class Dictionary{
             }
         } else kenkey[2] = kenkey[1];
         this.rokushiki.splice( kenkey[2], 0, tagEntry );  // 登録点に…  エントリ追加登録.
-        console.log(`*new>(${kenkey[2]})${tagEntry[3][0]}`);
+        console.log(`*new>(${kenkey[2]})${tagEntry[3][0]}/${tagEntry[0]}/`);
     }
 
     // ひらがな文字判斷　: 文字列がひらがなだけの場合は true
@@ -325,29 +326,30 @@ class Dictionary{
                 }
 
                 let entryone  = [];     // dataに展開する1エントリ.
+                //console.log(`検索文字:${tagtext}/${this.hitdepth}`);
                 for( this.hitdepth++; this.hitdepth < this.rokushiki.length; this.hitdepth++ ){   // 辞書検索ループ.
                     let hitpos = tagtext.indexOf( this.rokushiki[this.hitdepth][0] );   // 変換文字にヒットするか?
                     //console.log(`gD1:${etag}/${hitpos}/${this.rokushiki[depth]}/${depth}`);
                     if( hitpos >= 0 ){              // hit
                         let etag = structuredClone( this.rokushiki[this.hitdepth] );    // etag <- dic.rokushikiを複製
-//                        console.log(`>> hit0:${tagtext}/${etag}/${hitpos}/${this.rokushiki[this.hitdepth][3]}/${this.hitdepth}`)
+                        //console.log(`>> hit0:${tagtext}/${etag}/(${hitpos})${this.rokushiki[this.hitdepth][3]}/${this.hitdepth}`)
                         if( hitpos === 0 ){                 // 先頭で一致.
                             entryone = [];                  // entryone初期化.
                             entryone.push( etag[0] );       // dataにも変換前文字列を入れる.
                             entryone.push( etag[3] );       // dataに変換候補郡を入れる.
                             entryone[1].unshift( etag[0] ); // 変換候補郡先頭は検索文字.
                             this.cn.data.push( structuredClone(entryone) );  // dataに1エントリ追加.
-//                            console.log(`>> hit:${tagtext}/${etag}/${hitpos}/${this.rokushiki[this.hitdepth]}/${this.hitdepth}`)
+                            //console.log(`>> hit:${tagtext}/${etag}/(${hitpos})${this.rokushiki[this.hitdepth]}/${this.hitdepth}`)
                             if( tagtext !== etag[0] ){  // 前方一致?
                                 let newtag = tagtext.slice(( etag[0].length - tagtext.length ));
                                 tagtext = newtag;       // 残り検索文字設定.
-//                                console.log( `>> Rest:${tagtext}(${stoplimit})` );
+                                //console.log( `>> Rest:${tagtext}(${stoplimit})` );
                             } else {
                                 tagtext = "";           // 完全一致は残り検索文字無し.
                                 break;
                             }
                         } else {
-//                            console.log( `>> Post hit:(${hitpos})${etag}` );
+                            //console.log( `>> Post hit:(${hitpos})${etag}` );
                             let pretag = tagtext.split( etag[0] )[0];  // hit前の文字列切り出し.
                             entryone = [ pretag, [pretag] ];    // data 1エントリ準備
                             this.cn.data.push( entryone );      // data 1エントリ追加.
@@ -356,7 +358,7 @@ class Dictionary{
                         }
                     }
                 }
-//                console.log(`>> ${entryone.length}/${entryone}/`);
+                //console.log(`>> ${entryone.length}/${entryone}/`);
                 if( entryone.length <= 0 ){             // 一致なし：検索文字そのまま.
                     if( !this.cn.isGoogles() ){
                         entryone = [ tagtext, [tagtext] ];          // data 1エントリ準備
@@ -365,7 +367,7 @@ class Dictionary{
                     else {
                         this.cn.circleCopy();    // gooles を丸コピ
                     }
-//                    console.log( `>> No hit:${tagtext}/` );
+                    //console.log( `>> No hit:${tagtext}/` );
                     break;
                 }
             }
@@ -644,7 +646,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     switch(message.action) {
         case 'Clean':
             console.log(`Debug ope.`);      // 暫定コード : 辞書の整理.
-            ConvertOldtoNewDict();          // 辞書内の整理.
+            ConvertOldtoNewDict( message.text );    // 辞書内の整理.
             break;
         case 'Save':
             sendResponse({ success: true });
@@ -703,8 +705,9 @@ function createSettingsWindow() {
 }
 
 // 辞書版数のコンバート.
-function ConvertOldtoNewDict(){
-    if( dic.rokushiki.length <= 0 ){
+function ConvertOldtoNewDict( command ){
+    console.log(`DebOpe:${command}`);
+    if( command === 'CLEAN' ){
         dic.rokushiki = [[4,0]];       // ver.4　辞書初期化.
         console.log(`** Debug operation: initialized **`);
         return;

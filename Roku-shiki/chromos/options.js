@@ -33,7 +33,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // イベント割り当て
     cleanButton.addEventListener('click', () => {
-        chrome.runtime.sendMessage({ action: 'Clean' });
+        const text = inputArea.value;
+        chrome.runtime.sendMessage({ action: 'Clean', text });
     });
 
     saveButton.addEventListener('click', () => {

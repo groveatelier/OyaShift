@@ -1,5 +1,5 @@
 ﻿#Requires AutoHotKey v2.0
-; 1Fx key Space shift for win w/ AHK (1F1 & 1F2) 2026.4.21
+; 1Fx key Space shift for win w/ AHK (1F1 & 1F2) 2026.7.13
 ;  IntlYen sc7D, IntlRo sc73, JIS sc2b, 無変換 sc7b, 変換 sc079, かな sc070 
 ;  入力モード
 ;      1F1(07D) L-Oya : 1F2(073) R-Oya
@@ -11,7 +11,7 @@ InstallKeybdHook
 ;SetWinDelay 0
 SetStoreCapsLockMode False
 Script := "OneFx Key Shift ver. "
-Version := "2026.4.21"
+Version := "2026.7.13"
 
 ;  通常 左 右 NumPad 右英
 kanatbl := [
@@ -216,11 +216,11 @@ OnKeyUp(){
         Send kanatbl[preKey][1]
         if( preKey == 2 ){ ;左親
             noCand := True
-            ToUSMode()
+;            ToUSMode()
         }
-        else if( preKey == 3 ){ ;右親
-            ToJPMode()
-        }
+;        else if( preKey == 3 ){ ;右親
+;            ToJPMode()
+;        }
         preKey := -1
     }
 }
@@ -465,6 +465,11 @@ sc1F2 up:: OnKeyUp()
     global noCand
     noCand := True
 }
+
+!sc1F1::
+^sc1F1:: ToUSMode() ; Alt or Ctrl + 左親
+!sc1F2::
+^sc1F2:: ToJPMode() ; Alt or Ctrl + 右親
 
 ;--------------
 ; 特殊 SC

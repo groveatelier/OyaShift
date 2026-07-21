@@ -25,7 +25,7 @@ FN1/2/X も追加キーとしてあるので 60枚のレイヤーが存在可能
 | 3 | (tab) | /xa | /e | /ri | /xya | /re | (ESC) |\|| (DEL) | /pa | /di | /gu | /du | /pi | (BS) |
 | 2 |  | /wo| /a | /na | /xyu | /mo | --- |\|| --- | /ba | /do | /gi | /po | /: | (Enter) |
 | 1 | (LSft) | /xu | /- | /ro | ya/ | /xi | --- |\|| --- | /pu | /zo | /pe | /bo | // | (RSft) |
-| 0 | (ctrl) | (meta) | (fnX) | --- | (alt) | (fnL) | **_左親_** |\|| (右親) | (fnR) | (alt) | --- |  |  | (ctrl) |
+| 0 | (ctrl) | --- | (alt) | (meta) | (fnLb) | (fnL) | **_左親_** |\|| 日 | (fnR) | (fnRb) | --- | (alt) | --- | (ctrl) |
 ||
 
 **レイヤー 右親** : 右親シフト USモード/日モード
@@ -35,7 +35,7 @@ FN1/2/X も追加キーとしてあるので 60枚のレイヤーが存在可能
 | 3 | (tab) | / | /ga | /da | /go | /za | (ESC) |\|| (DEL) | /yo | /ni | /ru | /ma | /xe | (BS) /,|
 | 2 |  | /vu | /ji | /de | /ge | /ze | - |\|| - | /mi | /o | /no | /xyo | /xtu | (Enter) |
 | 1 | (LSft) | /. | /pi | /zu | bu/ | /be | - |\|| - | /nu | /yu | /mu | /wa | /xo | (RSft) |
-| 0 | (ctrl) | (meta) | (fnX) | --- | (alt) | (fnL) | (左親) |\|| **_右親_** | (fnR) | (alt) | --- |  |  | (ctrl) |
+| 0 | (ctrl) | --- | (alt) | (meta) | (fnlb) | (fnL) | 英 |\|| **_右親_** | (fnR) | (fnRb) | --- | (alt) | --- | (ctrl) |
 ||
 
 **レイヤー 修飾シフト** : 修飾キーシフト USモード/日モード
@@ -45,7 +45,7 @@ FN1/2/X も追加キーとしてあるので 60枚のレイヤーが存在可能
 | 3 | tab | Q | W | E | R | T | ESC |\|| DEL | Y | U | I | O | P | BS |
 | 2 |  | A | S | D | F | G | --- |\|| --- | H | J | K | L | : | Enter |
 | 1 | **_LSft_** | Z | X | C | V | B | --- |\|| --- | N | M | < | > | ? | **_RSft_** |
-| 0 | **_ctrl_** | **_meta_** | (fnX) | --- | **_alt_** | (fnL) | 英 |\|| 日 | (fnR) | **_alt_** | --- |  |  | **_ctrl_** |
+| 0 | **_ctrl_** | --- | **_alt_** | **_meta_** | (fnLb) | (fnL) | (左親) |\|| (右親) | (fnR) | (fnRb) | --- | **_alt_** | --- | **_ctrl_** |
 ||
 
 **レイヤー fnLシフト** : fnLシフト USモード/日モード
@@ -55,20 +55,29 @@ FN1/2/X も追加キーとしてあるので 60枚のレイヤーが存在可能
 | 3 | tab | ! | @ | # | $ | % | ESC |\|| DEL | ^ | & | \* | ( | ) | BS |
 | 2 |  | ` | { | } | [ | ] | --- |\|| --- | /kurikaesikigou | \| | _ | " | + | Enter |
 | 1 | LSft | ~ | ( | )/kakko | /z, | /z. | --- |\|| --- |  | \\ | - | ' | = | RSft |
-| 0 | ctrl | (meta) | (fnX) | --- | alt | **_fnL_** | (左親) |\|| (右親) | (fnR) | alt | --- |  |  | ctrl |
+| 0 | ctrl | --- | (alt) | (meta) | (fnLb) | **_fnL_** | (左親) |\|| (右親) | (fnR) | (fnRb) | --- | alt | --- | ctrl |
 ||
-
-
 
 **レイヤー fnRシフト** : fnRシフト USモード/日モード
 
 | 段 | 列1 | 2 | 3 | 4 | 5 | 6 | 7 |\|| 8 | 9 | 10 | 11 | 12 | 13 | 14 |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
-| 3 | tab | F1 | F2 | F3 | F4 | F5 | F11 |\|| F12 | F6 | F7 | F8 | F9 | F10 | Page<br/>Up |
-| 2 | (meta) | Print<br>Screen | Scroll<br>Lock | Pause<br>Break |  |  | --- |\|| --- | Home |  |  | Up |  | Page<br/>Down |
-| 1 | (LSft) |  |  |  |  |  | --- |\|| --- | End |  | Left | Down | Right | (RSft) |
-| 0 | (ctrl) | (caps) | (fnX) | --- | (alt) | (fnL) | (左親) |\|| カナ<br>かな | **_fnR_** | (alt) | --- |  | num lock | (ctrl) |
+| 3 | tab | F1 | F2 | F3 | F4 | F5 | ESC |\|| DEL | ( | ) | 7 | 8 | 9 | BS |
+| 2 | (meta) | Print<br>Screen | Scroll<br>Lock | Pause<br>Break |  |  | --- |\|| --- | / | - | 4 | 5 | 6 | Enter |
+| 1 | (LSft) |  |  |  |  |  | --- |\|| --- | \* | + | 1 | 2 | 3 | = |
+| 0 | (ctrl) | --- | (alt) | (meta) | (fnLb) | (fnL) | (左親) |\|| カナ<br>かな | **_fnR_** | (fnRb) | 0 | . | --- | num lock |
 ||
+
+**レイヤー fnRbシフト** : fnRbシフト USモード/日モード
+
+| 段 | 列1 | 2 | 3 | 4 | 5 | 6 | 7 |\|| 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
+| 3 | tab | F1 | F2 | F3 | F4 | F5 | ESC |\|| DEL | Pause<br>Break | | Home |  | Page<br/>Up | BS |
+| 2 | (meta) | F6 | F7 | F8 | F9 | F10 | --- |\|| --- | Scroll<br>Lock |  | End | Up | Page<br/>Down | Enter |
+| 1 | (LSft) | F11 | F12 |  |  |  | --- |\|| --- | Print<br>Screen |  | Left | Down | Right | (RSft) |
+| 0 | (ctrl) | --- | (alt) | (meta) | (fnLb) | (fnL) | (左親) |\|| カナ<br>かな | (fnR) | **_fnRb_** | --- | num lock | --- | (ctrl) |
+||
+
 
 **レイヤー fnX** : fnX USモード/日モード
 

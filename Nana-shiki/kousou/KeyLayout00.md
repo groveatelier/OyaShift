@@ -14,7 +14,7 @@ FN1/2/X も追加キーとしてあるので 60枚のレイヤーが存在可能
 | 3 | tab | q/.| w/ka | e/ta | r/ko | t/sa | ESC |\|| DEL | y/ra | u/ti | i/ku | o/tu | p/, | BS |
 | 2 |  | a/u| s/si | d/te | f/ke | g/se | --- |\|| --- | h/ha | j/to | k/ki | l/i | ;/nn | Enter |
 | 1 | LSft | z/. | x/hi | c/su | v/fu | b/he | --- |\|| --- | n/me | m/so | ,/ne | ./ho | /// | RSft |
-| 0 | ctrl | meta | fnX | --- | alt | fnL | 左親 |\|| 右親 | fnR | alt | --- |  |  | ctrl |
+| 0 | ctrl | --- | alt | meta | fnLb | fnL | 左親 |\|| 右親 | fnR | fnRb | | alt | --- | ctrl |
 | -1 | |||||| Spc |\|| Spc ||||||
 ||
 

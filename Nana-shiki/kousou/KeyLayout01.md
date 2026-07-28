@@ -9,7 +9,7 @@
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
 | 1(0) | Tab  | w    | r    | DEL  | i    | p    | LOya |  
 | 2(1) | 1A   | s    | f    | y    | k    | ;    | LSpc |  
-| 3(2) | LShift | v  | v    | h    | ,    | /    | ROya |  
+| 3(2) | LShift | x  | v    | h    | ,    | /    | ROya |  
 | 4(3) | LCtrl| meta | LFnA | n    | RFnB | RAlt | RSpc | 
 | 5(4) | LAlt | LFnB | b    | RFnA | RFnC | RCtrl | L-Btn | 
 | 6(5) | z    | c    | g    | m    | .    | RShift | M-Btn | 

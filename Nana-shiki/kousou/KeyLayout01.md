@@ -61,17 +61,17 @@ keyboard.diode_orientation = DiodeOrientation.COL2ROW
 keyboard.keymap = [
     [
         # --- Row 0 ---
-        KC.TAB,  KC.W,    KC.R,    KC.DEL   KC.I,    KC.P,    KC.LOY,
+        KC.TAB,  KC.W,    KC.R,    KC.DEL,  KC.I,    KC.P,    KC.LOY,
         # --- Row 1 ---
         KC.SIY,  KC.S,    KC.F,    KC.Y,    KC.K,    KC.SCLN, KC.SPC,
         # --- Row 2 ---
         KC.LSFT, KC.X,    KC.V,    KC.H,    KC.COMM, KC.SLSH, KC.ROY, 
         # --- Row 3 ---
-        KC.LCTL, KC.LWIN, KC.LFA,  KC.N,    KC.RFB,  KC.RALT, KC.RCTL,
+        KC.LCTL, KC.LWIN, KC.LFA,  KC.N,    KC.RFB,  KC.RALT, KC.SPC,
         # --- Row 4 ---
-        KC.LALT, KC.LFB,  KC.B,    KC.RFA,  KC.RFC,  KC.RCTL, KC.SPC,
+        KC.LALT, KC.LFB,  KC.B,    KC.RFA,  KC.RFC,  KC.RCTL, KC.LBT,
         # --- Row 5 ---
-        KC.Z,    KC.C,    KC.G,    KC.M,    KC.DOT,  KC.RSFT, KC.LBT,
+        KC.Z,    KC.C,    KC.G,    KC.M,    KC.DOT,  KC.RSFT, KC.MBT,
         # --- Row 6 ---
         KC.A,    KC.D,    KC.T,    KC.J,    KC.L,    KC.ENT,  KC.RBT,
         # --- Row 7 ---

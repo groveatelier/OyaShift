@@ -69,11 +69,11 @@ keyboard.keymap = [
         # --- Row 3 ---
         KC.LCTL, KC.LWIN, KC.LFA,  KC.N,    KC.RFB,  KC.RALT, KC.SPC,
         # --- Row 4 ---
-        KC.LALT, KC.LFB,  KC.B,    KC.RFA,  KC.RFC,  KC.RCTL, KC.LBT,
+        KC.LALT, KC.LFB,  KC.B,    KC.RFA,  KC.RFC,  KC.RCTL, KC.MB_LMB,
         # --- Row 5 ---
-        KC.Z,    KC.C,    KC.G,    KC.M,    KC.DOT,  KC.RSFT, KC.MBT,
+        KC.Z,    KC.C,    KC.G,    KC.M,    KC.DOT,  KC.RSFT, KC.MB_RMB,
         # --- Row 6 ---
-        KC.A,    KC.D,    KC.T,    KC.J,    KC.L,    KC.ENT,  KC.RBT,
+        KC.A,    KC.D,    KC.T,    KC.J,    KC.L,    KC.ENT,  KC.MB_MMB,
         # --- Row 7 ---
         KC.Q,    KC.E,    KC.ESC,  KC.U,    KC.O,    KC.BKSP, KC.NO,
     ]

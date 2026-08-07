@@ -11,10 +11,10 @@
 | 2(1) | 1A   | s    | f    | y    | k    | ;    | LSpc |  
 | 3(2) | LShift | x  | v    | h    | ,    | /    | ROya |  
 | 4(3) | LCtrl| meta | LFnA | n    | RFnB | RAlt | RSpc | 
-| 5(4) | LAlt | LFnB | b    | RFnA | RFnC | RCtrl | L-Btn | 
-| 6(5) | z    | c    | g    | m    | .    | RShift | M-Btn | 
-| 7(6) | a    | d    | t    | j    | l    | Enter | R-Btn |
-| 8(7) | q    | e    | ESC  | u    | o    | BS |  |
+| 5(4) | LAlt | LFnB | b    | RFnA | RFnC | RCtrl |  | 
+| 6(5) | z    | c    | g    | m    | .    | RShift | L-Btn | 
+| 7(6) | a    | d    | t    | j    | l    | Enter | M-Btn |
+| 8(7) | q    | e    | ESC  | u    | o    | BS | R-Btn |
 
 ---
 
@@ -69,13 +69,14 @@ keyboard.keymap = [
         # --- Row 3 ---
         KC.LCTL, KC.LWIN, KC.LFA,  KC.N,    KC.RFB,  KC.RALT, KC.SPC,
         # --- Row 4 ---
-        KC.LALT, KC.LFB,  KC.B,    KC.RFA,  KC.RFC,  KC.RCTL, KC.MB_LMB,
+        KC.LALT, KC.LFB,  KC.B,    KC.RFA,  KC.RFC,  KC.RCTL, KC.MB_NO,
         # --- Row 5 ---
-        KC.Z,    KC.C,    KC.G,    KC.M,    KC.DOT,  KC.RSFT, KC.MB_RMB,
+        KC.Z,    KC.C,    KC.G,    KC.M,    KC.DOT,  KC.RSFT, KC.MB_LMB,
         # --- Row 6 ---
         KC.A,    KC.D,    KC.T,    KC.J,    KC.L,    KC.ENT,  KC.MB_MMB,
         # --- Row 7 ---
-        KC.Q,    KC.E,    KC.ESC,  KC.U,    KC.O,    KC.BKSP, KC.NO,
+        KC.Q,    KC.E,    KC.ESC,  KC.U,    KC.O,    KC.BKSP, KC.MB_RMB
+,
     ]
 ]
 

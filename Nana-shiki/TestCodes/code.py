@@ -55,9 +55,9 @@ keyboard.extensions.append(International())
 keyboard.extensions.append(MediaKeys())
 
 # 独自キー（エラー防止用の仮割り当て）
-KC.LOY = KC.LANG2
+KC.LOY = KC.F15
 KC.SIY = KC.NO
-KC.ROY = KC.LANG1
+KC.ROY = KC.F16
 KC.LFA = KC.MO(1)
 KC.RFB = KC.MO(2)
 KC.LFB = KC.MO(2)

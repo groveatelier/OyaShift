@@ -1,5 +1,5 @@
-/*  2026.06.08 20:00
-  親指シフトキーボードIME ver 5.2 (JISキーボード用)
+/*  2026.08.14 20:00
+  親指シフトキーボードIME ver 1.4.6 (JISキーボード用)
     
     カーソル行表示：最初は検索文字（ひらがな）のみの表示、入力増で適度に変換候補筆頭を表示.
     候補窓表示：ユーザー意思の変換が実行される前は 2行のみの窓とし、inbufを表示
@@ -116,8 +116,8 @@ class MojiMap {
     }
 
     detectThumbShift(keyData){
-        if (keyData.code === "Lang1") { this.shiftNo = 1; this.thumbHW = true; return 1; }
-        if (keyData.code === "Lang2") { this.shiftNo = 2; this.thumbHW = true; return 2; }
+        if (keyData.code === "F15" || keyData.code === "Lang1") { this.shiftNo = 1; this.thumbHW = true; return 1; }
+        if (keyData.code === "F16" || keyData.code === "Lang2") { this.shiftNo = 2; this.thumbHW = true; return 2; }
         return null;
     }
 

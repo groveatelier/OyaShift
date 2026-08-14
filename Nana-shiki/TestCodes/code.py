@@ -4,6 +4,8 @@ import rotaryio
 import usb_hid
 import time
 from adafruit_hid.mouse import Mouse
+from adafruit_hid.consumer_control import ConsumerControl
+from adafruit_hid.consumer_control_code import ConsumerControlCode
 
 from kmk.kmk_keyboard import KMKKeyboard
 from kmk.keys import KC
@@ -66,6 +68,7 @@ mouse_keys = MouseKeys()
 keyboard.modules.append(mouse_keys)
 
 mouse = Mouse(usb_hid.devices)
+cc = ConsumerControl(usb_hid.devices)  # 音量制御用
 
 # アナログスティック (GP26, GP27)
 stick_x = analogio.AnalogIn(board.GP26)
@@ -80,11 +83,6 @@ SENSITIVITY = 1600
 encoder = rotaryio.IncrementalEncoder(board.GP19, board.GP18, divisor=2)
 last_encoder_pos = encoder.position
 
-# 【超重要パラメータ】
-# 1ノッチで2ノッチ分動かしたい場合や、滑らかさを出したい場合の倍率設定
-# 1ノッチで重い場合は 2 や 3 に増やしてください。
-#WHEEL_SENSITIVITY = 1
-
 # -------------------------------------------------------------------
 # 2. 高速入力処理ループ
 # -------------------------------------------------------------------
@@ -95,29 +93,37 @@ def process_controls():
     current_encoder_pos = encoder.position
     raw_diff = current_encoder_pos - last_encoder_pos
     
-    wheel_move = 0
     if raw_diff != 0:
         last_encoder_pos = current_encoder_pos
-        # 変化量に倍率を掛けてスクロール感を大幅に向上させる
-        wheel_move = raw_diff #* WHEEL_SENSITIVITY
 
+        # xfA 押下なら 音量制御
+        if 1 in keyboard.active_layers:
+            if raw_diff > 0:
+                cc.send(ConsumerControlCode.VOLUME_INCREMENT) # 音量UP
+            else:
+                cc.send(ConsumerControlCode.VOLUME_DECREMENT) # 音量DOWN
+        else:
+        # 通常は縦スクロール
+            mouse.move(wheel=raw_diff)
+
+    else:
     # --- B. アナログスティックの計算 ---
-    x_val = stick_x.value - CENTER_VAL
-    y_val = stick_y.value - CENTER_VAL
+        x_val = stick_x.value - CENTER_VAL
+        y_val = stick_y.value - CENTER_VAL
 
-    move_x = 0
-    move_y = 0
+        move_x = 0
+        move_y = 0
 
-    if abs(x_val) > DEADZONE:
-        move_x = int((x_val - (DEADZONE if x_val > 0 else -DEADZONE)) / SENSITIVITY)
-    
-    if abs(y_val) > DEADZONE:
-        move_y = int(-(y_val - (DEADZONE if y_val > 0 else -DEADZONE)) / SENSITIVITY)
+        if abs(x_val) > DEADZONE:
+            move_x = int((x_val - (DEADZONE if x_val > 0 else -DEADZONE)) / SENSITIVITY)
+        
+        if abs(y_val) > DEADZONE:
+            move_y = int(-(y_val - (DEADZONE if y_val > 0 else -DEADZONE)) / SENSITIVITY)
 
-    # --- C. マウス操作の送信 ---
-    # アナログ移動またはホイール回転がある時のみ送信
-    if move_x != 0 or move_y != 0 or wheel_move != 0:
-        mouse.move(x=move_x, y=move_y, wheel=wheel_move)
+        # --- C. マウス操作の送信 ---
+        # アナログ移動またはホイール回転がある時のみ送信
+        if move_x != 0 or move_y != 0:
+            mouse.move(x=move_x, y=move_y)
 
 keyboard.before_matrix_scan = process_controls
 
@@ -126,7 +132,7 @@ keyboard.before_matrix_scan = process_controls
 # -------------------------------------------------------------------
 # キーマップの定義 (7行 × 8列 の例)
 keyboard.keymap = [
-    # Layer 0: Base Layer
+    # Layer 0: Base Layer3
     [
         # --- Row 0 ---
         KC.TAB,  KC.W,    KC.R,    KC.DEL,  KC.I,    KC.P,    KC.LOY,
@@ -152,7 +158,7 @@ keyboard.keymap = [
         KC.GRV,  KC.LCBR, KC.CIRC, KC.LPRN, KC.N4,   KC.N6,   KC.SPC,
         KC.LSFT, KC.X,    KC.UNDS, KC.SLSH, KC.N1,   KC.N3,   KC.KANA, 
         KC.LCTL, KC.LWIN, KC.LFA,  KC.ASTR, KC.COMM, KC.DOT,  KC.SPC,
-        KC.LALT, KC.LFB,  KC.B,    KC.RFA,  KC.N0 ,  KC.RCTL, KC.NO,
+        KC.LALT, KC.LFB,  KC.B,    KC.RFA,  KC.N0 ,  KC.TG(4), KC.NO,
         KC.RO,   KC.C,    KC.AMPR, KC.PLUS, KC.N2,   KC.EQL,  KC.MB_LMB,
         KC.JYEN, KC.RCBR, KC.PERC, KC.MINS, KC.N5,   KC.ENT,  KC.MB_MMB,
         KC.EXLM, KC.HASH, KC.ESC,  KC.RPRN, KC.N8,   KC.BKSP, KC.MB_RMB,
@@ -180,7 +186,19 @@ keyboard.keymap = [
         KC.Z,    KC.C,    KC.G,    KC.M,    KC.VOLD, KC.RBRC, KC.MB_LMB,
         KC.A,    KC.D,    KC.T,    KC.J,    KC.L,    KC.LBRC, KC.MB_MMB,
         KC.Q,    KC.E,    KC.ESC,  KC.U,    KC.O,    KC.BKSP, KC.MB_RMB,
-    ]
+    ],
+
+    # Num Lock
+    [
+        KC.TILD, KC.AT,   KC.DLR,  KC.DEL,  KC.N7,   KC.N9,   KC.LOY,
+        KC.GRV,  KC.LCBR, KC.CIRC, KC.LPRN, KC.N4,   KC.N6,   KC.SPC,
+        KC.LSFT, KC.X,    KC.UNDS, KC.SLSH, KC.N1,   KC.N3,   KC.KANA, 
+        KC.LCTL, KC.LWIN, KC.LFA,  KC.ASTR, KC.COMM, KC.DOT,  KC.SPC,
+        KC.LALT, KC.LFB,  KC.B,    KC.RFA,  KC.N0 ,  KC.TG(4), KC.NO,
+        KC.RO,   KC.C,    KC.AMPR, KC.PLUS, KC.N2,   KC.EQL,  KC.MB_LMB,
+        KC.JYEN, KC.RCBR, KC.PERC, KC.MINS, KC.N5,   KC.ENT,  KC.MB_MMB,
+        KC.EXLM, KC.HASH, KC.ESC,  KC.RPRN, KC.N8,   KC.BKSP, KC.MB_RMB,
+    ],
 
 ]
 

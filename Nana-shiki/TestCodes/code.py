@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型キーボード(KMK_Firmware) 2026/8/15 quietgrobeatelier
+# 七式二型キーボード(KMK_Firmware) 2026/8/16 quietgrobeatelier
 # ===================================================================
 import board
 import analogio
@@ -35,7 +35,10 @@ class IMEManager(Module):
     def __init__(self, ja_layer=5):
         self.ime_on = False
         self.enable_ime = True
+        self.os = 0
         self.ja_layer = ja_layer  # IME ONの時に有効化したいレイヤー番号
+        self.ime_onkeys = (KC.LANG1, KC.HENK)
+        self.ime_offkeys = (KC.LANG2, KC.MHEN)
 
     def during_bootup(self, keyboard): pass
     def before_matrix_scan(self, keyboard): pass
@@ -45,13 +48,21 @@ class IMEManager(Module):
 
     def process_key(self, keyboard, key, is_pressed, int_coord):
         if is_pressed:
-            if key in (KC.HENK, KC.INT4):
+            if key == IME_ON:
                 self.set_ime(keyboard, True)
-            elif key in (KC.MHEN, KC.INT5):
+                key = self.ime_onkeys[self.os]
+            elif key == IME_OFF:
                 self.set_ime(keyboard, False)
-            elif key == KC.F17:
+                key = self.ime_offkeys[self.os]
+            elif key == IME_SW:
                 self.enable_ime = not self.enable_ime
-                self.set_ime(keyboard, False)
+                self.set_ime(keyboard, self.enable_ime)
+                #print(f"[IME Manager] Switched IME ON/OFF ({self.enable_ime})")
+            elif key == OS_SW:
+                if self.os == 0:
+                    self.os = 1
+                else:
+                    self.os = 0
         return key
 
     def set_ime(self, keyboard, target_state: bool):
@@ -153,7 +164,10 @@ KC_0CTL = KC.LM(0, KC.LCTL)
 KC_0WIN = KC.LM(0, KC.LWIN)
 KC_QDOT = KC.DOT
 KC_ZDOT = KC.MACRO(".")
-#KC_PCOM = KC.COMM
+IME_SW = KC.F17
+IME_ON = KC.F18
+IME_OFF = KC.F19
+OS_SW = KC.F20
 
 mouse_keys = MouseKeys()
 keyboard.modules.append(mouse_keys)
@@ -412,7 +426,7 @@ keyboard.keymap = [
         KC.LALT, KC_LFB,  KC.B,    KC_RFA,  KC.N0 ,  KC.TG(4), KC.NO,
         KC.RO,   KC.C,    KC.AMPR, KC.PLUS, KC.N2,   KC.EQL,  KC.MB_LMB,
         KC.JYEN, KC.RCBR, KC.PERC, KC.MINS, KC.N5,   KC.ENT,  KC.MB_MMB,
-        KC.EXLM, KC.HASH, KC.F17,  KC.RPRN, KC.N8,   KC_DELF, KC.MB_RMB,
+        KC.EXLM, KC.HASH, IME_SW,  KC.RPRN, KC.N8,   KC_DELF, KC.MB_RMB,
     ],
 
     # Layer 2: LfB/RfB Layer
@@ -430,13 +444,13 @@ keyboard.keymap = [
     # Layer 3: RfC Layer
     [
         KC.TAB,  KC.W,    KC.R,    KC.DEL,  KC.APP,  KC.BRIU, KC_LOY,
-        KC.F17,  KC.S,    KC.F,    KC.Y,    KC.NO,   KC.BRID, KC.SPC,
+        IME_SW,  KC.S,    KC.F,    KC.Y,    KC.NO,   KC.BRID, KC.SPC,
         KC.CAPS, KC.X,    KC.V,    KC.H,    KC.MUTE, KC.VOLU, KC_ROY, 
         KC.LCTL, KC.LWIN, KC_LFA,  KC.N,    KC_RFB,  KC.RALT, KC.SPC,
         KC.LALT, KC_LFB,  KC.B,    KC_RFA,  KC_RFC,  KC.RCTL, KC.NO,
         KC.Z,    KC.C,    KC.G,    KC.M,    KC.VOLD, KC.RBRC, KC.MB_LMB,
         KC.A,    KC.D,    KC.T,    KC.J,    KC.L,    KC.LBRC, KC.MB_MMB,
-        KC.Q,    KC.E,    KC.ESC,  KC.U,    KC.O,    KC.BKSP, KC.MB_RMB,
+        OS_SW,   KC.E,    KC.ESC,  KC.U,    KC.O,    KC.BKSP, KC.MB_RMB,
     ],
 
     # Layer 4: Num Lock
@@ -466,24 +480,24 @@ keyboard.keymap = [
     # Layer 6: 左親指キー
     [
         KC.TAB,  KC.E,    KC_XYA,  KC.DEL,  KC_GU,   KC_PI,   KC.MO(6),
-        KC_SIY,  KC.A,    KC_XYU,  KC_PA,   KC_GI,   KC.SCLN, KC.SPC,
-        KC_0SFT, KC.MINS, KC_YA,   KC_BA,   KC_PE,   KC.SLSH, KC.HENK,  
+        KC_SIY,  KC.A,    KC_XYU,  KC_PA,   KC_GI,   KC.SCLN, KC.MHEN,
+        KC_0SFT, KC.MINS, KC_YA,   KC_BA,   KC_PE,   KC.SLSH, IME_ON,  
         KC_0CTL, KC_0WIN, KC_LFA,  KC_PU,   KC_RFB,  KC_0ALT, KC.SPC,
         KC_0ALT, KC_LFB,  KC_XI,   KC_RFA,  KC_RFC,  KC_0CTL, KC.NO,
-        KC.DOT,  KC_RO,   KC_MO,   KC_ZO,   KC_BO,   KC_0SFT, KC.MB_LMB,
-        KC_WO,   KC_NA,   KC_RE,   KC_DO,   KC_PA,   KC.ENT,  KC.MB_MMB,
+        KC.DOT,  KC_RO,   KC_MO,   KC_ZO,   KC_BO,   KC.QUOT, KC.MB_LMB,
+        KC_WO,   KC_NA,   KC_RE,   KC_DO,   KC_PA,   KC.DQUO, KC.MB_MMB,
         KC_XA,   KC.E,    KC.ESC,  KC.U,    KC.O,    KC.BKSP, KC.MB_RMB,
     ],
 
     # Layer 7: 右親指キー
     [
-        KC.TAB,  KC_GA,   KC_GO,   KC.DEL,  KC_RU,   KC_XE,   KC.MHEN,
+        KC.TAB,  KC_GA,   KC_GO,   KC.DEL,  KC_RU,   KC_XE,   IME_OFF,
         KC_SIY,  KC_GI,   KC_GE,   KC_YO,   KC_NO,   KC_XTU,  KC.SPC,
         KC_0SFT, KC_BI,   KC_BU,   KC_MI,   KC_MU,   KC_XO,   KC.MO(7), 
-        KC_0CTL, KC_0WIN, KC_LFA,  KC_NU,   KC_RFB,  KC_0ALT, KC.SPC,
+        KC_0CTL, KC_0WIN, KC_LFA,  KC_NU,   KC_RFB,  KC_0ALT, KC.HENK,
         KC_0ALT, KC_LFB,  KC_BE,   KC_RFA,  KC_RFC,  KC_0CTL, KC.NO,
-        KC_XU,   KC_ZU,   KC_ZE,   KC_YU,   KC_WA,   KC_0SFT, KC.MB_LMB,
-        KC_VU,   KC_DE,   KC_ZA,   KC.O,    KC_XYO,  KC.ENT,  KC.MB_MMB,
+        KC_XU,   KC_ZU,   KC_ZE,   KC_YU,   KC_WA,   KC.RBRC, KC.MB_LMB,
+        KC_VU,   KC_DE,   KC_ZA,   KC.O,    KC_XYO,  KC.LBRC,  KC.MB_MMB,
         KC.QUES, KC_DA,   KC.ESC,  KC_NI,   KC_MA,   KC.BKSP, KC.MB_RMB,
     ]
 ]

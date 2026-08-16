@@ -10,6 +10,8 @@ from adafruit_hid.mouse import Mouse
 from adafruit_hid.consumer_control import ConsumerControl
 from adafruit_hid.consumer_control_code import ConsumerControlCode
 
+from kmk.extensions.RGB import RGB
+from kmk.extensions.lock_status import LockStatus
 from kmk.kmk_keyboard import KMKKeyboard
 from kmk.keys import KC
 from kmk.extensions.media_keys import MediaKeys
@@ -32,17 +34,21 @@ import kmk.extensions.keymap_extras.keymap_jp
 # IME状態 ＆ 自動レイヤー切り替えモジュール
 # ===================================================================
 class IMEManager(Module):
-    def __init__(self, ja_layer=5):
+    def __init__(self, rgb_ext, lock_ext, ja_layer=5):
         self.ime_on = False
         self.enable_ime = True
         self.os = 0
         self.ja_layer = ja_layer  # IME ONの時に有効化したいレイヤー番号
         self.ime_onkeys = (KC.LANG1, KC.HENK)
         self.ime_offkeys = (KC.LANG2, KC.MHEN)
+        self.base_color = (40,0,0)
+        self.rgb = rgb_ext
+        self.lock = lock_ext
+        self.last_color = None
+        self.msg_count = 0
 
     def during_bootup(self, keyboard): pass
     def before_matrix_scan(self, keyboard): pass
-    def after_matrix_scan(self, keyboard): pass
     def before_hid_send(self, keyboard): pass
     def after_hid_send(self, keyboard): pass
 
@@ -61,8 +67,15 @@ class IMEManager(Module):
             elif key == OS_SW:
                 if self.os == 0:
                     self.os = 1
+                    self.base_color = (0,40,0)
                 else:
                     self.os = 0
+                    self.base_color = (40,0,0)
+#            elif key == KC.SCLN:
+#                print(f"[IME Manager] Semi Colon detected ({keyboard.keys_pressed,KC.LSFT, KC.RSFT})")
+#                if KC.LSFT in keyboard.keys_pressed or KC.RSFT in keyboard.keys_pressed:
+#                    key = KC.COLN
+#                    print(f"[IME Manager] Semi Colon detected and change to colon")
         return key
 
     def set_ime(self, keyboard, target_state: bool):
@@ -82,6 +95,33 @@ class IMEManager(Module):
                     #keyboard.active_layers.remove(self.ja_layer)
                     keyboard.active_layers = [0]
                     #print(f"[IME Manager] Returned to Base Layer (0)")
+
+    def after_matrix_scan(self, keyboard):
+        target_color = (0,0,0)
+        # windows os の場合 は 強制 Num Lock
+        #if self.os == 0 and not self.lock.get_num_lock() and self.msg_count < 12:
+        #    keyboard.tap_key(KC.NLCK)
+        #    self.msg_count += 1
+        if self.lock.get_caps_lock():
+            target_color = (200,0,0)
+        if self.lock.get_scroll_lock():
+            target_color = (0,200,0)
+        if self.ime_on:
+            target_color = (0,0,200)
+        if self.last_color != target_color:
+            self.last_color = target_color
+            # KMKのRGB拡張を使っている場合
+        #    if hasattr(self.rgb, 'set_rgb'):
+        #        self.rgb.set_rgb(target_color)
+            # neopixel を直接使っている場合
+        #    else:
+        #        self.rgb[0] = target_color
+        #        self.rgb.show()
+        if self.msg_count < 2:
+            self.msg_count += 1
+            print(f"[IME Manager] caps:{self.lock.get_caps_lock()}, num:{self.lock.get_num_lock()}")
+            self.rgb.set_rgb_fill((40,0,0))
+            self.rgb.show()
 
 # -------------------------------------------------------------------
 # IME ONの時だけ動く「条件付き Combos」モジュール
@@ -138,8 +178,25 @@ holdtap = HoldTap()
 holdtap.tap_time = 200  # 判定時間を200ms程度に短縮（お好みで調整）
 keyboard.modules.append(holdtap)
 
+# OSからの要求 (Caps Lock / Num Lock等) を取得する拡張機能
+lock_status = LockStatus()
+keyboard.extensions.append(lock_status)
+
+# YD-RP2040 オンボードRGB LEDの設定 (GP16)
+#rgb = RGB(
+#    pixel_pin=board.GP16,
+#    num_pixels=1,
+#    val_limit=100,  # 明るさの上限 (0〜255) ※直視で眩しすぎないよう100程度に抑制
+#    animation_mode=AnimationModes.STATIC,
+#)
+#keyboard.extensions.append(rgb)
+rgb = RGB(pixel_pin=board.GP16, num_pixels=1)
+keyboard.extensions.append(rgb)
+#rgb.set_rgb_fill((20,0,00))
+#rgb.show()
+
 # IME / カスタムCombo Managerを有効化
-ime_manager = IMEManager()
+ime_manager = IMEManager(rgb, lock_status)
 keyboard.modules.append(ime_manager)
 combos = IMEConditionalCombos(manager=ime_manager)
 combos.timeout_ms = 50  # 同時押し判定時間（50ミリ秒）
@@ -498,7 +555,7 @@ keyboard.keymap = [
         KC_0ALT, KC_LFB,  KC_BE,   KC_RFA,  KC_RFC,  KC_0CTL, KC.NO,
         KC_XU,   KC_ZU,   KC_ZE,   KC_YU,   KC_WA,   KC.RBRC, KC.MB_LMB,
         KC_VU,   KC_DE,   KC_ZA,   KC.O,    KC_XYO,  KC.LBRC,  KC.MB_MMB,
-        KC.QUES, KC_DA,   KC.ESC,  KC_NI,   KC_MA,   KC.BKSP, KC.MB_RMB,
+        KC.QUES, KC_DA,   KC.ESC,  KC_NI,   KC_MA,   KC.COLN, KC.MB_RMB,
     ]
 ]
 

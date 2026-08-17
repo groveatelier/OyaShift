@@ -1,8 +1,10 @@
 # ===================================================================
-# 七式二型キーボード(KMK_Firmware) 2026/8/16 quietgrobeatelier
+# 七式二型キーボード(KMK_Firmware) 2026/8/17 quietgrobeatelier
 # ===================================================================
 import board
 import analogio
+import digitalio
+import microcontroller
 import rotaryio
 import usb_hid
 import time
@@ -13,7 +15,7 @@ from adafruit_hid.consumer_control_code import ConsumerControlCode
 from kmk.extensions.RGB import RGB
 from kmk.extensions.lock_status import LockStatus
 from kmk.kmk_keyboard import KMKKeyboard
-from kmk.keys import KC
+from kmk.keys import KC, make_key
 from kmk.extensions.media_keys import MediaKeys
 from kmk.extensions.international import International
 from kmk.modules import Module
@@ -45,7 +47,14 @@ class IMEManager(Module):
         self.rgb = rgb_ext
         self.lock = lock_ext
         self.last_color = None
-        self.msg_count = 0
+        # --- GPIO ピンの設定 (内部プルアップ) ---
+        self.os_switch = digitalio.DigitalInOut(board.GP15)
+        self.os_switch.direction = digitalio.Direction.INPUT
+        self.os_switch.pull = digitalio.Pull.UP
+        # --- GP25 青色LEDの設定 (デジタル出力) ---
+        self.blue_led = digitalio.DigitalInOut(microcontroller.pin.GPIO25)
+        self.blue_led.direction = digitalio.Direction.OUTPUT
+        self.blue_led.value = False  # 初期状態は消灯
 
     def during_bootup(self, keyboard): pass
     def before_matrix_scan(self, keyboard): pass
@@ -64,13 +73,6 @@ class IMEManager(Module):
                 self.enable_ime = not self.enable_ime
                 self.set_ime(keyboard, self.enable_ime)
                 #print(f"[IME Manager] Switched IME ON/OFF ({self.enable_ime})")
-            elif key == OS_SW:
-                if self.os == 0:
-                    self.os = 1
-                    self.base_color = (0,40,0)
-                else:
-                    self.os = 0
-                    self.base_color = (40,0,0)
 #            elif key == KC.SCLN:
 #                print(f"[IME Manager] Semi Colon detected ({keyboard.keys_pressed,KC.LSFT, KC.RSFT})")
 #                if KC.LSFT in keyboard.keys_pressed or KC.RSFT in keyboard.keys_pressed:
@@ -97,11 +99,20 @@ class IMEManager(Module):
                     #print(f"[IME Manager] Returned to Base Layer (0)")
 
     def after_matrix_scan(self, keyboard):
+        # スイッチの状態を読み取り OS モードを決定
+        # LOW (False) ＝ Windows(0) / HIGH (True) ＝ ChromeOS(1)
+        current_os = 0 if not self.os_switch.value else 1
+        # OS切り替えが発生した場合はメッセージカウント等をリセット
+        if self.os != current_os:
+            self.os = current_os
+            # windows os の場合 は 強制 Num Lock
+            if self.os == 0:
+                keyboard.tap_key(KC.NLCK)
+            print(f"[OS Switch] Changed to: {'Windows' if self.os == 0 else 'Chrome OS'}")
+        # --- GP25 青色LEDの制御 ---
+        self.blue_led.value = not self.enable_ime
+
         target_color = (0,0,0)
-        # windows os の場合 は 強制 Num Lock
-        #if self.os == 0 and not self.lock.get_num_lock() and self.msg_count < 12:
-        #    keyboard.tap_key(KC.NLCK)
-        #    self.msg_count += 1
         if self.lock.get_caps_lock():
             target_color = (200,0,0)
         if self.lock.get_scroll_lock():
@@ -117,11 +128,11 @@ class IMEManager(Module):
         #    else:
         #        self.rgb[0] = target_color
         #        self.rgb.show()
-        if self.msg_count < 2:
-            self.msg_count += 1
-            print(f"[IME Manager] caps:{self.lock.get_caps_lock()}, num:{self.lock.get_num_lock()}")
-            self.rgb.set_rgb_fill((40,0,0))
-            self.rgb.show()
+        #if self.msg_count < 2:
+        #    self.msg_count += 1
+        #    print(f"[IME Manager] caps:{self.lock.get_caps_lock()}, num:{self.lock.get_num_lock()}")
+        #    self.rgb.set_rgb_fill((40,0,0))
+        #    self.rgb.show()
 
 # -------------------------------------------------------------------
 # IME ONの時だけ動く「条件付き Combos」モジュール
@@ -205,8 +216,19 @@ keyboard.modules.append(combos)
 # マクロモジュールを有効化
 macros = Macros()
 keyboard.modules.append(macros)
+mouse_keys = MouseKeys()
+keyboard.modules.append(mouse_keys)
+mouse = Mouse(usb_hid.devices)
+cc = ConsumerControl(usb_hid.devices)  # 音量制御用
 
-# 独自キー（エラー防止用の仮割り当て）
+# --- APP1 / APP2 (LAUNCH APP) 用のカスタムキー定義 ---
+def send_app1_fn(keyboard):
+    cc.send(0x0194)  # 0x0194: AL Local Machine Browser (マイコンピュータ / APP1)
+
+def send_app2_fn(keyboard):
+    cc.send(0x0192)  # 0x0192: AL Calculator (電卓 / APP2)
+
+# 独自キー
 KC_LOY = KC.LT(6, KC.F16)
 KC_SIY = KC.MO(5)  # 暫定
 KC_ROY = KC.LT(7, KC.F15)
@@ -221,16 +243,12 @@ KC_0CTL = KC.LM(0, KC.LCTL)
 KC_0WIN = KC.LM(0, KC.LWIN)
 KC_QDOT = KC.DOT
 KC_ZDOT = KC.MACRO(".")
+KC_STAB = KC.LSFT(KC.TAB)
+KC_APP1 = KC.MACRO(send_app1_fn)
+KC_APP2 = KC.MACRO(send_app2_fn)
 IME_SW = KC.F17
 IME_ON = KC.F18
 IME_OFF = KC.F19
-OS_SW = KC.F20
-
-mouse_keys = MouseKeys()
-keyboard.modules.append(mouse_keys)
-
-mouse = Mouse(usb_hid.devices)
-cc = ConsumerControl(usb_hid.devices)  # 音量制御用
 
 # アナログスティック (GP26, GP27)
 stick_x = analogio.AnalogIn(board.GP26)
@@ -248,7 +266,7 @@ last_encoder_pos = encoder.position
 # -------------------------------------------------------------------
 # 2. 高速入力処理ループ
 # -------------------------------------------------------------------
-def process_controls():
+def process_controls(keyboard=None, *args):
     global last_encoder_pos
 
     # --- A. ホイール（エンコーダー）の計算 ---
@@ -459,7 +477,7 @@ keyboard.keymap = [
         # --- Row 0 ---
         KC.TAB,  KC.W,    KC.R,    KC.DEL,  KC.I,    KC.P,    KC_LOY,
         # --- Row 1 ---
-        KC_SIY,  KC.S,    KC.F,    KC.Y,    KC.K,    KC.SCLN, KC.SPC,
+        KC_STAB, KC.S,    KC.F,    KC.Y,    KC.K,    KC.SCLN, KC.SPC,
         # --- Row 2 ---
         KC.LSFT, KC.X,    KC.V,    KC.H,    KC.COMM, KC.SLSH, KC_ROY, 
         # --- Row 3 ---
@@ -478,9 +496,9 @@ keyboard.keymap = [
     [
         KC.TILD, KC.AT,   KC.DLR,  KC_DELB, KC.N7,   KC.N9,   KC_LOY,
         KC.GRV,  KC.LCBR, KC.CIRC, KC.LPRN, KC.N4,   KC.N6,   KC.SPC,
-        KC.LSFT, KC.X,    KC.UNDS, KC.PSLS, KC.N1,   KC.N3,   KC.KANA, 
+        KC.LSFT, KC.X,    KC.EQL,  KC.PSLS, KC.N1,   KC.N3,   KC_ROY, 
         KC.LCTL, KC.LWIN, KC_LFA,  KC.ASTR, KC.PCMM, KC.PDOT, KC.SPC,
-        KC.LALT, KC_LFB,  KC.B,    KC_RFA,  KC.N0 ,  KC.TG(4), KC.NO,
+        KC.LALT, KC_LFB,  KC.UNDS, KC_RFA,  KC.N0 ,  KC.TG(4), KC.NO,
         KC.RO,   KC.C,    KC.AMPR, KC.PLUS, KC.N2,   KC.EQL,  KC.MB_LMB,
         KC.JYEN, KC.RCBR, KC.PERC, KC.MINS, KC.N5,   KC.ENT,  KC.MB_MMB,
         KC.EXLM, KC.HASH, IME_SW,  KC.RPRN, KC.N8,   KC_DELF, KC.MB_RMB,
@@ -500,21 +518,21 @@ keyboard.keymap = [
 
     # Layer 3: RfC Layer
     [
-        KC.TAB,  KC.W,    KC.R,    KC.DEL,  KC.APP,  KC.BRIU, KC_LOY,
-        IME_SW,  KC.S,    KC.F,    KC.Y,    KC.NO,   KC.BRID, KC.SPC,
+        KC.TAB,  KC.W,    KC.R,    KC.DEL,  KC_APP1, KC.BRIU, KC_LOY,
+        IME_SW,  KC.S,    KC.F,    KC.Y,    KC_APP2, KC.BRID, KC.SPC,
         KC.CAPS, KC.X,    KC.V,    KC.H,    KC.MUTE, KC.VOLU, KC_ROY, 
         KC.LCTL, KC.LWIN, KC_LFA,  KC.N,    KC_RFB,  KC.RALT, KC.SPC,
         KC.LALT, KC_LFB,  KC.B,    KC_RFA,  KC_RFC,  KC.RCTL, KC.NO,
         KC.Z,    KC.C,    KC.G,    KC.M,    KC.VOLD, KC.RBRC, KC.MB_LMB,
         KC.A,    KC.D,    KC.T,    KC.J,    KC.L,    KC.LBRC, KC.MB_MMB,
-        OS_SW,   KC.E,    KC.ESC,  KC.U,    KC.O,    KC.BKSP, KC.MB_RMB,
+        KC.Q,    KC.E,    KC.ESC,  KC.U,    KC.O,    KC.BKSP, KC.MB_RMB,
     ],
 
     # Layer 4: Num Lock
     [
         KC.TILD, KC.AT,   KC.DLR,  KC.DEL,  KC.N7,   KC.N9,   KC_LOY,
         KC.GRV,  KC.LCBR, KC.CIRC, KC.LPRN, KC.N4,   KC.N6,   KC.SPC,
-        KC.LSFT, KC.X,    KC.UNDS, KC.SLSH, KC.N1,   KC.N3,   KC.KANA, 
+        KC.LSFT, KC.X,    KC.UNDS, KC.SLSH, KC.N1,   KC.N3,   KC_ROY, 
         KC.LCTL, KC.LWIN, KC_LFA,  KC.ASTR, KC.COMM, KC.DOT,  KC.SPC,
         KC.LALT, KC_LFB,  KC.B,    KC_RFA,  KC.N0 ,  KC.TG(4), KC.NO,
         KC.RO,   KC.C,    KC.AMPR, KC.PLUS, KC.N2,   KC.EQL,  KC.MB_LMB,
@@ -526,7 +544,7 @@ keyboard.keymap = [
     [
         KC.TAB,  KC_KA,   KC_KO,   KC.DEL,  KC_KU,   KC.COMM, KC_LOY,
         KC_SIY,  KC_SI,   KC_KE,   KC_RA,   KC_KI,   KC_NN,   KC.SPC,
-        KC_0SFT, KC_HI,   KC_HU,   KC_HA,   KC_NE,   KC.SLSH,  KC_ROY, 
+        KC_0SFT, KC_HI,   KC_HU,   KC_HA,   KC_NE,   KC.SLSH, KC_ROY, 
         KC_0CTL, KC_0WIN, KC_LFA,  KC_ME,   KC_RFB,  KC_0ALT, KC.SPC,
         KC_0ALT, KC_LFB,  KC_HE,   KC_RFA,  KC_RFC,  KC_0CTL, KC.NO,
         KC_ZDOT, KC_SU,   KC_SE,   KC_SO,   KC_HO,   KC_0SFT, KC.MB_LMB,
@@ -537,9 +555,9 @@ keyboard.keymap = [
     # Layer 6: 左親指キー
     [
         KC.TAB,  KC.E,    KC_XYA,  KC.DEL,  KC_GU,   KC_PI,   KC.MO(6),
-        KC_SIY,  KC.A,    KC_XYU,  KC_PA,   KC_GI,   KC.SCLN, KC.MHEN,
-        KC_0SFT, KC.MINS, KC_YA,   KC_BA,   KC_PE,   KC.SLSH, IME_ON,  
-        KC_0CTL, KC_0WIN, KC_LFA,  KC_PU,   KC_RFB,  KC_0ALT, KC.SPC,
+        KC.CAPS, KC.A,    KC_XYU,  KC_PA,   KC_GI,   KC.SCLN, KC.MHEN,
+        KC_0SFT, KC.MINS, KC_YA,   KC_BA,   KC_PE,   KC.COLN, IME_ON,  
+        KC_0CTL, KC_0WIN, KC_LFA,  KC_PU,   KC_RFB,  KC_0ALT, KC.KANA,
         KC_0ALT, KC_LFB,  KC_XI,   KC_RFA,  KC_RFC,  KC_0CTL, KC.NO,
         KC.DOT,  KC_RO,   KC_MO,   KC_ZO,   KC_BO,   KC.QUOT, KC.MB_LMB,
         KC_WO,   KC_NA,   KC_RE,   KC_DO,   KC_PA,   KC.DQUO, KC.MB_MMB,
@@ -555,7 +573,7 @@ keyboard.keymap = [
         KC_0ALT, KC_LFB,  KC_BE,   KC_RFA,  KC_RFC,  KC_0CTL, KC.NO,
         KC_XU,   KC_ZU,   KC_ZE,   KC_YU,   KC_WA,   KC.RBRC, KC.MB_LMB,
         KC_VU,   KC_DE,   KC_ZA,   KC.O,    KC_XYO,  KC.LBRC,  KC.MB_MMB,
-        KC.QUES, KC_DA,   KC.ESC,  KC_NI,   KC_MA,   KC.COLN, KC.MB_RMB,
+        KC.QUES, KC_DA,   KC.ESC,  KC_NI,   KC_MA,   KC.BKSP, KC.MB_RMB,
     ]
 ]
 

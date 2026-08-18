@@ -142,19 +142,19 @@ class StatusLEDManager(Module):
     def after_hid_send(self, keyboard): pass
 
     def after_matrix_scan(self, keyboard):
-        # 1. 各種状態を取得
+        # 各種状態を取得
         is_caps = self.lock.get_caps_lock()
-        #is_ime = getattr(self.ime_mgr, 'ime_on', False) if self.ime_mgr else False
+        # is_scr = TBD
         cur_rgb = [0,0,0]
         if self.ime_mgr.os:
-            cur_rgb[1] = 10
+            cur_rgb[1] = 8
         else:
-            cur_rgb[0] = 100 if is_caps else 10
+            cur_rgb[0] = 64 if is_caps else 8
         if self.ime_mgr.ime_on:
             cur_rgb[2] = 32
         target_color = tuple(cur_rgb)
 
-        # 3. 色に変更があった場合のみ LED を更新（無駄な通信を防止）
+        # 色に変更があった場合のみ LED を更新（無駄な通信を防止）
         if self.last_color != target_color:
             self.last_color = target_color
             self.rgb.set_rgb_fill(target_color)
@@ -272,7 +272,7 @@ IME_OFF = KC.F19
 # アナログスティック (GP26, GP27)
 stick_x = analogio.AnalogIn(board.GP26)
 stick_y = analogio.AnalogIn(board.GP27)
-
+is_dragging = False
 CENTER_VAL = 32768
 DEADZONE = 2048
 SENSITIVITY = 2048
@@ -286,7 +286,7 @@ last_encoder_pos = encoder.position
 # 2. 高速入力処理ループ
 # -------------------------------------------------------------------
 def process_controls():
-    global last_encoder_pos
+    global last_encoder_pos, is_dragging
 
     # --- A. ホイール（エンコーダー）の計算 ---
     current_encoder_pos = encoder.position
@@ -333,12 +333,23 @@ def process_controls():
         if abs(y_val) > DEADZONE:
             move_y = int(-(y_val - (DEADZONE if y_val > 0 else -DEADZONE)) / SENSITIVITY)
 
+        #print(f"xxx {keyboard.keys_pressed}")
+        if KC.MB_LMB in keyboard.keys_pressed:
+            if not is_dragging:
+                mouse.press(1)  # m
+                is_dragging = True
+        else:
+            if is_dragging:
+                mouse.release(1) 
+                is_dragging = False
+
         # --- C. マウス操作の送信 ---
         # アナログ移動またはホイール回転がある時のみ送信
         if move_x != 0 or move_y != 0:
             mouse.move(x=move_x, y=move_y)
 
 keyboard.before_matrix_scan = process_controls
+#keyboard.after_matrix_scan = process_controls
 
 # -------------------------------------------------------------------
 # 3. ローマ字出力用マクロの定義

@@ -12,7 +12,7 @@ from adafruit_hid.mouse import Mouse
 from adafruit_hid.consumer_control import ConsumerControl
 from adafruit_hid.consumer_control_code import ConsumerControlCode
 
-from kmk.extensions.RGB import RGB
+from kmk.extensions.RGB import RGB, AnimationModes
 from kmk.extensions.lock_status import LockStatus
 from kmk.kmk_keyboard import KMKKeyboard
 from kmk.keys import KC, make_key
@@ -28,6 +28,7 @@ from kmk.modules.macros import Macros, Press, Release, Tap, Delay
 
 # キーボード本体のインスタンス化
 keyboard = KMKKeyboard()
+
 # keymap_jp を読む前に International 拡張を登録する
 keyboard.extensions.append(International())
 import kmk.extensions.keymap_extras.keymap_jp
@@ -36,17 +37,13 @@ import kmk.extensions.keymap_extras.keymap_jp
 # IME状態 ＆ 自動レイヤー切り替えモジュール
 # ===================================================================
 class IMEManager(Module):
-    def __init__(self, rgb_ext, lock_ext, ja_layer=5):
+    def __init__(self, ja_layer=5):
         self.ime_on = False
         self.enable_ime = True
         self.os = 0
         self.ja_layer = ja_layer  # IME ONの時に有効化したいレイヤー番号
         self.ime_onkeys = (KC.LANG1, KC.HENK)
         self.ime_offkeys = (KC.LANG2, KC.MHEN)
-        self.base_color = (40,0,0)
-        self.rgb = rgb_ext
-        self.lock = lock_ext
-        self.last_color = None
         # --- GPIO ピンの設定 (内部プルアップ) ---
         self.os_switch = digitalio.DigitalInOut(board.GP15)
         self.os_switch.direction = digitalio.Direction.INPUT
@@ -102,37 +99,16 @@ class IMEManager(Module):
         # スイッチの状態を読み取り OS モードを決定
         # LOW (False) ＝ Windows(0) / HIGH (True) ＝ ChromeOS(1)
         current_os = 0 if not self.os_switch.value else 1
-        # OS切り替えが発生した場合はメッセージカウント等をリセット
+        # OS切り替えが発生した場合はRGB LED 操作
         if self.os != current_os:
             self.os = current_os
             # windows os の場合 は 強制 Num Lock
             if self.os == 0:
                 keyboard.tap_key(KC.NLCK)
             print(f"[OS Switch] Changed to: {'Windows' if self.os == 0 else 'Chrome OS'}")
+
         # --- GP25 青色LEDの制御 ---
         self.blue_led.value = not self.enable_ime
-
-        target_color = (0,0,0)
-        if self.lock.get_caps_lock():
-            target_color = (200,0,0)
-        if self.lock.get_scroll_lock():
-            target_color = (0,200,0)
-        if self.ime_on:
-            target_color = (0,0,200)
-        if self.last_color != target_color:
-            self.last_color = target_color
-            # KMKのRGB拡張を使っている場合
-        #    if hasattr(self.rgb, 'set_rgb'):
-        #        self.rgb.set_rgb(target_color)
-            # neopixel を直接使っている場合
-        #    else:
-        #        self.rgb[0] = target_color
-        #        self.rgb.show()
-        #if self.msg_count < 2:
-        #    self.msg_count += 1
-        #    print(f"[IME Manager] caps:{self.lock.get_caps_lock()}, num:{self.lock.get_num_lock()}")
-        #    self.rgb.set_rgb_fill((40,0,0))
-        #    self.rgb.show()
 
 # -------------------------------------------------------------------
 # IME ONの時だけ動く「条件付き Combos」モジュール
@@ -149,6 +125,43 @@ class IMEConditionalCombos(Combos):
 
         # IMEがONの時だけ、本来の同時押し（50ms判定）を実行
         return super().process_key(keyboard, key, is_pressed, int_coord)
+
+# -----------------------------------------------------------------
+# 状態監視 ＆ LED制御用カスタムモジュール
+# -----------------------------------------------------------------
+class StatusLEDManager(Module):
+    def __init__(self, rgb_ext, lock_ext, ime_mgr=None):
+        self.rgb = rgb_ext
+        self.lock = lock_ext
+        self.ime_mgr = ime_mgr
+        self.last_color = None
+
+    def during_bootup(self, keyboard): pass
+    def before_matrix_scan(self, keyboard): pass
+    def before_hid_send(self, keyboard): pass
+    def after_hid_send(self, keyboard): pass
+
+    def after_matrix_scan(self, keyboard):
+        # 1. 各種状態を取得
+        is_caps = self.lock.get_caps_lock()
+        #is_ime = getattr(self.ime_mgr, 'ime_on', False) if self.ime_mgr else False
+        cur_rgb = [0,0,0]
+        if self.ime_mgr.os:
+            cur_rgb[1] = 10
+        else:
+            cur_rgb[0] = 100 if is_caps else 10
+        if self.ime_mgr.ime_on:
+            cur_rgb[2] = 32
+        target_color = tuple(cur_rgb)
+
+        # 3. 色に変更があった場合のみ LED を更新（無駄な通信を防止）
+        if self.last_color != target_color:
+            self.last_color = target_color
+            self.rgb.set_rgb_fill(target_color)
+            self.rgb.show()
+
+    def process_key(self, keyboard, key, is_pressed, int_coord):
+        return key
 
 # -------------------------------------------------------------------
 # 1. 基本設定
@@ -193,21 +206,18 @@ keyboard.modules.append(holdtap)
 lock_status = LockStatus()
 keyboard.extensions.append(lock_status)
 
-# YD-RP2040 オンボードRGB LEDの設定 (GP16)
-#rgb = RGB(
-#    pixel_pin=board.GP16,
-#    num_pixels=1,
-#    val_limit=100,  # 明るさの上限 (0〜255) ※直視で眩しすぎないよう100程度に抑制
-#    animation_mode=AnimationModes.STATIC,
-#)
-#keyboard.extensions.append(rgb)
-rgb = RGB(pixel_pin=board.GP16, num_pixels=1)
+# YD-RP2040 オンボードRGB LEDの設定 (GP23)
+rgb = RGB(
+    pixel_pin=board.GP23,
+    num_pixels=1,
+    val_limit=100,  # 明るさの上限 (0〜255) ※直視で眩しすぎないよう100程度に抑制
+    animation_mode=AnimationModes.STATIC,
+)
+#rgb = RGB(pixel_pin=board.GP23, num_pixels=1)
 keyboard.extensions.append(rgb)
-#rgb.set_rgb_fill((20,0,00))
-#rgb.show()
 
 # IME / カスタムCombo Managerを有効化
-ime_manager = IMEManager(rgb, lock_status)
+ime_manager = IMEManager()
 keyboard.modules.append(ime_manager)
 combos = IMEConditionalCombos(manager=ime_manager)
 combos.timeout_ms = 50  # 同時押し判定時間（50ミリ秒）
@@ -221,12 +231,20 @@ keyboard.modules.append(mouse_keys)
 mouse = Mouse(usb_hid.devices)
 cc = ConsumerControl(usb_hid.devices)  # 音量制御用
 
+# LED 制御用モジュール
+status_led = StatusLEDManager(rgb, lock_status, ime_mgr=ime_manager)
+keyboard.modules.append(status_led)
+
 # --- APP1 / APP2 (LAUNCH APP) 用のカスタムキー定義 ---
 def send_app1_fn(keyboard):
     cc.send(0x0194)  # 0x0194: AL Local Machine Browser (マイコンピュータ / APP1)
-
 def send_app2_fn(keyboard):
     cc.send(0x0192)  # 0x0192: AL Calculator (電卓 / APP2)
+def send_sleep_fn(keyboard):
+    if ime_manager.os == 1:
+        keyboard.tap_key(KC.LWIN(KC.L)) # chrome OSの場合
+    else:
+        cc.send(0x0224)  # 0x0224: AC Sleep
 
 # 独自キー
 KC_LOY = KC.LT(6, KC.F16)
@@ -246,6 +264,7 @@ KC_ZDOT = KC.MACRO(".")
 KC_STAB = KC.LSFT(KC.TAB)
 KC_APP1 = KC.MACRO(send_app1_fn)
 KC_APP2 = KC.MACRO(send_app2_fn)
+KC_SLEP = KC.MACRO(send_sleep_fn)
 IME_SW = KC.F17
 IME_ON = KC.F18
 IME_OFF = KC.F19
@@ -535,7 +554,7 @@ keyboard.keymap = [
     # Layer 3: RfC Layer
     [
         KC.TAB,  KC.W,    KC.R,    KC.DEL,  KC_APP1, KC.BRIU, KC_LOY,
-        IME_SW,  KC.S,    KC.F,    KC.Y,    KC_APP2, KC.BRID, KC.SPC,
+        IME_SW,  KC.S,    KC.F,    KC_SLEP, KC_APP2, KC.BRID, KC.SPC,
         KC.CAPS, KC.X,    KC.V,    KC.H,    KC.MUTE, KC.VOLU, KC_ROY, 
         KC.LCTL, KC.LWIN, KC_LFA,  KC.N,    KC_RFB,  KC.RALT, KC.SPC,
         KC.LALT, KC_LFB,  KC.B,    KC_RFA,  KC_RFC,  KC.RCTL, KC.NO,

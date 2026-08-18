@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型キーボード(KMK_Firmware) 2026/8/17 quietgrobeatelier
+# 七式二型キーボード(KMK_Firmware) 2026/8/18 quietgrobeatelier
 # ===================================================================
 import board
 import analogio
@@ -266,7 +266,7 @@ last_encoder_pos = encoder.position
 # -------------------------------------------------------------------
 # 2. 高速入力処理ループ
 # -------------------------------------------------------------------
-def process_controls(keyboard=None, *args):
+def process_controls():
     global last_encoder_pos
 
     # --- A. ホイール（エンコーダー）の計算 ---
@@ -282,6 +282,20 @@ def process_controls(keyboard=None, *args):
                 cc.send(ConsumerControlCode.VOLUME_INCREMENT) # 音量UP
             else:
                 cc.send(ConsumerControlCode.VOLUME_DECREMENT) # 音量DOWN
+
+        # 右親 押下なら UP/DOWN
+        elif 7 in keyboard.active_layers:
+            key_to_tap = KC.UP if raw_diff > 0 else KC.DOWN
+            # 回したノッチ（回転量）の分だけキーを送信
+            for _ in range(abs(raw_diff)):
+                keyboard.tap_key(key_to_tap)
+        # 左親 押下なら RIGHT/LEFT
+        elif 6 in keyboard.active_layers:
+            key_to_tap = KC.RGHT if raw_diff > 0 else KC.LEFT
+            # 回したノッチ（回転量）の分だけキーを送信
+            for _ in range(abs(raw_diff)):
+                keyboard.tap_key(key_to_tap)
+
         else:
         # 通常は縦スクロール
             mouse.move(wheel=raw_diff)
@@ -401,6 +415,8 @@ KC_DELF = KC.MACRO(Press(KC.RSFT),Tap(KC.HOME),Tap(KC.HOME),Release(KC.RSFT),Tap
 KC_DELB = KC.MACRO(Press(KC.RSFT),Tap(KC.END),Release(KC.RSFT),Tap(KC.DEL))
 # 一行選択
 KC_SEL1 = KC.MACRO(Tap(KC.HOME),Tap(KC.HOME),Press(KC.RSFT),Tap(KC.DOWN),Release(KC.RSFT))
+# 一行複写
+KC_DUP = KC.MACRO(Tap(KC.END),Press(KC.RSFT),Tap(KC.HOME),Tap(KC.HOME),Release(KC.RSFT),Press(KC.LCTL),Tap(KC.C),Tap(KC.V),Release(KC.LCTL),Tap(KC.ENT),Press(KC.LCTL),Tap(KC.V),Release(KC.LCTL))
 
 # -------------------------------------------------------------------
 # 5. コンボ（同時押し）の定義
@@ -566,7 +582,7 @@ keyboard.keymap = [
 
     # Layer 7: 右親指キー
     [
-        KC.TAB,  KC_GA,   KC_GO,   KC.DEL,  KC_RU,   KC_XE,   IME_OFF,
+        KC.TAB,  KC_GA,   KC_GO,   KC_DUP,  KC_RU,   KC_XE,   IME_OFF,
         KC_SIY,  KC_GI,   KC_GE,   KC_YO,   KC_NO,   KC_XTU,  KC.SPC,
         KC_0SFT, KC_BI,   KC_BU,   KC_MI,   KC_MU,   KC_XO,   KC.MO(7), 
         KC_0CTL, KC_0WIN, KC_LFA,  KC_NU,   KC_RFB,  KC_0ALT, KC.HENK,

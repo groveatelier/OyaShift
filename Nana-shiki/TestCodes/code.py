@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型キーボード(KMK_Firmware) 2026/8/18 quietgrobeatelier
+# 七式二型キーボード(KMK_Firmware) 2026/8/19 quietgrobeatelier
 # ===================================================================
 import board
 import analogio
@@ -69,12 +69,6 @@ class IMEManager(Module):
             elif key == IME_SW:
                 self.enable_ime = not self.enable_ime
                 self.set_ime(keyboard, self.enable_ime)
-                #print(f"[IME Manager] Switched IME ON/OFF ({self.enable_ime})")
-#            elif key == KC.SCLN:
-#                print(f"[IME Manager] Semi Colon detected ({keyboard.keys_pressed,KC.LSFT, KC.RSFT})")
-#                if KC.LSFT in keyboard.keys_pressed or KC.RSFT in keyboard.keys_pressed:
-#                    key = KC.COLN
-#                    print(f"[IME Manager] Semi Colon detected and change to colon")
         return key
 
     def set_ime(self, keyboard, target_state: bool):
@@ -96,7 +90,6 @@ class IMEManager(Module):
                     #print(f"[IME Manager] Returned to Base Layer (0)")
 
     def after_matrix_scan(self, keyboard):
-        # スイッチの状態を読み取り OS モードを決定
         # LOW (False) ＝ Windows(0) / HIGH (True) ＝ ChromeOS(1)
         current_os = 0 if not self.os_switch.value else 1
         # OS切り替えが発生した場合はRGB LED 操作
@@ -105,7 +98,7 @@ class IMEManager(Module):
             # windows os の場合 は 強制 Num Lock
             if self.os == 0:
                 keyboard.tap_key(KC.NLCK)
-            print(f"[OS Switch] Changed to: {'Windows' if self.os == 0 else 'Chrome OS'}")
+            #print(f"[OS Switch] Changed to: {'Windows' if self.os == 0 else 'Chrome OS'}")
 
         # --- GP25 青色LEDの制御 ---
         self.blue_led.value = not self.enable_ime
@@ -119,11 +112,11 @@ class IMEConditionalCombos(Combos):
         self.manager = manager  # IMEManager への参照を保持
 
     def process_key(self, keyboard, key, is_pressed, int_coord):
-        # 【重要】 IMEがOFFの時は、同時押し判定をスキップして即座にキーを出力
+        # IMEがOFFの時は、同時押し判定をスキップして即座にキーを出力
         if not self.manager.ime_on:
             return key
 
-        # IMEがONの時だけ、本来の同時押し（50ms判定）を実行
+        # IMEがONの時だけ、本来の同時押しを実行
         return super().process_key(keyboard, key, is_pressed, int_coord)
 
 # -----------------------------------------------------------------
@@ -143,15 +136,18 @@ class StatusLEDManager(Module):
 
     def after_matrix_scan(self, keyboard):
         # 各種状態を取得
-        is_caps = self.lock.get_caps_lock()
-        # is_scr = TBD
         cur_rgb = [0,0,0]
+        cur_layer = keyboard.active_layers[0] if keyboard.active_layers else 0
         if self.ime_mgr.os:
             cur_rgb[1] = 8
         else:
-            cur_rgb[0] = 64 if is_caps else 8
+            cur_rgb[0] = 64 if self.lock.get_caps_lock() else 8
+            cur_rgb[1] = 64 if self.lock.get_scroll_lock() else 0
         if self.ime_mgr.ime_on:
             cur_rgb[2] = 32
+        if cur_layer != 0:
+            cur_rgb[cur_layer%3] += 16
+
         target_color = tuple(cur_rgb)
 
         # 色に変更があった場合のみ LED を更新（無駄な通信を防止）
@@ -188,18 +184,17 @@ keyboard.col_pins = (
     board.GP14,
 )
 # ダイオードの向きを指定
-# COL2ROW: カソード(アノード側がスイッチ)がROW側に向いている一般的な配置
-# ROW2COL: アノード(ダイオード)がCOL側に向いている場合
+# COL2ROW: カソード(アノード側がスイッチ)がROW側に向いている
 keyboard.diode_orientation = DiodeOrientation.COL2ROW
 
-# レイヤーモジュールの有効化（これがないと KC.MO() が使えません）
+# レイヤーモジュールの有効化
 layers_ext = Layers()
 keyboard.modules.append(layers_ext)
 
 # キーボード定義拡張 
 keyboard.extensions.append(MediaKeys())
 holdtap = HoldTap()
-holdtap.tap_time = 200  # 判定時間を200ms程度に短縮（お好みで調整）
+holdtap.tap_time = 80  # 判定時間を100ms程度に短縮
 keyboard.modules.append(holdtap)
 
 # OSからの要求 (Caps Lock / Num Lock等) を取得する拡張機能
@@ -220,7 +215,7 @@ keyboard.extensions.append(rgb)
 ime_manager = IMEManager()
 keyboard.modules.append(ime_manager)
 combos = IMEConditionalCombos(manager=ime_manager)
-combos.timeout_ms = 50  # 同時押し判定時間（50ミリ秒）
+combos.timeout_ms = 60  # 同時押し判定時間（60ミリ秒）
 keyboard.modules.append(combos)
 
 # マクロモジュールを有効化
@@ -235,7 +230,7 @@ cc = ConsumerControl(usb_hid.devices)  # 音量制御用
 status_led = StatusLEDManager(rgb, lock_status, ime_mgr=ime_manager)
 keyboard.modules.append(status_led)
 
-# --- APP1 / APP2 (LAUNCH APP) 用のカスタムキー定義 ---
+# --- カスタムキー定義 ---
 def send_app1_fn(keyboard):
     cc.send(0x0194)  # 0x0194: AL Local Machine Browser (マイコンピュータ / APP1)
 def send_app2_fn(keyboard):
@@ -245,10 +240,11 @@ def send_sleep_fn(keyboard):
         keyboard.tap_key(KC.LWIN(KC.L)) # chrome OSの場合
     else:
         cc.send(0x0224)  # 0x0224: AC Sleep
+def mcu_reset_fn(keyboard):
+    microcontroller.reset() # マイコンリセット関数
 
 # 独自キー
 KC_LOY = KC.LT(6, KC.F16)
-KC_SIY = KC.MO(5)  # 暫定
 KC_ROY = KC.LT(7, KC.F15)
 KC_LFA = KC.MO(1)
 KC_RFB = KC.MO(2)
@@ -265,6 +261,7 @@ KC_STAB = KC.LSFT(KC.TAB)
 KC_APP1 = KC.MACRO(send_app1_fn)
 KC_APP2 = KC.MACRO(send_app2_fn)
 KC_SLEP = KC.MACRO(send_sleep_fn)
+KC_RIPL = KC.MACRO(mcu_reset_fn)
 IME_SW = KC.F17
 IME_ON = KC.F18
 IME_OFF = KC.F19
@@ -336,7 +333,7 @@ def process_controls():
         #print(f"xxx {keyboard.keys_pressed}")
         if KC.MB_LMB in keyboard.keys_pressed:
             if not is_dragging:
-                mouse.press(1)  # m
+                mouse.press(1)  # 1: mouse LBTN
                 is_dragging = True
         else:
             if is_dragging:
@@ -349,7 +346,6 @@ def process_controls():
             mouse.move(x=move_x, y=move_y)
 
 keyboard.before_matrix_scan = process_controls
-#keyboard.after_matrix_scan = process_controls
 
 # -------------------------------------------------------------------
 # 3. ローマ字出力用マクロの定義
@@ -447,6 +443,8 @@ KC_DELB = KC.MACRO(Press(KC.RSFT),Tap(KC.END),Release(KC.RSFT),Tap(KC.DEL))
 KC_SEL1 = KC.MACRO(Tap(KC.HOME),Tap(KC.HOME),Press(KC.RSFT),Tap(KC.DOWN),Release(KC.RSFT))
 # 一行複写
 KC_DUP = KC.MACRO(Tap(KC.END),Press(KC.RSFT),Tap(KC.HOME),Tap(KC.HOME),Release(KC.RSFT),Press(KC.LCTL),Tap(KC.C),Tap(KC.V),Release(KC.LCTL),Tap(KC.ENT),Press(KC.LCTL),Tap(KC.V),Release(KC.LCTL))
+# caps lock Windows/chrome で処理を合わせる為
+KC_CAPS = KC.MACRO(Press(KC.RSFT),Tap(KC.CAPS),Release(KC.RSFT))
 
 # -------------------------------------------------------------------
 # 5. コンボ（同時押し）の定義
@@ -543,7 +541,7 @@ keyboard.keymap = [
         KC.TILD, KC.AT,   KC.DLR,  KC_DELB, KC.N7,   KC.N9,   KC_LOY,
         KC.GRV,  KC.LCBR, KC.CIRC, KC.LPRN, KC.N4,   KC.N6,   KC.SPC,
         KC.LSFT, KC.X,    KC.EQL,  KC.PSLS, KC.N1,   KC.N3,   KC_ROY, 
-        KC.LCTL, KC.LWIN, KC_LFA,  KC.ASTR, KC.PCMM, KC.PDOT, KC.SPC,
+        KC.LCTL, KC.LWIN, KC_LFA,  KC.ASTR, KC.COMM, KC.DOT,  KC.SPC,
         KC.LALT, KC_LFB,  KC.UNDS, KC_RFA,  KC.N0 ,  KC.TG(4), KC.NO,
         KC.RO,   KC.C,    KC.AMPR, KC.PLUS, KC.N2,   KC.EQL,  KC.MB_LMB,
         KC.JYEN, KC.RCBR, KC.PERC, KC.MINS, KC.N5,   KC.ENT,  KC.MB_MMB,
@@ -553,7 +551,7 @@ keyboard.keymap = [
     # Layer 2: LfB/RfB Layer
     [
         KC.TAB,  KC.F2,   KC.F4,   KC_DEL1, KC.HOME, KC.PGUP, KC.HENK,
-        KC_SIY,  KC.F6,   KC.F8,   KC.PAUS, KC.END,  KC.PGDN, KC.SPC,
+        KC_STAB, KC.F6,   KC.F8,   KC.PAUS, KC.END,  KC.PGDN, KC.SPC,
         KC.LSFT, KC.F10,  KC.F12,  KC.SLCK, KC.LEFT, KC.RGHT, KC_ROY, 
         KC.LCTL, KC.LWIN, KC.MHEN, KC.PSCR, KC_RFB,  KC.RALT, KC.SPC,
         KC.LALT, KC_LFB,  KC_SEL1, KC_RFA,  KC_RFC,  KC.RCTL, KC.NO,
@@ -569,7 +567,7 @@ keyboard.keymap = [
         KC.CAPS, KC.X,    KC.V,    KC.H,    KC.MUTE, KC.VOLU, KC_ROY, 
         KC.LCTL, KC.LWIN, KC_LFA,  KC.N,    KC_RFB,  KC.RALT, KC.SPC,
         KC.LALT, KC_LFB,  KC.B,    KC_RFA,  KC_RFC,  KC.RCTL, KC.NO,
-        KC.Z,    KC.C,    KC.G,    KC.M,    KC.VOLD, KC.RBRC, KC.MB_LMB,
+        KC_RIPL, KC.C,    KC.G,    KC.M,    KC.VOLD, KC.RBRC, KC.MB_LMB,
         KC.A,    KC.D,    KC.T,    KC.J,    KC.L,    KC.LBRC, KC.MB_MMB,
         KC.Q,    KC.E,    KC.ESC,  KC.U,    KC.O,    KC.BKSP, KC.MB_RMB,
     ],
@@ -589,7 +587,7 @@ keyboard.keymap = [
     # Layer 5: 日本語 Base Layer5
     [
         KC.TAB,  KC_KA,   KC_KO,   KC.DEL,  KC_KU,   KC.COMM, KC_LOY,
-        KC_SIY,  KC_SI,   KC_KE,   KC_RA,   KC_KI,   KC_NN,   KC.SPC,
+        KC_STAB, KC_SI,   KC_KE,   KC_RA,   KC_KI,   KC_NN,   KC.SPC,
         KC_0SFT, KC_HI,   KC_HU,   KC_HA,   KC_NE,   KC.SLSH, KC_ROY, 
         KC_0CTL, KC_0WIN, KC_LFA,  KC_ME,   KC_RFB,  KC_0ALT, KC.SPC,
         KC_0ALT, KC_LFB,  KC_HE,   KC_RFA,  KC_RFC,  KC_0CTL, KC.NO,
@@ -601,7 +599,7 @@ keyboard.keymap = [
     # Layer 6: 左親指キー
     [
         KC.TAB,  KC.E,    KC_XYA,  KC.DEL,  KC_GU,   KC_PI,   KC.MO(6),
-        KC.CAPS, KC.A,    KC_XYU,  KC_PA,   KC_GI,   KC.SCLN, KC.MHEN,
+        KC_CAPS, KC.A,    KC_XYU,  KC_PA,   KC_GI,   KC.SCLN, KC.MHEN,
         KC_0SFT, KC.MINS, KC_YA,   KC_BA,   KC_PE,   KC.COLN, IME_ON,  
         KC_0CTL, KC_0WIN, KC_LFA,  KC_PU,   KC_RFB,  KC_0ALT, KC.KANA,
         KC_0ALT, KC_LFB,  KC_XI,   KC_RFA,  KC_RFC,  KC_0CTL, KC.NO,
@@ -613,7 +611,7 @@ keyboard.keymap = [
     # Layer 7: 右親指キー
     [
         KC.TAB,  KC_GA,   KC_GO,   KC_DUP,  KC_RU,   KC_XE,   IME_OFF,
-        KC_SIY,  KC_GI,   KC_GE,   KC_YO,   KC_NO,   KC_XTU,  KC.SPC,
+        KC_STAB, KC_GI,   KC_GE,   KC_YO,   KC_NO,   KC_XTU,  KC.SPC,
         KC_0SFT, KC_BI,   KC_BU,   KC_MI,   KC_MU,   KC_XO,   KC.MO(7), 
         KC_0CTL, KC_0WIN, KC_LFA,  KC_NU,   KC_RFB,  KC_0ALT, KC.HENK,
         KC_0ALT, KC_LFB,  KC_BE,   KC_RFA,  KC_RFC,  KC_0CTL, KC.NO,

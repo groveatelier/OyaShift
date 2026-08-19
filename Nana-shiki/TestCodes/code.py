@@ -540,48 +540,48 @@ keyboard.keymap = [
     [
         KC.TILD, KC.AT,   KC.DLR,  KC_DELB, KC.N7,   KC.N9,   KC_LOY,
         KC.GRV,  KC.LCBR, KC.CIRC, KC.LPRN, KC.N4,   KC.N6,   KC.SPC,
-        KC.LSFT, KC.X,    KC.EQL,  KC.PSLS, KC.N1,   KC.N3,   KC_ROY, 
+        KC.LSFT, KC.LBRC, KC.EQL,  KC.PSLS, KC.N1,   KC.N3,   KC_ROY, 
         KC.LCTL, KC.LWIN, KC_LFA,  KC.ASTR, KC.COMM, KC.DOT,  KC.SPC,
         KC.LALT, KC_LFB,  KC.UNDS, KC_RFA,  KC.N0 ,  KC.TG(4), KC.NO,
-        KC.RO,   KC.C,    KC.AMPR, KC.PLUS, KC.N2,   KC.EQL,  KC.MB_LMB,
+        KC.RO,   KC.RBRC, KC.AMPR, KC.PLUS, KC.N2,   KC.EQL,  KC.MB_LMB,
         KC.JYEN, KC.RCBR, KC.PERC, KC.MINS, KC.N5,   KC.ENT,  KC.MB_MMB,
-        KC.EXLM, KC.HASH, IME_SW,  KC.RPRN, KC.N8,   KC_DELF, KC.MB_RMB,
+        KC.EXLM, KC.HASH, KC.ESC,  KC.RPRN, KC.N8,   KC_DELF, KC.MB_RMB,
     ],
 
     # Layer 2: LfB/RfB Layer
     [
-        KC.TAB,  KC.F2,   KC.F4,   KC_DEL1, KC.HOME, KC.PGUP, KC.HENK,
-        KC_STAB, KC.F6,   KC.F8,   KC.PAUS, KC.END,  KC.PGDN, KC.SPC,
+        KC.DQUO, KC.F2,   KC.F4,   KC_DEL1, KC.HOME, KC.PGUP, KC_LOY,
+        KC.QUOT, KC.F6,   KC.F8,   KC.PAUS, KC.END,  KC.PGDN, KC.SPC,
         KC.LSFT, KC.F10,  KC.F12,  KC.SLCK, KC.LEFT, KC.RGHT, KC_ROY, 
-        KC.LCTL, KC.LWIN, KC.MHEN, KC.PSCR, KC_RFB,  KC.RALT, KC.SPC,
+        KC.LCTL, KC.LWIN, KC_LFA,  KC.PSCR, KC_RFB,  KC.RALT, KC.SPC,
         KC.LALT, KC_LFB,  KC_SEL1, KC_RFA,  KC_RFC,  KC.RCTL, KC.NO,
-        KC.F9,   KC.F11,  KC.G,    KC.UNDS, KC.DOWN, KC.QUOT, KC.MB_LMB,
-        KC.F5,   KC.F7,   KC.T,    KC.BSLS, KC.UP,   KC.DQUO, KC.MB_MMB,
-        KC.F1,   KC.F3,   KC.ESC,  KC.PIPE, KC.INS,  KC.BKSP, KC.MB_RMB,
+        KC.F9,   KC.F11,  KC.BSLS, KC.UNDS, KC.DOWN, KC.RSFT, KC.MB_LMB,
+        KC.F5,   KC.F7,   KC.PIPE, KC.COLN, KC.UP,   KC.ENT,  KC.MB_MMB,
+        KC.F1,   KC.F3,   KC.ESC,  KC.SCLN, KC.INS,  KC.BKSP, KC.MB_RMB,
     ],
 
     # Layer 3: RfC Layer
     [
         KC.TAB,  KC.W,    KC.R,    KC.DEL,  KC_APP1, KC.BRIU, KC_LOY,
-        IME_SW,  KC.S,    KC.F,    KC_SLEP, KC_APP2, KC.BRID, KC.SPC,
-        KC.CAPS, KC.X,    KC.V,    KC.H,    KC.MUTE, KC.VOLU, KC_ROY, 
+        KC_STAB, KC.S,    KC.F,    KC_SLEP, KC_APP2, KC.BRID, KC.SPC,
+        KC.LSFT, KC.X,    KC.V,    KC.H,    KC.MUTE, KC.VOLU, KC_ROY, 
         KC.LCTL, KC.LWIN, KC_LFA,  KC.N,    KC_RFB,  KC.RALT, KC.SPC,
         KC.LALT, KC_LFB,  KC.B,    KC_RFA,  KC_RFC,  KC.RCTL, KC.NO,
-        KC_RIPL, KC.C,    KC.G,    KC.M,    KC.VOLD, KC.RBRC, KC.MB_LMB,
-        KC.A,    KC.D,    KC.T,    KC.J,    KC.L,    KC.LBRC, KC.MB_MMB,
-        KC.Q,    KC.E,    KC.ESC,  KC.U,    KC.O,    KC.BKSP, KC.MB_RMB,
+        KC_RIPL, KC.C,    KC.G,    KC.M,    KC.VOLD, KC.RSFT, KC.MB_LMB,
+        KC.A,    KC.D,    KC.T,    KC.J,    KC.L,    KC.ENT,  KC.MB_MMB,
+        KC.Q,    KC.E,    IME_SW,  KC.U,    KC.O,    KC.BKSP, KC.MB_RMB,
     ],
 
     # Layer 4: Num Lock
     [
-        KC.TILD, KC.AT,   KC.DLR,  KC.DEL,  KC.N7,   KC.N9,   KC_LOY,
+        KC.TILD, KC.AT,   KC.DLR,  KC_DELB, KC.N7,   KC.N9,   KC_LOY,
         KC.GRV,  KC.LCBR, KC.CIRC, KC.LPRN, KC.N4,   KC.N6,   KC.SPC,
-        KC.LSFT, KC.X,    KC.UNDS, KC.SLSH, KC.N1,   KC.N3,   KC_ROY, 
+        KC.LSFT, KC.LBRC, KC.EQL,  KC.PSLS, KC.N1,   KC.N3,   KC_ROY, 
         KC.LCTL, KC.LWIN, KC_LFA,  KC.ASTR, KC.COMM, KC.DOT,  KC.SPC,
-        KC.LALT, KC_LFB,  KC.B,    KC_RFA,  KC.N0 ,  KC.TG(4), KC.NO,
-        KC.RO,   KC.C,    KC.AMPR, KC.PLUS, KC.N2,   KC.EQL,  KC.MB_LMB,
+        KC.LALT, KC_LFB,  KC.UNDS, KC_RFA,  KC.N0 ,  KC.TG(4), KC.NO,
+        KC.RO,   KC.RBRC, KC.AMPR, KC.PLUS, KC.N2,   KC.EQL,  KC.MB_LMB,
         KC.JYEN, KC.RCBR, KC.PERC, KC.MINS, KC.N5,   KC.ENT,  KC.MB_MMB,
-        KC.EXLM, KC.HASH, KC.ESC,  KC.RPRN, KC.N8,   KC.BKSP, KC.MB_RMB,
+        KC.EXLM, KC.HASH, KC.ESC,  KC.RPRN, KC.N8,   KC_DELF, KC.MB_RMB,
     ],
 
     # Layer 5: 日本語 Base Layer5
@@ -603,9 +603,9 @@ keyboard.keymap = [
         KC_0SFT, KC.MINS, KC_YA,   KC_BA,   KC_PE,   KC.COLN, IME_ON,  
         KC_0CTL, KC_0WIN, KC_LFA,  KC_PU,   KC_RFB,  KC_0ALT, KC.KANA,
         KC_0ALT, KC_LFB,  KC_XI,   KC_RFA,  KC_RFC,  KC_0CTL, KC.NO,
-        KC.DOT,  KC_RO,   KC_MO,   KC_ZO,   KC_BO,   KC.QUOT, KC.MB_LMB,
-        KC_WO,   KC_NA,   KC_RE,   KC_DO,   KC_PA,   KC.DQUO, KC.MB_MMB,
-        KC_XA,   KC.E,    KC.ESC,  KC.U,    KC.O,    KC.BKSP, KC.MB_RMB,
+        KC.DOT,  KC_RO,   KC_MO,   KC_ZO,   KC_BO,   KC_0SFT, KC.MB_LMB,
+        KC_WO,   KC_NA,   KC_RE,   KC_DO,   KC_PO,   KC.ENT,  KC.MB_MMB,
+        KC_XA,   KC_RI,   KC.ESC,  KC_DI,   KC_DI,   KC.BKSP, KC.MB_RMB,
     ],
 
     # Layer 7: 右親指キー
@@ -615,8 +615,8 @@ keyboard.keymap = [
         KC_0SFT, KC_BI,   KC_BU,   KC_MI,   KC_MU,   KC_XO,   KC.MO(7), 
         KC_0CTL, KC_0WIN, KC_LFA,  KC_NU,   KC_RFB,  KC_0ALT, KC.HENK,
         KC_0ALT, KC_LFB,  KC_BE,   KC_RFA,  KC_RFC,  KC_0CTL, KC.NO,
-        KC_XU,   KC_ZU,   KC_ZE,   KC_YU,   KC_WA,   KC.RBRC, KC.MB_LMB,
-        KC_VU,   KC_DE,   KC_ZA,   KC.O,    KC_XYO,  KC.LBRC,  KC.MB_MMB,
+        KC_XU,   KC_ZU,   KC_ZE,   KC_YU,   KC_WA,   KC_0SFT, KC.MB_LMB,
+        KC_VU,   KC_DE,   KC_ZA,   KC.O,    KC_XYO,  KC.ENT,  KC.MB_MMB,
         KC.QUES, KC_DA,   KC.ESC,  KC_NI,   KC_MA,   KC.BKSP, KC.MB_RMB,
     ]
 ]

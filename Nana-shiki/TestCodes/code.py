@@ -1,6 +1,8 @@
 # ===================================================================
-# 七式二型キーボード(KMK_Firmware) 2026/8/19 quietgrobeatelier
+# 七式二型キーボード(KMK_Firmware) 2026/8/20 quietgrobeatelier
 # ===================================================================
+import supervisor
+supervisor.runtime.autoreload = False
 import board
 import analogio
 import digitalio
@@ -8,6 +10,7 @@ import microcontroller
 import rotaryio
 import usb_hid
 import time
+
 from adafruit_hid.mouse import Mouse
 from adafruit_hid.consumer_control import ConsumerControl
 from adafruit_hid.consumer_control_code import ConsumerControlCode
@@ -48,10 +51,6 @@ class IMEManager(Module):
         self.os_switch = digitalio.DigitalInOut(board.GP15)
         self.os_switch.direction = digitalio.Direction.INPUT
         self.os_switch.pull = digitalio.Pull.UP
-        # --- GP25 青色LEDの設定 (デジタル出力) ---
-        self.blue_led = digitalio.DigitalInOut(microcontroller.pin.GPIO25)
-        self.blue_led.direction = digitalio.Direction.OUTPUT
-        self.blue_led.value = False  # 初期状態は消灯
 
     def during_bootup(self, keyboard): pass
     def before_matrix_scan(self, keyboard): pass
@@ -81,27 +80,16 @@ class IMEManager(Module):
                 if self.ja_layer not in keyboard.active_layers and self.enable_ime:
                     #keyboard.active_layers.append(self.ja_layer)
                     keyboard.active_layers = [self.ja_layer]
-                    #print(f"[IME Manager] Switched to Japanese Layer ({self.ja_layer})")
             else:
                 # 【IME OFF時】 基本レイヤー
                 if self.ja_layer in keyboard.active_layers:
                     #keyboard.active_layers.remove(self.ja_layer)
                     keyboard.active_layers = [0]
-                    #print(f"[IME Manager] Returned to Base Layer (0)")
 
     def after_matrix_scan(self, keyboard):
         # LOW (False) ＝ Windows(0) / HIGH (True) ＝ ChromeOS(1)
-        current_os = 0 if not self.os_switch.value else 1
-        # OS切り替えが発生した場合はRGB LED 操作
-        if self.os != current_os:
-            self.os = current_os
-            # windows os の場合 は 強制 Num Lock
-            if self.os == 0:
-                keyboard.tap_key(KC.NLCK)
-            #print(f"[OS Switch] Changed to: {'Windows' if self.os == 0 else 'Chrome OS'}")
-
-        # --- GP25 青色LEDの制御 ---
-        self.blue_led.value = not self.enable_ime
+        #self.os = 0 if not self.os_switch.value else 1
+        self.os = self.os_switch.value
 
 # -------------------------------------------------------------------
 # IME ONの時だけ動く「条件付き Combos」モジュール
@@ -128,6 +116,10 @@ class StatusLEDManager(Module):
         self.lock = lock_ext
         self.ime_mgr = ime_mgr
         self.last_color = None
+        # --- GP25 青色LEDの設定 (デジタル出力) ---
+        self.blue_led = digitalio.DigitalInOut(microcontroller.pin.GPIO25)
+        self.blue_led.direction = digitalio.Direction.OUTPUT
+        self.blue_led.value = False  # 初期状態は消灯
 
     def during_bootup(self, keyboard): pass
     def before_matrix_scan(self, keyboard): pass
@@ -146,7 +138,7 @@ class StatusLEDManager(Module):
         if self.ime_mgr.ime_on:
             cur_rgb[2] = 32
         if cur_layer != 0:
-            cur_rgb[cur_layer%3] += 16
+            cur_rgb[(cur_layer+1)%3] += 16
 
         target_color = tuple(cur_rgb)
 
@@ -155,6 +147,9 @@ class StatusLEDManager(Module):
             self.last_color = target_color
             self.rgb.set_rgb_fill(target_color)
             self.rgb.show()
+
+        # --- GP25 青色LEDの制御 ---
+        self.blue_led.value = not self.ime_mgr.enable_ime
 
     def process_key(self, keyboard, key, is_pressed, int_coord):
         return key
@@ -271,7 +266,7 @@ stick_x = analogio.AnalogIn(board.GP26)
 stick_y = analogio.AnalogIn(board.GP27)
 is_dragging = False
 CENTER_VAL = 32768
-DEADZONE = 2048
+DEADZONE = 1500
 SENSITIVITY = 2048
 
 # ホイール (GP18, GP19)
@@ -285,12 +280,16 @@ last_encoder_pos = encoder.position
 def process_controls():
     global last_encoder_pos, is_dragging
 
+    fast = 2 in keyboard.active_layers  # fnBなら
+
     # --- A. ホイール（エンコーダー）の計算 ---
     current_encoder_pos = encoder.position
     raw_diff = current_encoder_pos - last_encoder_pos
     
     if raw_diff != 0:
         last_encoder_pos = current_encoder_pos
+        if fast:
+            raw_diff *= 2   # 倍速
 
         # xfA 押下なら 音量制御
         if 1 in keyboard.active_layers:
@@ -307,11 +306,10 @@ def process_controls():
                 keyboard.tap_key(key_to_tap)
         # 左親 押下なら RIGHT/LEFT
         elif 6 in keyboard.active_layers:
-            key_to_tap = KC.RGHT if raw_diff > 0 else KC.LEFT
+            key_to_tap = KC.LEFT if raw_diff > 0 else KC.RIGHT
             # 回したノッチ（回転量）の分だけキーを送信
             for _ in range(abs(raw_diff)):
                 keyboard.tap_key(key_to_tap)
-
         else:
         # 通常は縦スクロール
             mouse.move(wheel=raw_diff)
@@ -341,8 +339,11 @@ def process_controls():
                 is_dragging = False
 
         # --- C. マウス操作の送信 ---
-        # アナログ移動またはホイール回転がある時のみ送信
+        # アナログ移動がある時のみ送信
         if move_x != 0 or move_y != 0:
+            if fast: # 倍速
+                move_x *= 2
+                move_y *= 2
             mouse.move(x=move_x, y=move_y)
 
 keyboard.before_matrix_scan = process_controls
@@ -610,8 +611,8 @@ keyboard.keymap = [
 
     # Layer 7: 右親指キー
     [
-        KC.TAB,  KC_GA,   KC_GO,   KC_DUP,  KC_RU,   KC_XE,   IME_OFF,
-        KC_STAB, KC_GI,   KC_GE,   KC_YO,   KC_NO,   KC_XTU,  KC.SPC,
+        KC.DQUO, KC_GA,   KC_GO,   KC_DUP,  KC_RU,   KC_XE,   IME_OFF,
+        KC.QUOT, KC_GI,   KC_GE,   KC_YO,   KC_NO,   KC_XTU,  KC.SPC,
         KC_0SFT, KC_BI,   KC_BU,   KC_MI,   KC_MU,   KC_XO,   KC.MO(7), 
         KC_0CTL, KC_0WIN, KC_LFA,  KC_NU,   KC_RFB,  KC_0ALT, KC.HENK,
         KC_0ALT, KC_LFB,  KC_BE,   KC_RFA,  KC_RFC,  KC_0CTL, KC.NO,

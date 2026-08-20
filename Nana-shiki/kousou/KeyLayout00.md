@@ -33,8 +33,8 @@ FN1/2/X も追加キーとしてあるので 60枚のレイヤーが存在可能
 
 | 段 | 列1 | 2 | 3 | 4 | 5 | 6 | 7 |\|| 8 | 9 | 10 | 11 | 12 | 13 | 14 |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
-| 3 | (tab) | ? | ga | da | go | za | (ESC) |\|| DUP | yo | ni | ru | ma | xe | (BS) |
-| 2 | (Stab) | vu | ji | de | ge | ze | - |\|| - | mi | o | no | xyo | xtu | (Enter) |
+| 3 | " | ? | ga | da | go | za | (ESC) |\|| DUP | yo | ni | ru | ma | xe | (BS) |
+| 2 | ' | vu | ji | de | ge | ze | - |\|| - | mi | o | no | xyo | xtu | (Enter) |
 | 1 | (LSft) | xu | bi | zu | bu | be | - |\|| - | nu | yu | mu | wa | xo | (RSft) |
 | 0 | (ctrl) | --- | (alt) | (meta) | (fnB) | (fnA) | 英 |\|| **_右親_** | (fnA) | (fnB) | (fnC) | (alt) | --- | (ctrl) |
 | -1 | |||||| Spc |\|| 変換 ||||||

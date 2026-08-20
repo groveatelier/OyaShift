@@ -539,9 +539,9 @@ keyboard.keymap = [
 
     # Layer 1: LfA/RfA Layer
     [
-        KC.TILD, KC.AT,   KC.DLR,  KC_DELB, KC.N7,   KC.N9,   KC_LOY,
+        KC.TILD, KC.AT,   KC.DLR,  KC_DELB, KC.N7,   KC.N9,   IME_OFF,
         KC.GRV,  KC.LCBR, KC.CIRC, KC.LPRN, KC.N4,   KC.N6,   KC.SPC,
-        KC.LSFT, KC.LBRC, KC.EQL,  KC.PSLS, KC.N1,   KC.N3,   KC_ROY, 
+        KC.LSFT, KC.LBRC, KC.EQL,  KC.PSLS, KC.N1,   KC.N3,   IME_ON, 
         KC.LCTL, KC.LWIN, KC_LFA,  KC.ASTR, KC.COMM, KC.DOT,  KC.SPC,
         KC.LALT, KC_LFB,  KC.UNDS, KC_RFA,  KC.N0 ,  KC.TG(4), KC.NO,
         KC.RO,   KC.RBRC, KC.AMPR, KC.PLUS, KC.N2,   KC.EQL,  KC.MB_LMB,

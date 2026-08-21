@@ -40,7 +40,7 @@ import kmk.extensions.keymap_extras.keymap_jp
 # IME状態 ＆ 自動レイヤー切り替えモジュール
 # ===================================================================
 class IMEManager(Module):
-    def __init__(self, ja_layer=5):
+    def __init__(self, ja_layer=4):
         self.ime_on = False
         self.enable_ime = True
         self.os = 0
@@ -88,7 +88,6 @@ class IMEManager(Module):
 
     def after_matrix_scan(self, keyboard):
         # LOW (False) ＝ Windows(0) / HIGH (True) ＝ ChromeOS(1)
-        #self.os = 0 if not self.os_switch.value else 1
         self.os = self.os_switch.value
 
 # -------------------------------------------------------------------
@@ -116,6 +115,7 @@ class StatusLEDManager(Module):
         self.lock = lock_ext
         self.ime_mgr = ime_mgr
         self.last_color = None
+        self.scan_cnt = 0
         # --- GP25 青色LEDの設定 (デジタル出力) ---
         self.blue_led = digitalio.DigitalInOut(microcontroller.pin.GPIO25)
         self.blue_led.direction = digitalio.Direction.OUTPUT
@@ -127,6 +127,11 @@ class StatusLEDManager(Module):
     def after_hid_send(self, keyboard): pass
 
     def after_matrix_scan(self, keyboard):
+        # 処理頻度を落とす
+        self.scan_cnt = (self.scan_cnt + 1) & 0xFFF
+        if self.scan_cnt & 0x7F != 0:
+            return
+
         # 各種状態を取得
         cur_rgb = [0,0,0]
         cur_layer = keyboard.active_layers[0] if keyboard.active_layers else 0
@@ -136,9 +141,15 @@ class StatusLEDManager(Module):
             cur_rgb[0] = 64 if self.lock.get_caps_lock() else 8
             cur_rgb[1] = 64 if self.lock.get_scroll_lock() else 0
         if self.ime_mgr.ime_on:
-            cur_rgb[2] = 32
+            cur_rgb[2] = 16
         if cur_layer != 0:
-            cur_rgb[(cur_layer+1)%3] += 16
+            cur_rgb[cur_layer%3] += 16
+        if cur_layer == 7:
+            cur_rgb[0] += 16
+            cur_rgb[1] += 16
+            cur_rgb[2] = 64
+        elif cur_layer == 4:
+            cur_rgb[0] += 16
 
         target_color = tuple(cur_rgb)
 
@@ -189,7 +200,7 @@ keyboard.modules.append(layers_ext)
 # キーボード定義拡張 
 keyboard.extensions.append(MediaKeys())
 holdtap = HoldTap()
-holdtap.tap_time = 80  # 判定時間を100ms程度に短縮
+holdtap.tap_time = 120  # 判定時間を100ms程度に短縮
 keyboard.modules.append(holdtap)
 
 # OSからの要求 (Caps Lock / Num Lock等) を取得する拡張機能
@@ -239,8 +250,8 @@ def mcu_reset_fn(keyboard):
     microcontroller.reset() # マイコンリセット関数
 
 # 独自キー
-KC_LOY = KC.LT(6, KC.F16)
-KC_ROY = KC.LT(7, KC.F15)
+KC_LOY = KC.LT(5, KC.F16)
+KC_ROY = KC.LT(6, KC.F15)
 KC_LFA = KC.MO(1)
 KC_RFB = KC.MO(2)
 KC_LFB = KC.MO(2)
@@ -253,6 +264,7 @@ KC_0WIN = KC.LM(0, KC.LWIN)
 KC_QDOT = KC.DOT
 KC_ZDOT = KC.MACRO(".")
 KC_STAB = KC.LSFT(KC.TAB)
+KC_SSPC = KC.LSFT(KC.SPC)
 KC_APP1 = KC.MACRO(send_app1_fn)
 KC_APP2 = KC.MACRO(send_app2_fn)
 KC_SLEP = KC.MACRO(send_sleep_fn)
@@ -446,6 +458,8 @@ KC_SEL1 = KC.MACRO(Tap(KC.HOME),Tap(KC.HOME),Press(KC.RSFT),Tap(KC.DOWN),Release
 KC_DUP = KC.MACRO(Tap(KC.END),Press(KC.RSFT),Tap(KC.HOME),Tap(KC.HOME),Release(KC.RSFT),Press(KC.LCTL),Tap(KC.C),Tap(KC.V),Release(KC.LCTL),Tap(KC.ENT),Press(KC.LCTL),Tap(KC.V),Release(KC.LCTL))
 # caps lock Windows/chrome で処理を合わせる為
 KC_CAPS = KC.MACRO(Press(KC.RSFT),Tap(KC.CAPS),Release(KC.RSFT))
+# かっこかっこ
+KC_KAOC = KC.MACRO(Tap(KC.LPRN),Tap(KC.RPRN),Tap(KC.LEFT))
 
 # -------------------------------------------------------------------
 # 5. コンボ（同時押し）の定義
@@ -521,55 +535,55 @@ keyboard.keymap = [
     [
         KC.TAB,  KC.W,    KC.R,    KC.DEL,  KC.I,    KC.P,    KC_LOY,
         KC_STAB, KC.S,    KC.F,    KC.Y,    KC.K,    KC.SCLN, KC.SPC,
-        KC.LSFT, KC.X,    KC.V,    KC.H,    KC.COMM, KC.SLSH, KC_ROY, 
-        KC.LCTL, KC.LWIN, KC_LFA,  KC.N,    KC.SPC,  KC.RALT, KC.RFA,
-        KC.LALT, KC_LFB,  KC.B,    KC_RFB,  KC_RFC,  KC.RCTL, KC.NO,
+        KC.LSFT, KC.X,    KC.V,    KC.H,    KC.COMM, KC.SLSH, KC_ROY,
+        KC.LCTL, KC.LWIN, KC_LFA,  KC.N,    KC_RFB,  KC.RALT, KC.SPC,
+        KC.LALT, KC_LFB,  KC.B,    KC_RFA,  KC_RFC,  KC.RCTL, KC.NO,
         KC.Z,    KC.C,    KC.G,    KC.M,    KC.DOT,  KC.RSFT, KC.MB_LMB,
         KC.A,    KC.D,    KC.T,    KC.J,    KC.L,    KC.ENT,  KC.MB_MMB,
-        KC.Q,    KC.E,    KC.ESC,  KC.U,    KC.O,    KC.BKSP, KC.MB_RMB,
+        KC.Q,    KC.E,    KC.ESC,  KC.U,    KC.O,    KC.BKSP, KC.MB_RMB
     ],
 
     # Layer 1: LfA/RfA Layer
     [
-        KC.TILD, KC.AT,   KC.DLR,  KC.DEL,  KC.N8,   KC.ASTR, IME_OFF,
-        KC.GRV,  KC.LCBR, KC.CIRC, KC.RPRN, KC.N5,   KC.PLUS, KC.SPC,
-        KC.LSFT, KC.LBRC, KC.EQL,  KC.LPRN, KC.N2,   KC.SLSH, IME_ON, 
-        KC_0CTL, KC.LWIN, KC_LFA,  KC.MINS, KC.DOT,  KC.EQL,  KC_RFA,
-        KC_0ALT, KC_LFB,  KC.UNDS, KC.N0,   KC.COMM, KC.TG(1), KC.NO,
-        KC.RO,   KC.RBRC, KC.AMPR, KC.N1,   KC.N3,   KC.RSFT, KC.MB_LMB,
-        KC.JYEN, KC.RCBR, KC.PERC, KC.N4,   KC.N6,   KC.ENT,  KC.MB_MMB,
-        KC.EXLM, KC.HASH, KC.ESC,  KC.N7,   KC.N9,   KC_BKSP, KC.MB_RMB,
+        KC.TILD, KC.AT,   KC.DLR,  KC.TRNS, KC.N8,   KC.ASTR, IME_OFF,
+        KC.GRV,  KC.LCBR, KC.CIRC, KC_KAOC, KC.N5,   KC.PLUS, KC.TRNS,
+        KC.TRNS, KC.LBRC, KC.EQL,  KC.COMM, KC.N2,   KC.SLSH, IME_ON,
+        KC_0CTL, KC.LWIN, KC.TRNS, KC.MINS, KC.DOT,  KC.EQL,  KC.TRNS,
+        KC_0ALT, KC_LFB,  KC.UNDS, KC.TRNS, KC.N0,   KC.TG(7),KC.NO,
+        KC.RO,   KC.RBRC, KC.AMPR, KC.N1,   KC.N3,   KC.TRNS, KC.TRNS,
+        KC.JYEN, KC.RCBR, KC.PERC, KC.N4,   KC.N6,   KC.TRNS, KC.TRNS,
+        KC.EXLM, KC.HASH, KC.TRNS, KC.N7,   KC.N9,   KC.TRNS, KC.TRNS
     ],
 
     # Layer 2: LfB/RfB Layer
     [
-        KC.TAB,  KC.PSCR, KC_DELF, KC_DEL1, KC.INS,  KC.PSCR, KC.MHEN,
-        KC_STAB, KC.TRNS, KC.TRNS, KC_SEL1, KC.UP,   KC.COLN, KC.SPC,
-        KC.LSFT, KC.TRNS  KC.TRNS, KC.DQUO, KC.DOWN, KC.TRNS, KC.HENK, 
-        KC.LCTL, KC.LWIN, KC.NO,   KC.QUOT, KC.KANA, KC.RALT, KC_RFA,
-        KC.LALT, KC_LFB,  KC.TRNS, KC_RFB,  KC_RFC,  KC.RCTL, KC.NO,
-        KC_RIPL, KC.TRNS, KC.TRNS, KC.LEFT, KC.RGHT, KC.RSFT, KC.MB_LMB,
-        KC.TRNS, KC.TRNS, KC.DELB, KC.END,  KC.PGDN, KC.ENT,  KC.MB_MMB,
-        KC.PAUS, KC.TRNS, KC.ESC,  KC.HOME, KC.PGUP, KC.DEL,  KC.MB_RMB,
+        KC.TRNS, KC.PSCR, KC_DELF, KC_DEL1, KC.INS,  KC.PSCR, KC.MHEN,
+        KC.TRNS, KC.TRNS, KC.TRNS, KC_SEL1, KC.UP,   KC.COLN, KC.TRNS,
+        KC.TRNS, KC.TRNS, KC.LANG3,KC.DQUO, KC.DOWN, KC.TRNS, KC.HENK,
+        KC.TRNS, KC.TRNS, KC.LANG5,KC.QUOT, KC.TRNS, KC.TRNS, KC.TRNS,
+        KC.TRNS, KC.TRNS, KC.LANG4,KC.KANA, KC.TRNS, KC.TRNS, KC.NO,
+        KC.TRNS, KC.TRNS, KC.TRNS, KC.LEFT, KC.RGHT, KC.TRNS, KC.TRNS,
+        KC.TRNS, KC.TRNS, KC_DELB, KC.END,  KC.PGDN, KC.TRNS, KC.TRNS,
+        KC.PAUS, KC.TRNS, KC.ESC,  KC.HOME, KC.PGUP, KC.TRNS, KC.TRNS
     ],
 
     # Layer 3: RfC Layer
     [
-        KC.TAB,  KC.F2,   KC.F4,   KC_SLEP, KC_APP1, KC.BRIU, KC_LOY,
-        KC_STAB, KC.F6,   KC.F8,   KC.TRNS, KC_APP2, KC.BRID, KC.SPC,
-        KC.LSFT, KC.F10,  KC.F12,  KC.TRNS, KC.MUTE, KC.VOLU, KC_ROY, 
-        KC.LCTL, KC.LWIN, KC_LFA,  KC.TRNS, KC.SPC,  KC.RALT, KC_RFA,
-        KC.LALT, KC_LFB,  KC.TRNS, KC_RFB,  KC_RFC,  KC.RCTL, KC.NO,
-        KC.F9,   KC.F11,  KC.TRNS, KC.TRNS, KC.VOLD, KC.RSFT, KC.MB_LMB,
-        KC.F5,   KC.F7,   KC.TRNS, KC.TRNS, KC.TRNS, KC.ENT,  KC.MB_MMB,
-        KC.F1,   KC.F3,   IME_SW,  KC.TRNS, KC.TRNS, KC.BKSP, KC.MB_RMB,
+        KC_RIPL, KC.F2,   KC.F4,   KC_SLEP, KC_APP1, KC.BRIU, KC.TRNS,
+        KC.TRNS, KC.F6,   KC.F8,   KC.TRNS, KC_APP2, KC.BRID, KC.TRNS,
+        KC.TRNS, KC.F10,  KC.F12,  KC.TRNS, KC.MUTE, KC.VOLU, KC.TRNS,
+        KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
+        KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.NO,
+        KC.F9,   KC.F11,  KC.TRNS, KC.TRNS, KC.VOLD, KC.TRNS, KC.TRNS,
+        KC.F5,   KC.F7,   KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
+        KC.F1,   KC.F3,   IME_SW,  KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS
     ],
 
     # Layer 4: 日本語 Base Layer
     [
         KC.TAB,  KC_KA,   KC_KO,   KC.DEL,  KC_KU,   KC.COMM, KC_LOY,
-        KC_STAB, KC_SI,   KC_KE,   KC_RA,   KC_KI,   KC_NN,   KC.SPC,
-        KC_0SFT, KC_HI,   KC_HU,   KC_HA,   KC_NE,   KC.SLSH, KC_ROY, 
+        KC_STAB, KC_SI,   KC_KE,   KC_RA,   KC_KI,   KC_NN,   KC_SSPC,
+        KC_0SFT, KC_HI,   KC_HU,   KC_HA,   KC_NE,   KC.SLSH, KC_ROY,
         KC_0CTL, KC_0WIN, KC_LFA,  KC_ME,   KC_RFB,  KC_0ALT, KC.SPC,
         KC_0ALT, KC_LFB,  KC_HE,   KC_RFA,  KC_RFC,  KC_0CTL, KC.NO,
         KC_ZDOT, KC_SU,   KC_SE,   KC_SO,   KC_HO,   KC_0SFT, KC.MB_LMB,
@@ -579,40 +593,39 @@ keyboard.keymap = [
 
     # Layer 5: 左親指キー
     [
-        KC.TAB,  KC.E,    KC_XYA,  KC.DEL,  KC_GU,   KC_PI,   KC.MO(5),
-        KC_CAPS, KC.A,    KC_XYU,  KC_PA,   KC_GI,   KC.SCLN, KC.SPC,
-        KC_0SFT, KC.MINS, KC_YA,   KC_BA,   KC_PE,   KC.COLN, IME_ON,  
-        KC_0CTL, KC_0WIN, KC_LFA,  KC_PU,   KC.SPC,  KC_0ALT, KC_RFA,
-        KC_0ALT, KC_LFB,  KC_XI,   KC_RFB,  KC_RFC,  KC_0CTL, KC.NO,
-        KC_XU,   KC_RO,   KC_MO,   KC_ZO,   KC_BO,   KC_0SFT, KC.MB_LMB,
-        KC_WO,   KC_NA,   KC_RE,   KC_DO,   KC_PO,   KC.ENT,  KC.MB_MMB,
-        KC_XA,   KC_RI,   KC.ESC,  KC_DI,   KC_DU,   KC.BKSP, KC.MB_RMB,
+        KC.TAB,  KC.E,    KC_XYA,  KC.TRNS, KC_GU,   KC_PI,   KC.TRNS,
+        KC_CAPS, KC.A,    KC_XYU,  KC_PA,   KC_GI,   KC.SCLN, KC.TRNS,
+        KC.TRNS, KC.MINS, KC_YA,   KC_BA,   KC_PE,   KC.COLN, IME_ON,
+        KC.TRNS, KC.TRNS, KC.TRNS, KC_PU,   KC.TRNS, KC.TRNS, KC.TRNS,
+        KC.TRNS, KC.TRNS, KC_XI,   KC.TRNS, KC.TRNS, KC.TRNS, KC.NO,
+        KC_XU,   KC_RO,   KC_MO,   KC_ZO,   KC_BO,   KC.TRNS, KC.TRNS,
+        KC_WO,   KC_NA,   KC_RE,   KC_DO,   KC_PO,   KC.TRNS, KC.TRNS,
+        KC_XA,   KC_RI,   KC.TRNS, KC_DI,   KC_DU,   KC.TRNS, KC.TRNS
     ],
 
     # Layer 6: 右親指キー
     [
-        KC.TAB,  KC_GA,   KC_GO,   KC_DUP,  KC_RU,   KC_XE,   IME_OFF,
-        KC_STAB, KC_GI,   KC_GE,   KC_YO,   KC_NO,   KC_XTU,  KC.SPC,
-        KC_0SFT, KC_BI,   KC_BU,   KC_MI,   KC_MU,   KC_XO,   KC.MO(6), 
-        KC_0CTL, KC_0WIN, KC_LFA,  KC_NU,   KC.SPC,  KC_0ALT, KC_RFA,
-        KC_0ALT, KC_LFB,  KC_BE,   KC_RFB,  KC_RFC,  KC_0CTL, KC.NO,
-        KC.TRNS, KC_ZU,   KC_ZE,   KC_YU,   KC_WA,   KC_0SFT, KC.MB_LMB,
-        KC_VU,   KC_DE,   KC_ZA,   KC.O,    KC_XYO,  KC.ENT,  KC.MB_MMB,
-        KC.QUES, KC_DA,   KC.ESC,  KC_NI,   KC_MA,   KC.BKSP, KC.MB_RMB,
+        KC.TRNS, KC_GA,   KC_GO,   KC_DUP,  KC_RU,   KC_XE,   IME_OFF,
+        KC.TRNS, KC_GI,   KC_GE,   KC_YO,   KC_NO,   KC_XTU,  KC.TRNS,
+        KC.TRNS, KC_BI,   KC_BU,   KC_MI,   KC_MU,   KC_XO,   KC.TRNS,
+        KC.TRNS, KC.TRNS, KC.TRNS, KC_NU,   KC.TRNS, KC.TRNS, KC.TRNS,
+        KC.TRNS, KC.TRNS, KC_BE,   KC.TRNS, KC.TRNS, KC.TRNS, KC.NO,
+        KC.TRNS, KC_ZU,   KC_ZE,   KC_YU,   KC_WA,   KC.TRNS, KC.TRNS,
+        KC_VU,   KC_DE,   KC_ZA,   KC.O,    KC_XYO,  KC.TRNS, KC.TRNS,
+        KC.QUES, KC_DA,   KC.TRNS, KC_NI,   KC_MA,   KC.TRNS, KC.TRNS
     ],
 
     # Layer N: Num Lock
     [
-        KC.TILD, KC.AT,   KC.DLR,  KC_DELB, KC.N7,   KC.N9,   KC_LOY,
-        KC.GRV,  KC.LCBR, KC.CIRC, KC.LPRN, KC.N4,   KC.N6,   KC.SPC,
-        KC.LSFT, KC.LBRC, KC.EQL,  KC.PSLS, KC.N1,   KC.N3,   KC_ROY, 
-        KC.LCTL, KC.LWIN, KC_LFA,  KC.ASTR, KC.COMM, KC.DOT,  KC.SPC,
-        KC.LALT, KC_LFB,  KC.UNDS, KC_RFA,  KC.N0 ,  KC.TG(4), KC.NO,
-        KC.RO,   KC.RBRC, KC.AMPR, KC.PLUS, KC.N2,   KC.EQL,  KC.MB_LMB,
-        KC.JYEN, KC.RCBR, KC.PERC, KC.MINS, KC.N5,   KC.ENT,  KC.MB_MMB,
-        KC.EXLM, KC.HASH, KC.ESC,  KC.RPRN, KC.N8,   KC_DELF, KC.MB_RMB,
+        KC.TILD, KC.AT,   KC.DLR,  KC.TRNS, KC.N8,   KC.ASTR, IME_OFF,
+        KC.GRV,  KC.LCBR, KC.CIRC, KC_KAOC, KC.N5,   KC.PLUS, KC.TRNS,
+        KC.TRNS, KC.LBRC, KC.EQL,  KC.COMM, KC.N2,   KC.SLSH, IME_ON,
+        KC_0CTL, KC.LWIN, KC.TRNS, KC.MINS, KC.DOT,  KC.EQL,  KC.TRNS,
+        KC_0ALT, KC_LFB,  KC.UNDS, KC.TRNS, KC.N0,   KC.TG(7),KC.NO,
+        KC.RO,   KC.RBRC, KC.AMPR, KC.N1,   KC.N3,   KC.TRNS, KC.TRNS,
+        KC.JYEN, KC.RCBR, KC.PERC, KC.N4,   KC.N6,   KC.TRNS, KC.TRNS,
+        KC.EXLM, KC.HASH, KC.TRNS, KC.N7,   KC.N9,   KC.TRNS, KC.TRNS
     ]
-
 ]
 
 if __name__ == '__main__':

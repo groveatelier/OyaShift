@@ -12,8 +12,8 @@
 | 3 | tab | q | w | e | r | t |\|| y | u | i | o | p | BS |
 | 2 | Sft+tab | a | s | d | f | g |\|| h | j | k | l | ; | Enter |
 | 1 | LSft | z | x | c | v | b |\|| n | m | , | . | / | RSft |
-| 0 | ctrl | alt | meta | fnB | fnA | 左親 |\|| 右親 | fnB | Spc | fnC | alt | ctrl |
-| -1 | ||||| Spc |\|| fnA |||||
+| 0 | ctrl | alt | meta | fnB | fnA | 左親 |\|| 右親 | fnA | fnB | fnC | alt | ctrl |
+| -1 | ||||| Spc |\|| Spc |||||
 ||
 
 **レイヤー 壱** : FnA
@@ -21,11 +21,11 @@
 | 段 | 列1 | 2 | 3 | 4 | 5 | 6 |\|| 7 | 8 | 9 | 10 | 11 | 12 |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
 | 4 | --- | --- | --- | --- |  -> | ESC |\|| DEL | <- | --- | --- | --- | --- |
-| 3 | ~ | ! | @ | # | $ | % |\|| ( | 7 | 8 | 9 | * | BS |
-| 2 | ` | IntlYen | { | } | ^ | & |\|| ) | 4 | 5 | 6 | + | Enter |
+| 3 | ~ | ! | @ | # | $ | % |\|| ( ) | 7 | 8 | 9 | * | BS |
+| 2 | ` | IntlYen | { | } | ^ | & |\|| , | 4 | 5 | 6 | + | Enter |
 | 1 | LSft | IntlRo | [ | ] | = | _ |\|| - | 1 | 2 | 3 | / | RSft |
-| 0 | ctrl0 | alt0 | meta0 | fnB | **_fnA_** | IME OFF |\|| IME ON | 0 | . | , | = | num lock |
-| -1 | ||||| Spc |\|| **_fnA_** |||||
+| 0 | ctrl0 | alt0 | meta0 | fnB | **_fnA_** | IME OFF |\|| IME ON | **_fnA_** | . | 0 | = | num lock |
+| -1 | ||||| Spc |\|| Spc |||||
 ||
 
 **レイヤー 弐** : FnB
@@ -35,9 +35,9 @@
 | 4 | --- | --- | --- | --- |  -> | ESC |\|| DEL1L | <- | --- | --- | --- | --- |
 | 3 | tab | Pause<br/>Break | Scroll<br/>Lock |  | BS 2<br/>Top | DEL 2<br/>End |\|| SEL1L | Home | Ins | Page<br/>Up | Print<br/>Screen | DEL |
 | 2 | Sft+tab |  |  |  |  |  |\|| " | End | Up | Page<br/>Down | : | Enter |
-| 1 | LSft | Boot |  |  |  |  |\|| ' | Left | Down | Right |  | RSft |
-| 0 | ctrl | alt | meta | **_fnB_** | 全半 | 無変換 |\|| 変換 | **_fnB_** | かな | fnC | alt | ctrl |
-| -1 | ||||| Spc |\|| fnA |||||
+| 1 | LSft |  |  |  | カタカナ | ひらがな |\|| ' | Left | Down | Right |  | RSft |
+| 0 | ctrl | alt | meta | **_fnB_** | 全半 | 無変換 |\|| 変換 | かな | **_fnB_**  | fnC | alt | ctrl |
+| -1 | ||||| Spc |\|| Spc |||||
 ||
 
 **レイヤー 参** : FnC
@@ -45,11 +45,11 @@
 | 段 | 列1 | 2 | 3 | 4 | 5 | 6 |\|| 7 | 8 | 9 | 10 | 11 | 12 |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
 | 4 | --- | --- | --- | --- |  -> | IME<br/>SW |\|| Sleep | <- | --- | --- | --- | --- |
-| 3 | tab | F1 | F2 | F3 | F4 |  |\||  |  | App1 | (prev) | Bri.up | BS |
+| 3 | Boot | F1 | F2 | F3 | F4 |  |\||  |  | App1 | (prev) | Bri.up | BS |
 | 2 | Sft+tab | F5 | F6 | F7 | F8 |  |\||  |  | App2 | (next) | Bri.<br/>down | Enter |
 | 1 | LSft | F9 | F10 | F11 | F12 |  |\||  |  | mute | vol.<br/>down | vol.<br/>up | RSft |
-| 0 | ctrl | alt | meta | fnB | fnA | 左親 |\|| 右親 | fnB | Spc | **_fnC_** | alt | ctrl |
-| -1 | ||||| Spc |\|| fnA |||||
+| 0 | ctrl | alt | meta | fnB | fnA | 左親 |\|| 右親 | fnA | fnB | **_fnC_** | alt | ctrl |
+| -1 | ||||| Spc |\|| Spc |||||
 ||
 
 **レイヤー 肆** : IME ONベースレイヤー（変換後表記）
@@ -60,8 +60,8 @@
 | 3 | tab | 。 | か | た | こ | さ |\|| ら | ち | く | つ | 、 | BS |
 | 2 | Sft+tab | う | し | て | け | せ |\|| は | と | き | い | ん | Enter |
 | 1 | Sft0| 。 | ひ | す | ふ | へ |\|| め | そ | ね | ほ | ・ | Sft0 |
-| 0 | ctrl0 | alt0 | meta0 | fnB | fnA | 左親 |\|| 右親 | fnB | Spc | fnC | alt0 | ctrl0 |
-| -1 | ||||| Spc |\|| fnA |||||
+| 0 | ctrl0 | alt0 | meta0 | fnB | fnA | 左親 |\|| 右親 | fnA | fnB | fnC | alt0 | ctrl0 |
+| -1 | ||||| Sft+Spc |\|| Spc |||||
 ||
 
 **レイヤー 伍** : 左親シフト（変換後表記）
@@ -72,8 +72,8 @@
 | 3 | tab | ぁ | え | り | ゃ | れ |\|| ぱ | ぢ | ぐ | づ | ぴ | BS |
 | 2 | caps | を | あ | な | ゅ | も |\|| ば | ど | ぎ | ぽ |  | Enter |
 | 1 | Sft0 | ぅ | ー | ろ | や | ぃ |\|| ぷ | ぞ | ぺ | ぼ |  | Sft0 |
-| 0 | ctrl0 | alt0 | meta0 | fnB | fnA | **_左親_** |\|| IME ON | fnB | Spc | fnC | alt0 | ctrl0 |
-| -1 | ||||| Spc |\|| fnA |||||
+| 0 | ctrl0 | alt0 | meta0 | fnB | fnA | **_左親_** |\|| IME ON | fnA | fnB | fnC | alt0 | ctrl0 |
+| -1 | ||||| Spc |\|| Spc |||||
 ||
 
 **レイヤー 陸** : 右親シフト（変換後表記）
@@ -84,8 +84,8 @@
 | 3 | tab | ？ | が | だ | ご | ざ |\|| よ | に | る | ま | ぇ | BS |
 | 2 | Sft+tab | ヴ | じ | で | げ | ぜ |\|| み | お | の | ょ | っ | Enter |
 | 1 | Sft0 |  | び | ず | ぶ | べ |\|| ぬ | ゆ | む | わ | ぉ | Sft0 |
-| 0 | ctrl0 | alt0 | meta0 | fnB | fnA | IME OFF |\|| **_右親_** | fnB | Spc | fnC | alt0 | ctrl0 |
-| -1 | ||||| Spc |\|| fnA |||||
+| 0 | ctrl0 | alt0 | meta0 | fnB | fnA | IME OFF |\|| **_右親_** | fnA | fnB | fnC | alt0 | ctrl0 |
+| -1 | ||||| Spc |\|| Spc |||||
 ||
 
 

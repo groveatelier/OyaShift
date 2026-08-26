@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型キーボード(KMK_Firmware) 2026/8/25 quietgrobeatelier
+# 七式二型キーボード(KMK_Firmware) 2026/8/26 quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -595,7 +595,7 @@ keyboard.keymap = [
         KC.TAB,  KC_KA,   KC_KO,   KC.DEL,  KC_KU,   KC.COMM, KC_LOY,
         KC_STAB, KC_SI,   KC_KE,   KC_RA,   KC_KI,   KC_NN,   KC_LFA,
         KC_0SFT, KC_HI,   KC_HU,   KC_HA,   KC_NE,   KC.SLSH, KC_ROY,
-        KC_0CTL, KC_0WIN, KC_SSPC, KC_ME,   KC_RFB,  KC_0ALT, KC.SPC,
+        KC_0CTL, KC_0WIN, KC.SPC,  KC_ME,   KC_RFB,  KC_0ALT, KC_SSPC,
         KC_0ALT, KC_LFB,  KC_HE,   KC_RFA,  KC_RFC,  KC_0CTL, KC.NO,
         KC_ZDOT, KC_SU,   KC_SE,   KC_SO,   KC_HO,   KC_0SFT, KC.MB_LMB,
         KC.U,    KC_TE,   KC_SA,   KC_TO,   KC.I,    KC.ENT,  KC.MB_MMB,

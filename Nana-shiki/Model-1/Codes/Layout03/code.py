@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型キーボード(KMK_Firmware) 2026/8/26 quietgrobeatelier
+# 七式二型キーボード(KMK_Firmware) 2026/8/27 quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -10,6 +10,7 @@ import microcontroller
 import rotaryio
 import usb_hid
 import time
+import gc
 
 from adafruit_hid.mouse import Mouse
 from adafruit_hid.consumer_control import ConsumerControl
@@ -28,7 +29,7 @@ from kmk.modules.layers import Layers
 from kmk.modules.holdtap import HoldTap  
 from kmk.modules.combos import Combos, Chord
 from kmk.modules.macros import Macros, Press, Release, Tap, Delay
-
+ 
 # キーボード本体のインスタンス化
 keyboard = KMKKeyboard()
 
@@ -160,6 +161,7 @@ class StatusLEDManager(Module):
             self.last_color = target_color
             self.rgb.set_rgb_fill(target_color)
             self.rgb.show()
+            gc.collect()    # ガベージコレクション
 
     def process_key(self, keyboard, key, is_pressed, int_coord):
         return key
@@ -260,6 +262,8 @@ KC_0SFT = KC.LM(0, KC.LSFT)
 KC_0ALT = KC.LM(0, KC.LALT)
 KC_0CTL = KC.LM(0, KC.LCTL)
 KC_0WIN = KC.LM(0, KC.LWIN)
+KC_0FA = KC.LM(0, KC_RFA)
+KC_0FC = KC.LM(0, KC_RFC)
 KC_QDOT = KC.DOT
 KC_ZDOT = KC.MACRO(".")
 KC_STAB = KC.LSFT(KC.TAB)
@@ -289,7 +293,7 @@ last_encoder_pos = encoder.position
 # 2. 高速入力処理ループ
 # -------------------------------------------------------------------
 def process_controls():
-    global last_encoder_pos, is_dragging
+    global last_encoder_pos, is_dragging, gc_count
 
     fast = 3 in keyboard.active_layers  # fnAなら
 
@@ -364,85 +368,85 @@ keyboard.before_matrix_scan = process_controls
 # -------------------------------------------------------------------
 # 3. ローマ字出力用マクロの定義
 # -------------------------------------------------------------------
-KC_KA = KC.MACRO("ka")
-KC_KI = KC.MACRO("ki")
-KC_KU = KC.MACRO("ku")
-KC_KE = KC.MACRO("ke")
-KC_KO = KC.MACRO("ko")
-KC_SA = KC.MACRO("sa")
-KC_SI = KC.MACRO("si")
-KC_SU = KC.MACRO("su")
-KC_SE = KC.MACRO("se")
-KC_SO = KC.MACRO("so")
-KC_TA = KC.MACRO("ta")
-KC_TI = KC.MACRO("ti")
-KC_TU = KC.MACRO("tu")
-KC_TE = KC.MACRO("te")
-KC_TO = KC.MACRO("to")
-KC_NA = KC.MACRO("na")
-KC_NI = KC.MACRO("ni")
-KC_NU = KC.MACRO("nu")
-KC_NE = KC.MACRO("ne")
-KC_NO = KC.MACRO("no")
-KC_HA = KC.MACRO("ha")
-KC_HI = KC.MACRO("hi")
-KC_HU = KC.MACRO("hu")
-KC_HE = KC.MACRO("he")
-KC_HO = KC.MACRO("ho")
-KC_MA = KC.MACRO("ma")
-KC_MI = KC.MACRO("mi")
-KC_MU = KC.MACRO("mu")
-KC_ME = KC.MACRO("me")
-KC_MO = KC.MACRO("mo")
-KC_YA = KC.MACRO("ya")
-KC_YU = KC.MACRO("yu")
-KC_YO = KC.MACRO("yo")
-KC_RA = KC.MACRO("ra")
-KC_RI = KC.MACRO("ri")
-KC_RU = KC.MACRO("ru")
-KC_RE = KC.MACRO("re")
-KC_RO = KC.MACRO("ro")
-KC_WA = KC.MACRO("wa")
-KC_WO = KC.MACRO("wo")
-KC_NN = KC.MACRO("nn")
+KC_KA = KC.MACRO(Tap(KC.K), Tap(KC.A))
+KC_KI = KC.MACRO(Tap(KC.K), Tap(KC.I))
+KC_KU = KC.MACRO(Tap(KC.K), Tap(KC.U))
+KC_KE = KC.MACRO(Tap(KC.K), Tap(KC.E))
+KC_KO = KC.MACRO(Tap(KC.K), Tap(KC.O))
+KC_SA = KC.MACRO(Tap(KC.S), Tap(KC.A))
+KC_SI = KC.MACRO(Tap(KC.S), Tap(KC.I))
+KC_SU = KC.MACRO(Tap(KC.S), Tap(KC.U))
+KC_SE = KC.MACRO(Tap(KC.S), Tap(KC.E))
+KC_SO = KC.MACRO(Tap(KC.S), Tap(KC.O))
+KC_TA = KC.MACRO(Tap(KC.T), Tap(KC.A))
+KC_TI = KC.MACRO(Tap(KC.T), Tap(KC.I))
+KC_TU = KC.MACRO(Tap(KC.T), Tap(KC.U))
+KC_TE = KC.MACRO(Tap(KC.T), Tap(KC.E))
+KC_TO = KC.MACRO(Tap(KC.T), Tap(KC.O))
+KC_NA = KC.MACRO(Tap(KC.N), Tap(KC.A))
+KC_NI = KC.MACRO(Tap(KC.N), Tap(KC.I))
+KC_NU = KC.MACRO(Tap(KC.N), Tap(KC.U))
+KC_NE = KC.MACRO(Tap(KC.N), Tap(KC.E))
+KC_NO = KC.MACRO(Tap(KC.N), Tap(KC.O))
+KC_HA = KC.MACRO(Tap(KC.H), Tap(KC.A))
+KC_HI = KC.MACRO(Tap(KC.H), Tap(KC.I))
+KC_HU = KC.MACRO(Tap(KC.H), Tap(KC.U))
+KC_HE = KC.MACRO(Tap(KC.H), Tap(KC.E))
+KC_HO = KC.MACRO(Tap(KC.H), Tap(KC.O))
+KC_MA = KC.MACRO(Tap(KC.M), Tap(KC.A))
+KC_MI = KC.MACRO(Tap(KC.M), Tap(KC.I))
+KC_MU = KC.MACRO(Tap(KC.M), Tap(KC.U))
+KC_ME = KC.MACRO(Tap(KC.M), Tap(KC.E))
+KC_MO = KC.MACRO(Tap(KC.M), Tap(KC.O))
+KC_YA = KC.MACRO(Tap(KC.Y), Tap(KC.A))
+KC_YU = KC.MACRO(Tap(KC.Y), Tap(KC.U))
+KC_YO = KC.MACRO(Tap(KC.Y), Tap(KC.O))
+KC_RA = KC.MACRO(Tap(KC.R), Tap(KC.A))
+KC_RI = KC.MACRO(Tap(KC.R), Tap(KC.I))
+KC_RU = KC.MACRO(Tap(KC.R), Tap(KC.U))
+KC_RE = KC.MACRO(Tap(KC.R), Tap(KC.E))
+KC_RO = KC.MACRO(Tap(KC.R), Tap(KC.O))
+KC_WA = KC.MACRO(Tap(KC.W), Tap(KC.A))
+KC_WO = KC.MACRO(Tap(KC.W), Tap(KC.O))
+KC_NN = KC.MACRO(Tap(KC.N), Tap(KC.N))
 
-KC_GA = KC.MACRO("ga")
-KC_GI = KC.MACRO("gi")
-KC_GU = KC.MACRO("gu")
-KC_GE = KC.MACRO("ge")
-KC_GO = KC.MACRO("go")
-KC_ZA = KC.MACRO("za")
-KC_ZI = KC.MACRO("zi")
-KC_ZU = KC.MACRO("zu")
-KC_ZE = KC.MACRO("ze")
-KC_ZO = KC.MACRO("zo")
-KC_DA = KC.MACRO("da")
-KC_DI = KC.MACRO("di")
-KC_DU = KC.MACRO("du")
-KC_DE = KC.MACRO("de")
-KC_DO = KC.MACRO("do")
-KC_BA = KC.MACRO("ba")
-KC_BI = KC.MACRO("bi")
-KC_BU = KC.MACRO("bu")
-KC_BE = KC.MACRO("be")
-KC_BO = KC.MACRO("bo")
-KC_VU = KC.MACRO("vu")
+KC_GA = KC.MACRO(Tap(KC.G), Tap(KC.A))
+KC_GI = KC.MACRO(Tap(KC.G), Tap(KC.I))
+KC_GU = KC.MACRO(Tap(KC.G), Tap(KC.U))
+KC_GE = KC.MACRO(Tap(KC.G), Tap(KC.E))
+KC_GO = KC.MACRO(Tap(KC.G), Tap(KC.O))
+KC_ZA = KC.MACRO(Tap(KC.Z), Tap(KC.A))
+KC_ZI = KC.MACRO(Tap(KC.Z), Tap(KC.I))
+KC_ZU = KC.MACRO(Tap(KC.Z), Tap(KC.U))
+KC_ZE = KC.MACRO(Tap(KC.Z), Tap(KC.E))
+KC_ZO = KC.MACRO(Tap(KC.Z), Tap(KC.O))
+KC_DA = KC.MACRO(Tap(KC.D), Tap(KC.A))
+KC_DI = KC.MACRO(Tap(KC.D), Tap(KC.I))
+KC_DU = KC.MACRO(Tap(KC.D), Tap(KC.U))
+KC_DE = KC.MACRO(Tap(KC.D), Tap(KC.E))
+KC_DO = KC.MACRO(Tap(KC.D), Tap(KC.O))
+KC_BA = KC.MACRO(Tap(KC.B), Tap(KC.A))
+KC_BI = KC.MACRO(Tap(KC.B), Tap(KC.I))
+KC_BU = KC.MACRO(Tap(KC.B), Tap(KC.U))
+KC_BE = KC.MACRO(Tap(KC.B), Tap(KC.E))
+KC_BO = KC.MACRO(Tap(KC.B), Tap(KC.O))
+KC_VU = KC.MACRO(Tap(KC.V), Tap(KC.U))
 
-KC_PA = KC.MACRO("pa")
-KC_PI = KC.MACRO("pi")
-KC_PU = KC.MACRO("pu")
-KC_PE = KC.MACRO("pe")
-KC_PO = KC.MACRO("po")
+KC_PA = KC.MACRO(Tap(KC.P), Tap(KC.A))
+KC_PI = KC.MACRO(Tap(KC.P), Tap(KC.I))
+KC_PU = KC.MACRO(Tap(KC.P), Tap(KC.U))
+KC_PE = KC.MACRO(Tap(KC.P), Tap(KC.E))
+KC_PO = KC.MACRO(Tap(KC.P), Tap(KC.O))
 
-KC_XA = KC.MACRO("xa")
-KC_XI = KC.MACRO("xi")
-KC_XU = KC.MACRO("xu")
-KC_XE = KC.MACRO("xe")
-KC_XO = KC.MACRO("xo")
-KC_XTU = KC.MACRO("xtu")
-KC_XYA = KC.MACRO("xya")
-KC_XYU = KC.MACRO("xyu")
-KC_XYO = KC.MACRO("xyo")
+KC_XA = KC.MACRO(Tap(KC.X), Tap(KC.A))
+KC_XI = KC.MACRO(Tap(KC.X), Tap(KC.I))
+KC_XU = KC.MACRO(Tap(KC.X), Tap(KC.U))
+KC_XE = KC.MACRO(Tap(KC.X), Tap(KC.E))
+KC_XO = KC.MACRO(Tap(KC.X), Tap(KC.O))
+KC_XTU = KC.MACRO(Tap(KC.X), Tap(KC.T), Tap(KC.U))
+KC_XYA = KC.MACRO(Tap(KC.X), Tap(KC.Y), Tap(KC.A))
+KC_XYU = KC.MACRO(Tap(KC.X), Tap(KC.Y), Tap(KC.U))
+KC_XYO = KC.MACRO(Tap(KC.X), Tap(KC.Y), Tap(KC.O))
 
 # -------------------------------------------------------------------
 # 4. 特殊系マクロの定義
@@ -593,10 +597,10 @@ keyboard.keymap = [
     # Layer 5: 日本語 Base Layer
     [
         KC.TAB,  KC_KA,   KC_KO,   KC.DEL,  KC_KU,   KC.COMM, KC_LOY,
-        KC_STAB, KC_SI,   KC_KE,   KC_RA,   KC_KI,   KC_NN,   KC_LFA,
+        KC_STAB, KC_SI,   KC_KE,   KC_RA,   KC_KI,   KC_NN,   KC_0FA,
         KC_0SFT, KC_HI,   KC_HU,   KC_HA,   KC_NE,   KC.SLSH, KC_ROY,
         KC_0CTL, KC_0WIN, KC.SPC,  KC_ME,   KC_RFB,  KC_0ALT, KC_SSPC,
-        KC_0ALT, KC_LFB,  KC_HE,   KC_RFA,  KC_RFC,  KC_0CTL, KC.NO,
+        KC_0ALT, KC_LFB,  KC_HE,   KC_0FA,  KC_0FC,  KC_0CTL, KC.NO,
         KC_ZDOT, KC_SU,   KC_SE,   KC_SO,   KC_HO,   KC_0SFT, KC.MB_LMB,
         KC.U,    KC_TE,   KC_SA,   KC_TO,   KC.I,    KC.ENT,  KC.MB_MMB,
         KC_QDOT, KC_TA,   KC.ESC,  KC_TI,   KC_TU,   KC.BKSP, KC.MB_RMB

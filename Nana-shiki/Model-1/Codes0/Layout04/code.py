@@ -276,7 +276,7 @@ IME_SW = KC.F17
 IME_ON = KC.F18
 IME_OFF = KC.F19
 
-# アナログスティック (GP26, GP27)
+# アナログスティック (GP26, GP27) 予備PIN GP28, GP29
 stick_x = analogio.AnalogIn(board.GP26)
 stick_y = analogio.AnalogIn(board.GP27)
 is_dragging = False
@@ -334,7 +334,7 @@ def process_controls():
     else:
     # --- B. アナログスティックの計算 ---
         x_val = stick_x.value - CENTER_VAL
-        y_val = stick_y.value - CENTER_VAL
+        y_val = CENTER_VAL - stick_y.value
 
         move_x = 0
         move_y = 0
@@ -362,6 +362,7 @@ def process_controls():
                 move_x *= 2
                 move_y *= 2
             mouse.move(x=move_x, y=move_y)
+            #print(f'[x/y_val & move] {x_val}, {y_val} / {move_x}, {move_y}')
 
 keyboard.before_matrix_scan = process_controls
 
@@ -539,11 +540,11 @@ keyboard.keymap = [
         KC.TAB,  KC.W,    KC.R,    KC.DEL,  KC.I,    KC.P,    KC_LOY,
         KC_STAB, KC.S,    KC.F,    KC.Y,    KC.K,    KC.SCLN, KC.SPC,
         KC.LSFT, KC.X,    KC.V,    KC.H,    KC.COMM, KC.SLSH, KC_ROY,
-        KC.LCTL, KC.LWIN, KC_LFA,  KC.N,    KC_RFB,  KC.RALT, KC.SPC,
-        KC.LALT, KC_LFB,  KC.B,    KC_RFA,  KC_RFC,  KC.RCTL, KC.NO,
-        KC.Z,    KC.C,    KC.G,    KC.M,    KC.DOT,  KC.RSFT, KC.MB_LMB,
+        KC.LCTL, KC.LWIN, KC_LFA,  KC.N,    KC_RFC,  KC.RALT, KC.SPC,
+        KC.LALT, KC_LFB,  KC.B,    KC_RFA,  KC_RFB,  KC.RCTL, KC.NO,
+        KC.Z,    KC.C,    KC.G,    KC.M,    KC.DOT,  KC.RSFT, KC.MB_RMB,
         KC.A,    KC.D,    KC.T,    KC.J,    KC.L,    KC.ENT,  KC.MB_MMB,
-        KC.Q,    KC.E,    KC.ESC,  KC.U,    KC.O,    KC.BKSP, KC.MB_RMB
+        KC.Q,    KC.E,    KC.ESC,  KC.U,    KC.O,    KC.BKSP, KC.MB_LMB
     ],
 
     # Layer 1: LOY Layer
@@ -601,9 +602,9 @@ keyboard.keymap = [
         KC_0SFT, KC_HI,   KC_HU,   KC_HA,   KC_NE,   KC.SLSH, KC_ROY,
         KC_0CTL, KC_0WIN, KC_0FA,  KC_ME,   KC_RFB,  KC_0ALT, KC.SPC,
         KC_0ALT, KC_LFB,  KC_HE,   KC_0FA,  KC_0FC,  KC_0CTL, KC.NO,
-        KC_ZDOT, KC_SU,   KC_SE,   KC_SO,   KC_HO,   KC_0SFT, KC.MB_LMB,
+        KC_ZDOT, KC_SU,   KC_SE,   KC_SO,   KC_HO,   KC_0SFT, KC.MB_RMB,
         KC.U,    KC_TE,   KC_SA,   KC_TO,   KC.I,    KC.ENT,  KC.MB_MMB,
-        KC_QDOT, KC_TA,   KC.ESC,  KC_TI,   KC_TU,   KC.BKSP, KC.MB_RMB
+        KC_QDOT, KC_TA,   KC.ESC,  KC_TI,   KC_TU,   KC.BKSP, KC.MB_LMB
     ],
 
     # Layer N: Num Lock

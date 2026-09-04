@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/9/3 [Layout04] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/9/4 [Layout04] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -29,7 +29,7 @@ from kmk.modules.layers import Layers
 from kmk.modules.holdtap import HoldTap  
 from kmk.modules.combos import Combos, Chord
 from kmk.modules.macros import Macros, Press, Release, Tap, Delay
- 
+
 # キーボード本体のインスタンス化
 keyboard = KMKKeyboard()
 
@@ -80,12 +80,13 @@ class IMEManager(Module):
                 # 【IME ON時】 日本語用レイヤー
                 if self.ja_layer not in keyboard.active_layers and self.enable_ime:
                     #keyboard.active_layers.append(self.ja_layer)
-                    keyboard.active_layers = [self.ja_layer]
+                    #keyboard.active_layers = [self.ja_layer]
+                    keyboard.active_layers.insert(0, self.ja_layer)
             else:
                 # 【IME OFF時】 基本レイヤー
                 if self.ja_layer in keyboard.active_layers:
-                    #keyboard.active_layers.remove(self.ja_layer)
-                    keyboard.active_layers = [0]
+                    keyboard.active_layers.remove(self.ja_layer)
+                    #keyboard.active_layers = [0]
 
     def after_matrix_scan(self, keyboard):
         # LOW (False) ＝ Windows(0) / HIGH (True) ＝ ChromeOS(1)
@@ -139,17 +140,19 @@ class StatusLEDManager(Module):
         # 各種状態を取得
         cur_rgb = [0,0,0]
         cur_layer = keyboard.active_layers[0] if keyboard.active_layers else 0
-        if self.ime_mgr.os:
-            cur_rgb[1] = 8
+        if cur_layer == 0:
+            if self.ime_mgr.os:
+                cur_rgb[1] = 4
+            else:
+                cur_rgb[0] = 64 if self.lock.get_caps_lock() else 4
+                cur_rgb[2] = 64 if self.lock.get_scroll_lock() else 0
         else:
-            cur_rgb[0] = 64 if self.lock.get_caps_lock() else 8
-            cur_rgb[2] = 64 if self.lock.get_scroll_lock() else 0
-        if cur_layer & 1:
-            cur_rgb[2] += 16
-        if cur_layer & 2:
-            cur_rgb[1] += 16       
-        if cur_layer & 4:
-            cur_rgb[0] += 16
+            if cur_layer & 1:
+                cur_rgb[2] = 16
+            if cur_layer & 2:
+                cur_rgb[1] = 16       
+            if cur_layer & 4:
+                cur_rgb[0] = 16
 
         if self.ime_mgr.ime_on:
             cur_rgb[2] += 32
@@ -200,9 +203,14 @@ keyboard.modules.append(layers_ext)
 
 # キーボード定義拡張 
 keyboard.extensions.append(MediaKeys())
+
+# HoldTap & Combos を先頭に追加(時間監視処理優先の為)
 holdtap = HoldTap()
-holdtap.tap_time = 120  # 判定時間を100ms程度に短縮
-keyboard.modules.append(holdtap)
+ime_manager = IMEManager()  # IME / カスタムCombo Managerを有効化
+keyboard.modules.append(ime_manager)
+combos = IMEConditionalCombos(manager=ime_manager)
+combos.timeout_ms = 60  # 同時押し判定時間（60ミリ秒）
+keyboard.modules = [combos, holdtap] + keyboard.modules  # 先頭へ追加
 
 # OSからの要求 (Caps Lock / Num Lock等) を取得する拡張機能
 lock_status = LockStatus()
@@ -215,15 +223,7 @@ rgb = RGB(
     val_limit=100,  # 明るさの上限 (0〜255) ※直視で眩しすぎないよう100程度に抑制
     animation_mode=AnimationModes.STATIC,
 )
-#rgb = RGB(pixel_pin=board.GP23, num_pixels=1)
 keyboard.extensions.append(rgb)
-
-# IME / カスタムCombo Managerを有効化
-ime_manager = IMEManager()
-keyboard.modules.append(ime_manager)
-combos = IMEConditionalCombos(manager=ime_manager)
-combos.timeout_ms = 60  # 同時押し判定時間（60ミリ秒）
-keyboard.modules.append(combos)
 
 # マクロモジュールを有効化
 macros = Macros()
@@ -251,8 +251,8 @@ def mcu_reset_fn(keyboard):
     microcontroller.reset() # マイコンリセット関数
 
 # 独自キー
-KC_LOY = KC.LT(1, KC.F16)
-KC_ROY = KC.LT(2, KC.F15)
+KC_LOY = KC.LT(1, KC.F16, tap_time=65)
+KC_ROY = KC.LT(2, KC.F15, tap_time=65)
 KC_LFA = KC.MO(3)
 KC_RFB = KC.MO(3)
 KC_LFB = KC.MO(3)
@@ -262,8 +262,8 @@ KC_0SFT = KC.LM(0, KC.LSFT)
 KC_0ALT = KC.LM(0, KC.LALT)
 KC_0CTL = KC.LM(0, KC.LCTL)
 KC_0WIN = KC.LM(0, KC.LWIN)
-KC_0FA = KC.LM(3, KC_RFA)
-KC_0FC = KC.LM(4, KC_RFC)
+KC_3FA = KC.LM(3, KC_RFA)
+KC_4FC = KC.LM(4, KC_RFC)
 KC_QDOT = KC.DOT
 KC_ZDOT = KC.MACRO(".")
 KC_STAB = KC.LSFT(KC.TAB)
@@ -276,7 +276,7 @@ IME_SW = KC.F17
 IME_ON = KC.F18
 IME_OFF = KC.F19
 
-# アナログスティック (GP26, GP27)
+# アナログスティック (GP26, GP27) 予備PIN GP28, GP29
 stick_x = analogio.AnalogIn(board.GP26)
 stick_y = analogio.AnalogIn(board.GP27)
 is_dragging = False
@@ -289,13 +289,18 @@ SENSITIVITY = 2048
 encoder = rotaryio.IncrementalEncoder(board.GP19, board.GP18, divisor=2)
 last_encoder_pos = encoder.position
 
+# --- Boost switch GPIO ピンの設定 (内部プルアップ) ---
+boost_sw = digitalio.DigitalInOut(board.GP16)
+boost_sw.direction = digitalio.Direction.INPUT
+boost_sw.pull = digitalio.Pull.UP
+
 # -------------------------------------------------------------------
 # 2. 高速入力処理ループ
 # -------------------------------------------------------------------
 def process_controls():
-    global last_encoder_pos, is_dragging, gc_count
+    global last_encoder_pos, is_dragging, gc_count, boost_sw
 
-    fast = 3 in keyboard.active_layers  # fnAなら
+    fast = boost_sw.value is False  # Boost SW on なら
 
     # --- A. ホイール（エンコーダー）の計算 ---
     current_encoder_pos = encoder.position
@@ -306,46 +311,29 @@ def process_controls():
         if fast:
             raw_diff *= 2   # 倍速
 
-        # fnC 押下なら 音量制御
-        if 4 in keyboard.active_layers:
+        # 右親 押下なら 音量制御
+        if 2 in keyboard.active_layers:
             if raw_diff > 0:
                 cc.send(ConsumerControlCode.VOLUME_INCREMENT) # 音量UP
             else:
                 cc.send(ConsumerControlCode.VOLUME_DECREMENT) # 音量DOWN
-
-        # 右親 押下なら UP/DOWN
-        elif 2 in keyboard.active_layers:
-            key_to_tap = KC.UP if raw_diff > 0 else KC.DOWN
-            # 回したノッチ（回転量）の分だけキーを送信
-#           for _ in range(abs(raw_diff)):
-#               keyboard.tap_key(key_to_tap)
-            keyboard.tap_key(key_to_tap)
-        # 左親 押下なら RIGHT/LEFT
-        elif 1 in keyboard.active_layers:
-            key_to_tap = KC.LEFT if raw_diff > 0 else KC.RIGHT
-            # 回したノッチ（回転量）の分だけキーを送信
-#           for _ in range(abs(raw_diff)):
-#               keyboard.tap_key(key_to_tap)
-            keyboard.tap_key(key_to_tap)
         else:
         # 通常は縦スクロール
             mouse.move(wheel=raw_diff)
 
     else:
     # --- B. アナログスティックの計算 ---
-        #x_val = stick_x.value - CENTER_VAL
-        x_val = CENTER_VAL - stick_x.value
-        #y_val = stick_y.value - CENTER_VAL
+        x_val = stick_x.value - CENTER_VAL
         y_val = CENTER_VAL - stick_y.value
 
         move_x = 0
         move_y = 0
 
-        #if abs(x_val) > DEADZONE:
-        #    move_x = int((x_val - (DEADZONE if x_val > 0 else -DEADZONE)) / SENSITIVITY)
+        if abs(x_val) > DEADZONE:
+            move_x = int((x_val - (DEADZONE if x_val > 0 else -DEADZONE)) / SENSITIVITY)
         
-        #if abs(y_val) > DEADZONE:
-        #    move_y = int(-(y_val - (DEADZONE if y_val > 0 else -DEADZONE)) / SENSITIVITY)
+        if abs(y_val) > DEADZONE:
+            move_y = int(-(y_val - (DEADZONE if y_val > 0 else -DEADZONE)) / SENSITIVITY)
 
         #print(f"xxx {keyboard.keys_pressed}")
         if KC.MB_LMB in keyboard.keys_pressed:
@@ -363,8 +351,7 @@ def process_controls():
             if fast: # 倍速
                 move_x *= 2
                 move_y *= 2
-            #mouse.move(x=move_x, y=move_y)
-            print(f'[x,y] {x_val}, {y_val}')
+            mouse.move(x=move_x, y=move_y)
 
 keyboard.before_matrix_scan = process_controls
 
@@ -542,8 +529,8 @@ keyboard.keymap = [
         KC.TAB,  KC.W,    KC.R,    KC.DEL,  KC.I,    KC.P,    KC_LOY,
         KC_STAB, KC.S,    KC.F,    KC.Y,    KC.K,    KC.SCLN, KC.SPC,
         KC.LSFT, KC.X,    KC.V,    KC.H,    KC.COMM, KC.SLSH, KC_ROY,
-        KC.LCTL, KC.LWIN, KC_LFA,  KC.N,    KC_RFB,  KC.RALT, KC.SPC,
-        KC.LALT, KC_LFB,  KC.B,    KC_RFA,  KC_RFC,  KC.RCTL, KC.NO,
+        KC.LCTL, KC.LWIN, KC_LFA,  KC.N,    KC_RFC,  KC.RALT, KC.SPC,
+        KC.LALT, KC_LFB,  KC.B,    KC_RFA,  KC_RFB,  KC.RCTL, KC.NO,
         KC.Z,    KC.C,    KC.G,    KC.M,    KC.DOT,  KC.RSFT, KC.MB_RMB,
         KC.A,    KC.D,    KC.T,    KC.J,    KC.L,    KC.ENT,  KC.MB_MMB,
         KC.Q,    KC.E,    KC.ESC,  KC.U,    KC.O,    KC.BKSP, KC.MB_LMB
@@ -602,8 +589,8 @@ keyboard.keymap = [
         KC.TAB,  KC_KA,   KC_KO,   KC.DEL,  KC_KU,   KC.COMM, KC_LOY,
         KC_STAB, KC_SI,   KC_KE,   KC_RA,   KC_KI,   KC_NN,   KC_SSPC,
         KC_0SFT, KC_HI,   KC_HU,   KC_HA,   KC_NE,   KC.SLSH, KC_ROY,
-        KC_0CTL, KC_0WIN, KC_0FA,  KC_ME,   KC_RFB,  KC_0ALT, KC.SPC,
-        KC_0ALT, KC_LFB,  KC_HE,   KC_0FA,  KC_0FC,  KC_0CTL, KC.NO,
+        KC_0CTL, KC_0WIN, KC_3FA,  KC_ME,   KC_4FC,  KC_0ALT, KC.SPC,
+        KC_0ALT, KC_LFB,  KC_HE,   KC_3FA,  KC_RFB,  KC_0CTL, KC.NO,
         KC_ZDOT, KC_SU,   KC_SE,   KC_SO,   KC_HO,   KC_0SFT, KC.MB_RMB,
         KC.U,    KC_TE,   KC_SA,   KC_TO,   KC.I,    KC.ENT,  KC.MB_MMB,
         KC_QDOT, KC_TA,   KC.ESC,  KC_TI,   KC_TU,   KC.BKSP, KC.MB_LMB

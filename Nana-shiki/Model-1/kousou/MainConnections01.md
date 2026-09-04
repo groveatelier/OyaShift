@@ -12,9 +12,9 @@
 | 3(2) | LShift | x  | v    | h    | ,    | /    | ROya |  
 | 4(3) | LCtrl| meta | LFnA | n    | RFnC | RAlt | RSpc | 
 | 5(4) | LAlt | (LFn) | b    | RFnA | (RFn) | RCtrl |  | 
-| 6(5) | z    | c    | g    | m    | .    | RShift | L-Btn | 
+| 6(5) | z    | c    | g    | m    | .    | RShift | R-Btn | 
 | 7(6) | a    | d    | t    | j    | l    | Enter | M-Btn |
-| 8(7) | q    | e    | ESC  | u    | o    | BS | R-Btn |
+| 8(7) | q    | e    | ESC  | u    | o    | BS | L-Btn |
 
 ---
 
@@ -54,7 +54,7 @@ SW ONでホイール及びポインターの速度アップ
 
 | pin# | 接続先 | 備考 |
 |:---:|:---:|:---:|
-| TBD | Input | 内部プルアップ |
+| GP16 | Input | 内部プルアップ |
 | GND | 共通 | | |
 
 ---

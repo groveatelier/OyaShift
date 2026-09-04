@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/9/4 [Layout04] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/9/5 [Layout04] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -68,45 +68,55 @@ class IMEManager(Module):
                 key = self.ime_offkeys[self.os]
             elif key == IME_SW:
                 self.enable_ime = not self.enable_ime
-                self.set_ime(keyboard, self.enable_ime)
+                self.ime_on = False
+                # IME OFF の場合はキースタック状態救済措置を実行
+                if self.enable_ime is False:
+                    self.release_keystack()
         return key
 
     def set_ime(self, keyboard, target_state: bool):
         if self.ime_on != target_state:
             self.ime_on = target_state
-
             # IME状態に応じてレイヤーを自動切り替え
             if target_state:
                 # 【IME ON時】 日本語用レイヤー
                 if self.ja_layer not in keyboard.active_layers and self.enable_ime:
-                    #keyboard.active_layers.append(self.ja_layer)
-                    #keyboard.active_layers = [self.ja_layer]
                     keyboard.active_layers.insert(0, self.ja_layer)
+                    combos.combos = combos_roma # Comboはローマ字設定
             else:
                 # 【IME OFF時】 基本レイヤー
                 if self.ja_layer in keyboard.active_layers:
                     keyboard.active_layers.remove(self.ja_layer)
-                    #keyboard.active_layers = [0]
+                    combos.combos = () # Comboは空に
+
+    def release_keystack(self):
+        # 1. PCへ送信中のHIDキーコードリストをクリア
+        keyboard.keys_pressed.clear()
+        # 2. 【最重要】マクロキー等がスタックしていたマトリックス状態をクリア
+        keyboard._coordkeys_pressed.clear()
+        # 3. 各モジュールの内部状態をリセット
+        for module in keyboard.modules:
+            # Combos モジュールの記憶リセット（安全な属性直接クリア）
+            if hasattr(module, 'active_combos') and isinstance(module.active_combos, (dict, list, set)):
+                module.active_combos.clear()
+            if hasattr(module, 'key_states') and isinstance(module.key_states, (dict, list, set)):
+                module.key_states.clear()
+            # Macros のアクティブ状態解除（List型なので clear() または [] を代入）
+            if hasattr(module, '_active'):
+                if isinstance(module._active, list):
+                    module._active.clear()
+                else:
+                    module._active = []
+            # HoldTap / Layers モジュールの状態クリア
+            if hasattr(module, 'key_states') and isinstance(module.key_states, (dict, list, set)):
+                module.key_states.clear()
+        # 4. レイヤーを基本（0番）に強制リセット
+        keyboard.active_layers = [0]
+        self.ime_on = False
 
     def after_matrix_scan(self, keyboard):
         # LOW (False) ＝ Windows(0) / HIGH (True) ＝ ChromeOS(1)
         self.os = self.os_switch.value
-
-# -------------------------------------------------------------------
-# IME ONの時だけ動く「条件付き Combos」モジュール
-# -------------------------------------------------------------------
-class IMEConditionalCombos(Combos):
-    def __init__(self, manager):
-        super().__init__()
-        self.manager = manager  # IMEManager への参照を保持
-
-    def process_key(self, keyboard, key, is_pressed, int_coord):
-        # IMEがOFFの時は、同時押し判定をスキップして即座にキーを出力
-        if not self.manager.ime_on:
-            return key
-
-        # IMEがONの時だけ、本来の同時押しを実行
-        return super().process_key(keyboard, key, is_pressed, int_coord)
 
 # -----------------------------------------------------------------
 # 状態監視 ＆ LED制御用カスタムモジュール
@@ -118,6 +128,7 @@ class StatusLEDManager(Module):
         self.ime_mgr = ime_mgr
         self.last_color = None
         self.scan_cnt = 0
+        self.prev_os = self.ime_mgr.os
         # --- GP25 青色LEDの設定 (デジタル出力) ---
         self.blue_led = digitalio.DigitalInOut(microcontroller.pin.GPIO25)
         self.blue_led.direction = digitalio.Direction.OUTPUT
@@ -136,12 +147,17 @@ class StatusLEDManager(Module):
 
         # --- GP25 青色LEDの制御 ---
         self.blue_led.value = not self.ime_mgr.enable_ime
+
+        # os の切り替えがあった場合はキー状態解除
+        if self.prev_os != self.ime_mgr.os:
+            self.ime_mgr.release_keystack()
+            self.prev_os = self.ime_mgr.os
         
         # 各種状態を取得
         cur_rgb = [0,0,0]
         cur_layer = keyboard.active_layers[0] if keyboard.active_layers else 0
         if cur_layer == 0:
-            if self.ime_mgr.os:
+            if self.prev_os:
                 cur_rgb[1] = 4
             else:
                 cur_rgb[0] = 64 if self.lock.get_caps_lock() else 4
@@ -208,8 +224,8 @@ keyboard.extensions.append(MediaKeys())
 holdtap = HoldTap()
 ime_manager = IMEManager()  # IME / カスタムCombo Managerを有効化
 keyboard.modules.append(ime_manager)
-combos = IMEConditionalCombos(manager=ime_manager)
-combos.timeout_ms = 60  # 同時押し判定時間（60ミリ秒）
+combos = Combos()
+combos.timeout_ms = 45  # 同時押し判定時間（45ミリ秒）
 keyboard.modules = [combos, holdtap] + keyboard.modules  # 先頭へ追加
 
 # OSからの要求 (Caps Lock / Num Lock等) を取得する拡張機能
@@ -251,8 +267,8 @@ def mcu_reset_fn(keyboard):
     microcontroller.reset() # マイコンリセット関数
 
 # 独自キー
-KC_LOY = KC.LT(1, KC.F16, tap_time=65)
-KC_ROY = KC.LT(2, KC.F15, tap_time=65)
+KC_LOY = KC.LT(1, KC.F16, tap_time=120)
+KC_ROY = KC.LT(2, KC.F15, tap_time=120)
 KC_LFA = KC.MO(3)
 KC_RFB = KC.MO(3)
 KC_LFB = KC.MO(3)
@@ -455,9 +471,10 @@ KC_DUP = KC.MACRO(Tap(KC.END),Press(KC.RSFT),Tap(KC.HOME),Tap(KC.HOME),Release(K
 KC_CAPS = KC.MACRO(Press(KC.RSFT),Tap(KC.CAPS),Release(KC.RSFT))
 
 # -------------------------------------------------------------------
-# 5. コンボ（同時押し）の定義
+# 5. コンボ（同時押し）の定義: 初期値は空
 # -------------------------------------------------------------------
-combos.combos = [
+combos.combos = ()  
+combos_roma = [
     Chord((KC_LOY, KC_QDOT), KC_XA),
     Chord((KC_LOY, KC_KA), KC.E),
     Chord((KC_LOY, KC_TA), KC_RI),

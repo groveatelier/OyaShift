@@ -110,10 +110,6 @@ class ime_manager():
         self.last_color = target_color
         self.rgb.set_rgb_fill(target_color)
         self.rgb.show()
-        if gc.mem_free() < 1024:
-            self.disable = True
-            print("IME Off - Free memory:", gc.mem_free())
-            #gc.collect()    # ガベージコレクション(このタイミングでついでにやる)
 
     def release_stack(self):
         print('- reset macro/combos -')
@@ -256,6 +252,9 @@ def _ime_off_press(*args, **kwargs):
 def _ime_enadis_press(*args, **kwargs):
     imeled.IME_switch()
 
+def _layer_reset(*args, **kwargs):
+    keyboard.active_layers = [0]
+
 # 独自キー
 L_OYA = make_key(names='loya')
 R_OYA = make_key(names='roya')
@@ -282,14 +281,77 @@ KC_RIPL = KC.MACRO(mcu_reset_fn)
 IME_SW = make_key(names='imesw', on_press=_ime_enadis_press)
 IME_ON = make_key(names='imeon', on_press=_ime_on_press)
 IME_OFF = make_key(names='imeof', on_press=_ime_off_press)
+LAYRST = make_key(names='layrst', on_press=_layer_reset)
 
 # アナログスティック (GP26, GP27) 予備PIN GP28, GP29
 stick_x = analogio.AnalogIn(board.GP26)
 stick_y = analogio.AnalogIn(board.GP27)
 is_dragging = False
-CENTER_VAL = 32768
-DEADZONE = 1500
-SENSITIVITY = 2048
+
+deadzone = 200
+ave_sense = 1225
+an_center_x = 33232
+an_center_y = 31575
+
+# アナログステック調整ルーチン
+def analog_calibration():
+    global an_center_x, an_center_y
+    imeled.blue_led.value = True # LED 操作
+    time.sleep(1)
+    an_center_x = stick_x.value
+    an_center_y = stick_y.value
+    # 最大最小値の計測
+    x_max = an_center_x
+    x_min = an_center_x
+    y_max = an_center_y
+    y_min = an_center_y
+    for _ in range(64):
+        ax = stick_x.value
+        ay = stick_y.value
+        x_max = ax if ax > x_max else x_max
+        x_min = ax if ax < x_min else x_min
+        y_max = ay if ay > y_max else y_max
+        y_min = ay if ay < y_min else y_min
+        time.sleep(0.1)
+    print(f'x min/max, y min/max: {x_min}/{x_max}, {y_min}/{y_max}')
+    imeled.blue_led.value = False # LED 操作
+    time.sleep(1)
+    imeled.blue_led.value = True # LED 操作
+    # 中心値の計測
+    an_center_x = stick_x.value
+    an_center_y = stick_y.value
+    cx_max = an_center_x
+    cx_min = an_center_x
+    cy_max = an_center_y
+    cy_min = an_center_y
+    for _ in range(64):
+        ax = stick_x.value
+        ay = stick_y.value
+        cx_max = ax if ax > cx_max else cx_max
+        cx_min = ax if ax < cx_min else cx_min
+        cy_max = ay if ay > cy_max else cy_max
+        cy_min = ay if ay < cy_min else cy_min
+        time.sleep(0.08)
+    print(f'cx min/max, cy min/max: {cx_min}/{cx_max}, {cy_min}/{cy_max}')
+    x_bre = (cx_max - cx_min)
+    y_bre = (cy_max - cy_min)
+    an_center_x = int(x_bre/2 + cx_min)
+    an_center_y = int(y_bre/2 + cy_min)
+    deadzone = x_bre if x_bre > y_bre else y_bre
+    print(f'center x/y, deadzone: {an_center_x}/{an_center_y}, {deadzone}')
+    x_sense_m = int((an_center_x - x_min - deadzone)/16)
+    x_sense_p = int((x_max - an_center_x - deadzone)/16)
+    y_sense_m = int((an_center_y - y_min - deadzone)/16)
+    y_sense_p = int((y_max - an_center_y - deadzone)/16)
+    print(f'sense x/y: {x_sense_m}, {x_sense_p} / {y_sense_m}, {y_sense_p}')
+    ave_sense = int((x_sense_m + x_sense_p + y_sense_m + y_sense_p)/4)
+    print(f'ave sense: {ave_sense}')
+    imeled.blue_led.value = False # LED 操作
+
+def _analog_calib(*args, **kwargs):
+    analog_calibration()
+
+ANACAL = make_key(names='calib', on_press=_analog_calib)
 
 # ホイール (GP18, GP19)
 # divisor=1 で最小単位を監視
@@ -330,18 +392,19 @@ def process_controls():
 
     else:
     # --- B. アナログスティックの計算 ---
-        x_val = stick_x.value - CENTER_VAL
-        y_val = CENTER_VAL - stick_y.value
-
+        x_val = stick_x.value - an_center_x     #CENTER_VAL
+        y_val = stick_y.value - an_center_y     #CENTER_VAL - stick_y.value
         move_x = 0
         move_y = 0
 
-        if abs(x_val) > DEADZONE:
-            move_x = int((x_val - (DEADZONE if x_val > 0 else -DEADZONE)) / SENSITIVITY)
-        
-        if abs(y_val) > DEADZONE:
-            move_y = int(-(y_val - (DEADZONE if y_val > 0 else -DEADZONE)) / SENSITIVITY)
-
+        #if abs(x_val) > DEADZONE:
+        #    move_x = int((x_val - (DEADZONE if x_val > 0 else -DEADZONE)) / SENSITIVITY)
+        #if abs(y_val) > DEADZONE:
+        #    move_y = int(-(y_val - (DEADZONE if y_val > 0 else -DEADZONE)) / SENSITIVITY)
+        if abs(x_val) > deadzone:
+            move_x = int((x_val - (deadzone if x_val > 0 else -deadzone)) / ave_sense)
+        if abs(y_val) > deadzone:
+            move_y = int((y_val - (deadzone if y_val > 0 else -deadzone)) / ave_sense)
         #print(f"xxx {keyboard.keys_pressed}")
         if KC.MB_LMB in keyboard.keys_pressed:
             if not is_dragging:
@@ -578,8 +641,8 @@ keyboard.keymap = [
         KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.MUTE, KC.VOLU, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.NO,
-        KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.VOLD, KC.TRNS, KC.TRNS,
-        KC.TRNS, KC.TRNS, KC.F10,  KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
+        LAYRST,  KC.TRNS, KC.TRNS, KC.TRNS, KC.VOLD, KC.TRNS, KC.TRNS,
+        ANACAL,  KC.TRNS, KC.F10,  KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
         KC.F1,   KC.F3,   IME_SW,  KC.F12,  KC.TRNS, KC.TRNS, KC.TRNS
     ],
 

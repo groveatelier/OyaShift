@@ -237,6 +237,7 @@ def send_string(key, keyboard, *args):
             key_code = getattr(KC, char, None)
             if key_code:
                 keyboard.tap_key(key_code)
+                time.sleep(0.01)
 
 def may_key_def(jp_text):
     mykey = make_key(names='jpkey', on_press=send_string)
@@ -281,8 +282,8 @@ KC_FALT = KC.LM(0, KC.LALT)
 KC_FCTL = KC.LM(0, KC.LCTL)
 KC_FWIN = KC.LM(0, KC.LWIN)
 KC_FFC = KC.LM(3, KC_RFC)
-KC_QDOT = KC.DOT
-KC_ZDOT = KC.MACRO(KC.DOT)
+#KC_QDOT = KC.DOT
+#KC_ZDOT = KC.MACRO(KC.DOT)
 KC_STAB = KC.LSFT(KC.TAB)
 KC_APP1 = KC.MACRO(send_app1_fn)
 KC_APP2 = KC.MACRO(send_app2_fn)
@@ -525,6 +526,9 @@ KC_XYA = may_key_def('xya')
 KC_XYU = may_key_def('xyu')
 KC_XYO = may_key_def('xyo')
 
+KC_QDOT = may_key_def('.')
+KC_ZDOT = may_key_def('.')
+
 # -------------------------------------------------------------------
 # 4. 特殊系マクロの定義
 # -------------------------------------------------------------------
@@ -565,7 +569,6 @@ combos_roma = [
     Chord((KC_LOY, KC_TO), KC_DO),
     Chord((KC_LOY, KC_KI), KC_GI),
     Chord((KC_LOY, KC.I), KC_PO),
-    Chord((KC_LOY, KC_NN), KC_XU),
     Chord((KC_LOY, KC_ZDOT), KC_XU),
     Chord((KC_LOY, KC_HI), KC.MINS),
     Chord((KC_LOY, KC_SU), KC_RO),
@@ -630,7 +633,7 @@ keyboard.keymap = [
         KC.TRNS, KC.TRNS, KC.LPRN, KC.CIRC, KC.N5,  KC.PLUS, KC.TRNS,
         KC.TRNS, KC.COMM, KC.EQL,  KC.MINS, KC.N2,  KC.SLSH, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.TRNS, KC.N0,   KC.N0,  KC.EQL,  KC.TRNS,
-        KC.TRNS, KC.TRNS, KC.UNDS, KC.TRNS, KC.DOT, KC.TO(5),KC.NO,
+        KC.TRNS, KC.TRNS, KC.UNDS, KC.TRNS, KC.DOT, KC.TRNS, KC.NO,
         KC.DOT,  KC.TRNS, KC.RPRN, KC.N1,   KC.N3,  KC.TRNS, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.QUOT, KC.N4,   KC.N6,  KC.TRNS, KC.TRNS,
         KC.QUES, KC.TRNS, KC.TRNS, KC.N7,   KC.N9,  KC.TRNS, KC.TRNS

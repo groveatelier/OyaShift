@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/9/8 [Layout05] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/9/9 [Layout05] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -268,6 +268,11 @@ def _ime_enadis_press(*args, **kwargs):
 def _layer_reset(*args, **kwargs):
     keyboard.active_layers = [0]
 
+stick_md = True
+def _toggle_stick_mode(*args, **kwargs):
+    global stick_md
+    stick_md = not stick_md
+
 # 独自キー
 L_OYA = make_key(names='loya')
 R_OYA = make_key(names='roya')
@@ -282,8 +287,6 @@ KC_FALT = KC.LM(0, KC.LALT)
 KC_FCTL = KC.LM(0, KC.LCTL)
 KC_FWIN = KC.LM(0, KC.LWIN)
 KC_FFC = KC.LM(3, KC_RFC)
-#KC_QDOT = KC.DOT
-#KC_ZDOT = KC.MACRO(KC.DOT)
 KC_STAB = KC.LSFT(KC.TAB)
 KC_APP1 = KC.MACRO(send_app1_fn)
 KC_APP2 = KC.MACRO(send_app2_fn)
@@ -293,6 +296,7 @@ IME_SW = make_key(names='imesw', on_press=_ime_enadis_press)
 IME_ON = make_key(names='imeon', on_press=_ime_on_press)
 IME_OFF = make_key(names='imeof', on_press=_ime_off_press)
 LAYRST = make_key(names='layrst', on_press=_layer_reset)
+STICK = make_key(names='stk', on_press=_toggle_stick_mode)
 
 # アナログスティック (GP26, GP27) 予備PIN GP28, GP29
 stick_x = analogio.AnalogIn(board.GP26)
@@ -385,7 +389,7 @@ boost_sw.pull = digitalio.Pull.UP
 # 2. 高速入力処理ループ
 # -------------------------------------------------------------------
 def process_controls():
-    global last_encoder_pos, is_dragging, gc_count, boost_sw
+    global last_encoder_pos, is_dragging, gc_count, boost_sw, stick_md
 
     fast = boost_sw.value is False  # Boost SW on なら
 
@@ -399,7 +403,7 @@ def process_controls():
             raw_diff *= 2   # 倍速
 
         # 右親 押下なら 音量制御
-        if 2 in keyboard.active_layers:
+        if 5 in keyboard.active_layers:
             if raw_diff > 0:
                 cc.send(ConsumerControlCode.VOLUME_INCREMENT) # 音量UP
             else:
@@ -419,25 +423,35 @@ def process_controls():
             move_x = int((x_val - (deadzone if x_val > 0 else -deadzone)) / ave_sense)
         if abs(y_val) > deadzone:
             move_y = int((y_val - (deadzone if y_val > 0 else -deadzone)) / ave_sense)
-        #print(f"xxx {keyboard.keys_pressed}")
-        if KC.MB_LMB in keyboard.keys_pressed:
-            if not is_dragging:
-                mouse.press(1)  # 1: mouse LBTN
-                is_dragging = True
+ 
+        if stick_md:
+            if KC.MB_LMB in keyboard.keys_pressed:
+                if not is_dragging:
+                    mouse.press(1)  # 1: mouse LBTN
+                    is_dragging = True
+            else:
+                if is_dragging:
+                    mouse.release(1) 
+                    is_dragging = False
+
+            # --- C. マウス操作の送信 ---
+            # アナログ移動がある時のみ送信
+            if move_x != 0 or move_y != 0:
+                if fast: # 逓倍
+                    if abs(x_val) >= 2: move_x = int(move_x/2)
+                    if abs(y_val) >= 2: move_y = int(move_y/2) 
+                mouse.move(x=move_x, y=move_y)
         else:
-            if is_dragging:
-                mouse.release(1) 
-                is_dragging = False
-
-        # --- C. マウス操作の送信 ---
-        # アナログ移動がある時のみ送信
-        if move_x != 0 or move_y != 0:
-            if fast: # 倍速
-                move_x *= 2
-                move_y *= 2
-            mouse.move(x=move_x, y=move_y)
-            analog_minmax(x_val, y_val)
-
+            if abs(move_x) > 2:
+                key_to_tap = KC.RIGHT if move_x > 0 else KC.LEFT
+                keyboard.tap_key(key_to_tap)
+                time.sleep(0.12)
+            if abs(move_y) > 2:
+                key_to_tap = KC.DOWN if move_y > 0 else KC.UP
+                keyboard.tap_key(key_to_tap)
+                time.sleep(0.12)
+        
+        analog_minmax(x_val, y_val)
     # IMEとLEDの制御
     imeled.layer_led()
 
@@ -642,7 +656,7 @@ keyboard.keymap = [
     # Layer 2: RfA Layer
     [
         KC.LANG5,KC.SLCK, KC_DELF, KC.DEL,  KC.INS,  KC.TRNS, IME_OFF,
-        KC_CAPS, KC.LANG3,KC.TRNS, KC_SEL1, KC.UP,   KC.TRNS, KC.MHEN,
+        KC_CAPS, KC.LANG3,STICK,   KC_SEL1, KC.UP,   KC.TRNS, KC.MHEN,
         KC_FSFT, KC.TRNS, KC.TRNS, KC_DUP,  KC.DOWN, KC.TRNS, IME_ON,
         KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.HENK,
         KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.NO,

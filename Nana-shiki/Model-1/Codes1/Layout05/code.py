@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/9/9 [Layout05] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/9/11 [Layout05] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -232,17 +232,36 @@ imeled = ime_manager(rgb, lock_status)
 
 # --- カスタムキー定義 ---
 def send_string(key, keyboard, *args):
-    if key.jp:
-        for char in key.jp:
-            key_code = getattr(KC, char, None)
-            if key_code:
-                keyboard.tap_key(key_code)
-                time.sleep(0.01)
+    for char in key.jp:
+        key_code = getattr(KC, char, None)
+        if key_code:
+            keyboard.tap_key(key_code)
+            time.sleep(0.01)
 
-def may_key_def(jp_text):
-    mykey = make_key(names='jpkey', on_press=send_string)
-    mykey.jp = jp_text
-    return mykey
+class JPkeys:
+    def __init__(self):
+        self.make_jp_keys()
+
+    def make_jp_key(self, shin, boin):
+        key = make_key(names='jpk', on_press=send_string)
+        key.jp = shin + boin
+        setattr(self, key.jp.upper(), key)
+
+    def make_jp_keys(self):
+        for shin in 'kstnhmrgzdbpx':
+            for boin in 'aiueo':
+                self.make_jp_key(shin, boin)
+        for shin in ['y','xy']:
+            for boin in 'auo':
+                self.make_jp_key(shin, boin)
+        for shin in ['xt','v']:
+            self.make_jp_key(shin, 'u')
+        for boin in 'ao':
+            self.make_jp_key('w', boin)
+        for shin in 'qz':
+            self.make_jp_key(shin,'dot')
+        self.QDOT.jp = '.'
+        self.ZDOT.jp = '.'
 
 def send_app1_fn(keyboard):
     cc.send(0x0194)  # 0x0194: AL Local Machine Browser (マイコンピュータ / APP1)
@@ -460,102 +479,24 @@ keyboard.before_matrix_scan = process_controls
 # -------------------------------------------------------------------
 # 3. ローマ字出力用マクロの定義
 # -------------------------------------------------------------------
-KC_KA = may_key_def('ka')
-KC_KI = may_key_def('ki')
-KC_KU = may_key_def('ku')
-KC_KE = may_key_def('ke')
-KC_KO = may_key_def('ko')
-KC_SA = may_key_def('sa')
-KC_SI = may_key_def('si')
-KC_SU = may_key_def('su')
-KC_SE = may_key_def('se')
-KC_SO = may_key_def('so')
-KC_TA = may_key_def('ta')
-KC_TI = may_key_def('ti')
-KC_TU = may_key_def('tu')
-KC_TE = may_key_def('te')
-KC_TO = may_key_def('to')
-KC_NA = may_key_def('na')
-KC_NI = may_key_def('ni')
-KC_NU = may_key_def('nu')
-KC_NE = may_key_def('ne')
-KC_NO = may_key_def('no')
-KC_HA = may_key_def('ha')
-KC_HI = may_key_def('hi')
-KC_HU = may_key_def('hu')
-KC_HE = may_key_def('he')
-KC_HO = may_key_def('ho')
-KC_MA = may_key_def('ma')
-KC_MI = may_key_def('mi')
-KC_MU = may_key_def('mu')
-KC_ME = may_key_def('me')
-KC_MO = may_key_def('mo')
-KC_YA = may_key_def('ya')
-KC_YU = may_key_def('yu')
-KC_YO = may_key_def('yo')
-KC_RA = may_key_def('ra')
-KC_RI = may_key_def('ri')
-KC_RU = may_key_def('ru')
-KC_RE = may_key_def('re')
-KC_RO = may_key_def('ro')
-KC_WA = may_key_def('wa')
-KC_WO = may_key_def('wo')
+jp = JPkeys()
 KC_NN = KC.MACRO(Tap(KC.N), Tap(KC.N))
-
-KC_GA = may_key_def('ga')
-KC_GI = may_key_def('gi')
-KC_GU = may_key_def('gu')
-KC_GE = may_key_def('ge')
-KC_GO = may_key_def('go')
-KC_ZA = may_key_def('za')
-KC_ZI = may_key_def('zi')
-KC_ZU = may_key_def('zu')
-KC_ZE = may_key_def('ze')
-KC_ZO = may_key_def('zo')
-KC_DA = may_key_def('da')
-KC_DI = may_key_def('di')
-KC_DU = may_key_def('du')
-KC_DE = may_key_def('de')
-KC_DO = may_key_def('do')
-KC_BA = may_key_def('ba')
-KC_BI = may_key_def('bi')
-KC_BU = may_key_def('bu')
-KC_BE = may_key_def('be')
-KC_BO = may_key_def('bo')
-KC_VU = may_key_def('vu')
-
-KC_PA = may_key_def('pa')
-KC_PI = may_key_def('pi')
-KC_PU = may_key_def('pu')
-KC_PE = may_key_def('pe')
-KC_PO = may_key_def('po')
-
-KC_XA = may_key_def('xa')
-KC_XI = may_key_def('xi')
-KC_XU = may_key_def('xu')
-KC_XE = may_key_def('xe')
-KC_XO = may_key_def('xo')
-KC_XTU = may_key_def('xtu')
-KC_XYA = may_key_def('xya')
-KC_XYU = may_key_def('xyu')
-KC_XYO = may_key_def('xyo')
-
-KC_QDOT = may_key_def('.')
-KC_ZDOT = may_key_def('.')
 
 # -------------------------------------------------------------------
 # 4. 特殊系マクロの定義
 # -------------------------------------------------------------------
-# 一行削除
-KC_DEL1 = KC.MACRO(Tap(KC.HOME),Tap(KC.HOME),Press(KC.RSFT),Tap(KC.END),Release(KC.RSFT),Tap(KC.DEL))
-# 前方削除
-KC_DELF = KC.MACRO(Press(KC.RSFT),Tap(KC.HOME),Tap(KC.HOME),Release(KC.RSFT),Tap(KC.DEL))
-# 後方削除
-KC_DELB = KC.MACRO(Press(KC.RSFT),Tap(KC.END),Release(KC.RSFT),Tap(KC.DEL))
 # 一行選択
-KC_SEL1 = KC.MACRO(Tap(KC.HOME),Tap(KC.HOME),Press(KC.RSFT),Tap(KC.DOWN),Release(KC.RSFT))
+ACT_SEL1 = (Tap(KC.HOME),Tap(KC.HOME),Press(KC.RSFT),Tap(KC.DOWN),Release(KC.RSFT))
+KC_SEL1 = KC.MACRO(*ACT_SEL1)
+# 一行削除
+KC_DEL1 = KC.MACRO(*ACT_SEL1,Tap(KC.DEL))
+# 前方削除
+ACT_RSDEL = (Release(KC.RSFT),Tap(KC.DEL))
+KC_DELF = KC.MACRO(Press(KC.RSFT),Tap(KC.HOME),Tap(KC.HOME),*ACT_RSDEL)
+# 後方削除
+KC_DELB = KC.MACRO(Press(KC.RSFT),Tap(KC.END),*ACT_RSDEL)
 # 一行複写
-KC_DUP = KC.MACRO(Tap(KC.END),Press(KC.RSFT),Tap(KC.HOME),Tap(KC.HOME),Release(KC.RSFT),Press(KC.LCTL),Tap(KC.C),Tap(KC.V),Release(KC.LCTL),Tap(KC.ENT),Tap(KC.HOME),Press(KC.LCTL),Tap(KC.V),Release(KC.LCTL))
+KC_DUP = KC.MACRO(Tap(KC.HOME), Tap(KC.LCTL(KC.C)), Tap(KC.LCTL(KC.V)))
 # caps lock Windows/chrome で処理を合わせる為
 KC_CAPS = KC.MACRO(Press(KC.RSFT),Tap(KC.CAPS),Release(KC.RSFT))
 
@@ -564,64 +505,65 @@ KC_CAPS = KC.MACRO(Press(KC.RSFT),Tap(KC.CAPS),Release(KC.RSFT))
 # -------------------------------------------------------------------
 combos.combos = ()  
 combos_roma = [
-    Chord((KC_LOY, KC_QDOT), KC_XA),
-    Chord((KC_LOY, KC_KA), KC.E),
-    Chord((KC_LOY, KC_TA), KC_RI),
-    Chord((KC_LOY, KC_KO), KC_XYA),
-    Chord((KC_LOY, KC_SA), KC_RE),
-    Chord((KC_LOY, KC_RA), KC_PA),
-    Chord((KC_LOY, KC_TI), KC_DI),
-    Chord((KC_LOY, KC_KU), KC_GU),
-    Chord((KC_LOY, KC_TU), KC_DU),
-    Chord((KC_LOY, KC.COMM), KC_PI),
-    Chord((KC_LOY, KC.U), KC_WO),
-    Chord((KC_LOY, KC_SI), KC.A),
-    Chord((KC_LOY, KC_TE), KC_NA),
-    Chord((KC_LOY, KC_KE), KC_XYU),
-    Chord((KC_LOY, KC_SE), KC_MO),
-    Chord((KC_LOY, KC_HA), KC_BA),
-    Chord((KC_LOY, KC_TO), KC_DO),
-    Chord((KC_LOY, KC_KI), KC_GI),
-    Chord((KC_LOY, KC.I), KC_PO),
-    Chord((KC_LOY, KC_ZDOT), KC_XU),
-    Chord((KC_LOY, KC_HI), KC.MINS),
-    Chord((KC_LOY, KC_SU), KC_RO),
-    Chord((KC_LOY, KC_HU), KC_YA),
-    Chord((KC_LOY, KC_HE), KC_XI),
-    Chord((KC_LOY, KC_ME), KC_PU),
-    Chord((KC_LOY, KC_SO), KC_ZO),
-    Chord((KC_LOY, KC_NE), KC_PE),
-    Chord((KC_LOY, KC_HO), KC_BO),
+    Chord((KC_LOY, jp.SE), jp.MO),
+    Chord((KC_ROY, jp.HA), jp.MI),
+    Chord((KC_LOY, jp.SA), jp.RE),
+    Chord((KC_ROY, jp.RA), jp.YO),
+    Chord((KC_LOY, jp.HE), jp.XI),
+    Chord((KC_ROY, jp.ME), jp.NU),
+    Chord((KC_LOY, jp.KE), jp.XYU),
+    Chord((KC_ROY, jp.TO), KC.O),
+    Chord((KC_LOY, jp.KO), jp.XYA),
+    Chord((KC_ROY, jp.TI), jp.NI),
+    Chord((KC_LOY, jp.HU), jp.YA),
+    Chord((KC_ROY, jp.SO), jp.YU),
+    Chord((KC_LOY, jp.TE), jp.NA),
+    Chord((KC_ROY, jp.KI), jp.NO),
+    Chord((KC_LOY, jp.TA), jp.RI),
+    Chord((KC_ROY, jp.KU), jp.RU),
+    Chord((KC_LOY, jp.SU), jp.RO),
+    Chord((KC_ROY, jp.NE), jp.MU),
+    Chord((KC_LOY, jp.SI), KC.A),
+    Chord((KC_ROY, KC.I), jp.XYO),
+    Chord((KC_LOY, jp.KA), KC.E),
+    Chord((KC_ROY, jp.TU), jp.MA),
+    Chord((KC_LOY, jp.HI), KC.MINS),
+    Chord((KC_ROY, jp.HO), jp.WA),
+    Chord((KC_LOY, KC.U), jp.WO),
+    Chord((KC_ROY, KC_NN), jp.XTU),
+    Chord((KC_LOY, jp.ZDOT), jp.XU),
+    Chord((KC_ROY, KC.SLSH), jp.XO),
 
-    Chord((KC_ROY, KC_QDOT), KC.QUES),
-    Chord((KC_ROY, KC_KA), KC_GA),
-    Chord((KC_ROY, KC_TA), KC_DA),
-    Chord((KC_ROY, KC_KO), KC_GO),
-    Chord((KC_ROY, KC_SA), KC_ZA),
-    Chord((KC_ROY, KC_RA), KC_YO),
-    Chord((KC_ROY, KC_TI), KC_NI),
-    Chord((KC_ROY, KC_KU), KC_RU),
-    Chord((KC_ROY, KC_TU), KC_MA),
-    Chord((KC_ROY, KC.COMM), KC_XE),
-    Chord((KC_ROY, KC.U), KC_VU),
-    Chord((KC_ROY, KC_SI), KC_ZI),
-    Chord((KC_ROY, KC_TE), KC_DE),
-    Chord((KC_ROY, KC_KE), KC_GE),
-    Chord((KC_ROY, KC_SE), KC_ZE),
-    Chord((KC_ROY, KC_HA), KC_MI),
-    Chord((KC_ROY, KC_TO), KC.O),
-    Chord((KC_ROY, KC_KI), KC_NO),
-    Chord((KC_ROY, KC.I), KC_XYO),
-    Chord((KC_ROY, KC_NN), KC_XTU),
-    Chord((KC_ROY, KC_HI), KC_BI),
-    Chord((KC_ROY, KC_SU), KC_ZU),
-    Chord((KC_ROY, KC_HU), KC_BU),
-    Chord((KC_ROY, KC_HE), KC_BE),
-    Chord((KC_ROY, KC_ME), KC_NU),
-    Chord((KC_ROY, KC_SO), KC_YU),
-    Chord((KC_ROY, KC_NE), KC_MU),
-    Chord((KC_ROY, KC_HO), KC_WA),
-    Chord((KC_ROY, KC.SLSH), KC_XO)
+    Chord((KC_ROY, jp.SE), jp.ZE),
+    Chord((KC_LOY, jp.HA), jp.BA),
+    Chord((KC_ROY, jp.SA), jp.ZA),
+    Chord((KC_ROY, jp.HE), jp.BE),
+    Chord((KC_ROY, jp.KE), jp.GE),
+    Chord((KC_LOY, jp.TO), jp.DO),
+    Chord((KC_ROY, jp.KO), jp.GO),
+    Chord((KC_LOY, jp.TI), jp.DI),
+    Chord((KC_ROY, jp.HU), jp.BU),
+    Chord((KC_LOY, jp.SO), jp.ZO),
+    Chord((KC_ROY, jp.TE), jp.DE),
+    Chord((KC_LOY, jp.KI), jp.GI),
+    Chord((KC_ROY, jp.TA), jp.DA),
+    Chord((KC_LOY, jp.KU), jp.GU),
+    Chord((KC_ROY, jp.SU), jp.ZU),
+    Chord((KC_ROY, jp.SI), jp.ZI),
+    Chord((KC_ROY, jp.KA), jp.GA),
+    Chord((KC_LOY, jp.TU), jp.DU),
+    Chord((KC_ROY, jp.HI), jp.BI),
+    Chord((KC_LOY, jp.HO), jp.BO),
+    Chord((KC_ROY, KC.U), jp.VU),
+    Chord((KC_ROY, jp.QDOT), KC.QUES),
+    Chord((KC_LOY, jp.QDOT), jp.XA),
+    Chord((KC_ROY, KC.COMM), jp.XE),
+
+    Chord((KC_LOY, jp.RA), jp.PA),
+    Chord((KC_LOY, jp.ME), jp.PU),
+    Chord((KC_LOY, jp.NE), jp.PE),
+    Chord((KC_LOY, KC.I), jp.PO),
+    Chord((KC_LOY, KC.COMM), jp.PI)
 ]
 
 # -------------------------------------------------------------------
@@ -703,14 +645,14 @@ keyboard.keymap = [
 
     # Layer 6: 日本語 Base Layer
     [
-        KC.TAB,  KC_KA,   KC_KO,   KC.DEL,  KC_KU,   KC.COMM, KC_LOY,
-        KC_STAB, KC_SI,   KC_KE,   KC_RA,   KC_KI,   KC_NN,   KC.SPC,
-        KC_FSFT, KC_HI,   KC_HU,   KC_HA,   KC_NE,   KC.SLSH, KC_ROY,
-        KC_FCTL, KC_FWIN, KC.TRNS, KC_ME,   KC_FFC,  KC_FALT, KC.SPC,
-        KC_FALT, KC.LSFT, KC_HE,   KC.TRNS, KC.RSFT, KC_FCTL, KC.NO,
-        KC_ZDOT, KC_SU,   KC_SE,   KC_SO,   KC_HO,   KC_FSFT, KC.MB_RMB,
-        KC.U,    KC_TE,   KC_SA,   KC_TO,   KC.I,    KC.ENT,  KC.MB_MMB,
-        KC_QDOT, KC_TA,   KC.ESC,  KC_TI,   KC_TU,   KC.BKSP, KC.MB_LMB
+        KC.TAB,  jp.KA,   jp.KO,   KC.DEL,  jp.KU,   KC.COMM, KC_LOY,
+        KC_STAB, jp.SI,   jp.KE,   jp.RA,   jp.KI,   KC_NN,   KC.SPC,
+        KC_FSFT, jp.HI,   jp.HU,   jp.HA,   jp.NE,   KC.SLSH, KC_ROY,
+        KC_FCTL, KC_FWIN, KC.TRNS, jp.ME,   KC_FFC,  KC_FALT, KC.SPC,
+        KC_FALT, KC.LSFT, jp.HE,   KC.TRNS, KC.RSFT, KC_FCTL, KC.NO,
+        jp.ZDOT, jp.SU,   jp.SE,   jp.SO,   jp.HO,   KC_FSFT, KC.MB_RMB,
+        KC.U,    jp.TE,   jp.SA,   jp.TO,   KC.I,    KC.ENT,  KC.MB_MMB,
+        jp.QDOT, jp.TA,   KC.ESC,  jp.TI,   jp.TU,   KC.BKSP, KC.MB_LMB
     ]
 ]
 

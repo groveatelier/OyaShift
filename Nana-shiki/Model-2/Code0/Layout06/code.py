@@ -498,6 +498,10 @@ KC_DELB = KC.MACRO(Press(KC.RSFT),Tap(KC.END),*ACT_RSDEL)
 KC_DUP = KC.MACRO(Tap(KC.HOME), Tap(KC.LCTL(KC.C)), Tap(KC.LCTL(KC.V)))
 # caps lock Windows/chrome で処理を合わせる為
 KC_CAPS = KC.MACRO(Press(KC.RSFT),Tap(KC.CAPS),Release(KC.RSFT))
+# 全コピー
+KC_CTAC = KC.MACRO(Tap(KC.LCTL(KC.A)), Tap(KC.LCTL(KC.C)))
+# 全ペースト
+KC_CTAV = KC.MACRO(Tap(KC.LCTL(KC.A)), Tap(KC.LCTL(KC.V)))
 
 # -------------------------------------------------------------------
 # 5. コンボ（同時押し）の定義: 初期値は空
@@ -578,8 +582,8 @@ keyboard.keymap = [
         KC.LCTL, KC.LWIN, KC.SPC,  KC.N,    KC_RFC,  KC.RALT, KC.RSFT,
         KC.LALT, KC.LSFT, KC.B,    KC_RFA,  KC_RFB,  KC.RCTL, TG_STCK,
         KC.Z,    KC.C,    KC.G,    KC.M,    KC.DOT,  KC.RSFT, KC.MB_RMB,
-        KC.A,    KC.D,    KC.T,    KC.J,    KC.L,    KC.ENT,  KC.MB_MMB,
-        KC.Q,    KC.E,    KC.ESC,  KC.U,    KC.O,    KC.BKSP, KC.MB_LMB
+        KC.A,    KC.D,    KC.T,    KC.J,    KC.L,    KC.ENT,  KC.MB_LMB,
+        KC.Q,    KC.E,    KC.ESC,  KC.U,    KC.O,    KC.BKSP, KC.MB_MMB
     ],
 
     # Layer 1: Num Lock
@@ -598,10 +602,10 @@ keyboard.keymap = [
     [
         KC.LANG5,KC.SLCK, KC_DELF, KC.DEL,  KC.INS,  KC.TRNS, IME_OFF,
         KC_CAPS, KC.LANG3,KC.TRNS, KC_SEL1, KC.UP,   KC.TRNS, KC.HENK,
-        KC_FSFT, KC.TRNS, KC.TRNS, KC_DUP,  KC.DOWN, KC.TRNS, IME_ON,
+        KC_FSFT, KC.TRNS, KC_CTAV, KC_DUP,  KC.DOWN, KC.TRNS, IME_ON,
         KC.TRNS, KC.TRNS, KC.MHEN, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
-        KC.TRNS, KC.TRNS, KC.PSCR, KC.LEFT, KC.RGHT, KC_FSFT, KC.TRNS,
+        KC.TRNS, KC_CTAC, KC.PSCR, KC.LEFT, KC.RGHT, KC_FSFT, KC.TRNS,
         KC.LANG4,KC.KANA, KC_DELB, KC.END,  KC.PGDN, KC.TRNS, KC.TRNS,
         KC.PAUS, KC_DEL1, KC.TRNS, KC.HOME, KC.PGUP, KC.TRNS, KC.TRNS
     ],
@@ -636,7 +640,7 @@ keyboard.keymap = [
         KC.TRNS, KC.TRNS, KC.LPRN, KC.CIRC, KC.N5,  KC.PLUS, KC.TRNS,
         KC.TRNS, KC.COMM, KC.UNDS, KC.MINS, KC.N2,  KC.SLSH, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.TRNS, KC.N0,   KC.N0,  KC.EQL,  KC.TRNS,
-        KC.TRNS, KC.TRNS, KC.EQL,  KC.TRNS, KC.DOT, KC.TG(1),KC.NO,
+        KC.TRNS, KC.TRNS, KC.EQL,  KC.TRNS, KC.DOT, KC.TG(1),KC.TRNS,
         KC.DOT,  KC.TRNS, KC.RPRN, KC.N1,   KC.N3,  KC.TRNS, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.QUOT, KC.N4,   KC.N6,  KC.TRNS, KC.TRNS,
         KC.QUES, KC.TRNS, KC.TRNS, KC.N7,   KC.N9,  KC.TRNS, KC.TRNS
@@ -648,10 +652,10 @@ keyboard.keymap = [
         KC_STAB, jp.SI,   jp.KE,   jp.RA,   jp.KI,   KC_NN,   KC.SPC,
         KC_FSFT, jp.HI,   jp.HU,   jp.HA,   jp.NE,   KC.SLSH, KC_ROY,
         KC_FCTL, KC_FWIN, KC.TRNS, jp.ME,   KC_FFC,  KC_FALT, KC.SPC,
-        KC_FALT, KC.LSFT, jp.HE,   KC.TRNS, KC.RSFT, KC_FCTL, KC.NO,
+        KC_FALT, KC.LSFT, jp.HE,   KC.TRNS, KC.RSFT, KC_FCTL, KC.TRNS,
         jp.ZDOT, jp.SU,   jp.SE,   jp.SO,   jp.HO,   KC_FSFT, KC.MB_RMB,
-        KC.U,    jp.TE,   jp.SA,   jp.TO,   KC.I,    KC.ENT,  KC.MB_MMB,
-        jp.QDOT, jp.TA,   KC.ESC,  jp.TI,   jp.TU,   KC.BKSP, KC.MB_LMB
+        KC.U,    jp.TE,   jp.SA,   jp.TO,   KC.I,    KC.ENT,  KC.MB_LMB,
+        jp.QDOT, jp.TA,   KC.ESC,  jp.TI,   jp.TU,   KC.BKSP, KC.MB_MMB
     ]
 ]
 

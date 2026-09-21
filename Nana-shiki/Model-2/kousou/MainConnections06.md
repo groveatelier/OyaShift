@@ -12,9 +12,9 @@
 | 3(2) | LShift | x  | v    | h    | ,    | /    | ROya |  
 | 4(3) | LCtrl| meta | LSpc | n    | RFnC | RAlt | RBar | 
 | 5(4) | LAlt | LBar | b    | RFnA | (RFn) | RCtrl | D-Btn | 
-| 6(5) | z    | c    | g    | m    | .    | RShift | R-Btn | 
+| 6(5) | z    | c    | g    | m    | .    | RShift | L-Btn | 
 | 7(6) | a    | d    | t    | j    | l    | Enter | M-Btn |
-| 8(7) | q    | e    | ESC  | u    | o    | BS | L-Btn |
+| 8(7) | q    | e    | ESC  | u    | o    | BS | R-Btn |
 
 ---
 

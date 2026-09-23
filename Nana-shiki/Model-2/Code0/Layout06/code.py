@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/9/21 [Layout06] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/9/23 [Layout06] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -42,9 +42,8 @@ import kmk.extensions.keymap_extras.keymap_jp
 # ===================================================================
 class ime_manager():
     def __init__(self, rgb_ext, lock_ext):
-        self.os = 0
         self.disable = False
-        self.layer = 9
+        self.layer = 0
         self.rgb = rgb_ext
         self.lock = lock_ext
         self.ime_on = (KC.LANG1, KC.HENK)
@@ -55,6 +54,7 @@ class ime_manager():
         self.os_switch = digitalio.DigitalInOut(board.GP15)
         self.os_switch.direction = digitalio.Direction.INPUT
         self.os_switch.pull = digitalio.Pull.UP
+        self.os = not self.os_switch.value
         # --- GP25 青色LEDの設定 (デジタル出力) ---
         self.blue_led = digitalio.DigitalInOut(microcontroller.pin.GPIO25)
         self.blue_led.direction = digitalio.Direction.OUTPUT
@@ -83,33 +83,39 @@ class ime_manager():
             combos.combos = () # Comboは空に
             keyboard.tap_key(self.ime_off[self.os])
 
-    def layer_led(self):
-        if not self.is_state_change():  # 無変化の場合はGC確認
-            self.check_gc()
-            return
-        # --- 青色LEDの制御 ---
-        self.blue_led.value = self.disable
-        # 各種状態を取得
+    def color_led(self):
+        global stick_md
+        # Layer及びOS情報をもとにLEDを設定
         cur_rgb = [0,0,0]
         cur_layer = keyboard.active_layers[0] if keyboard.active_layers else 0
         if cur_layer == 0:
             if self.os:
-                cur_rgb[1] = 4
+                cur_rgb[1] = 8
             else:
-                cur_rgb[0] = 64 if self.lock.get_caps_lock() else 4
+                cur_rgb[0] = 64 if self.lock.get_caps_lock() else 8
                 cur_rgb[2] = 64 if self.lock.get_scroll_lock() else 0
         else:
             cur_layer += 1  # 色調整
             if cur_layer & 1:
-                cur_rgb[2] = 16
+                cur_rgb[2] = 32
             if cur_layer & 2:
-                cur_rgb[1] = 16       
+                cur_rgb[1] = 24      
             if cur_layer & 4:
-                cur_rgb[0] = 16
+                cur_rgb[0] = 32
+        if not stick_md:
+            cur_rgb[2] += 48
         target_color = tuple(cur_rgb)
         self.last_color = target_color
         self.rgb.set_rgb_fill(target_color)
         self.rgb.show()
+
+    def layer_led(self):
+        if not self.is_state_change():  # 無変化の場合はGC確認
+            self.check_gc()
+            return
+        # --- 青色&RGB LEDの制御 ---
+        self.blue_led.value = self.disable
+        self.color_led()
 
     def release_stack(self):
         print('- reset macro/combos -')
@@ -145,12 +151,15 @@ class ime_manager():
         # キーが押されていない場合、経過時間を判定
         current_time = time.monotonic()
         if not self.gc_executed and (current_time - self.idle_time >= 1):
+            self.blue_led.value = True
             # 時間経過した時の処理
             mem_before = gc.mem_free()
             gc.collect()
             mem_after = gc.mem_free()
             print(f"[GC] {mem_before} -> {mem_after}")
             self.gc_executed = True  # 再び入力があるまで連投しないようにフラグを立てる
+            self.color_led()
+            self.blue_led.value = False
 
     def IME_switch(self):
         self.disable = not self.disable
@@ -236,7 +245,7 @@ def send_string(key, keyboard, *args):
         key_code = getattr(KC, char, None)
         if key_code:
             keyboard.tap_key(key_code)
-            time.sleep(0.01)
+            time.sleep(0.02)
 
 class JPkeys:
     def __init__(self):
@@ -291,6 +300,7 @@ stick_md = True
 def _toggle_stick_mode(*args, **kwargs):
     global stick_md
     stick_md = not stick_md
+    imeled.color_led()
 
 # 独自キー
 L_OYA = make_key(names='loya')
@@ -302,6 +312,7 @@ KC_RFB = KC.MO(2)
 KC_RFA = KC.MO(2)
 KC_RFC = KC.MO(3)
 KC_FSFT = KC.LM(0, KC.LSFT)
+KC_HNDK = KC.MO(7)
 KC_FALT = KC.LM(0, KC.LALT)
 KC_FCTL = KC.LM(0, KC.LCTL)
 KC_FWIN = KC.LM(0, KC.LWIN)
@@ -315,6 +326,8 @@ IME_SW = make_key(names='imesw', on_press=_ime_enadis_press)
 IME_ON = make_key(names='imeon', on_press=_ime_on_press)
 IME_OFF = make_key(names='imeof', on_press=_ime_off_press)
 TG_STCK = make_key(names='stk', on_press=_toggle_stick_mode)
+CSFT_R = KC.HT(IME_ON, KC_FSFT, tap_time=220)
+CSFT_L = KC.HT(IME_OFF, KC_FSFT, tap_time=220)
 
 # アナログスティック (GP26, GP27) 予備PIN GP28, GP29
 stick_x = analogio.AnalogIn(board.GP26)
@@ -579,9 +592,9 @@ keyboard.keymap = [
         KC.TAB,  KC.W,    KC.R,    KC.DEL,  KC.I,    KC.P,    KC_LOY,
         KC_STAB, KC.S,    KC.F,    KC.Y,    KC.K,    KC.SCLN, KC.SPC,
         KC.LSFT, KC.X,    KC.V,    KC.H,    KC.COMM, KC.SLSH, KC_ROY,
-        KC.LCTL, KC.LWIN, KC.SPC,  KC.N,    KC_RFC,  KC.RALT, KC.RSFT,
-        KC.LALT, KC.LSFT, KC.B,    KC_RFA,  KC_RFB,  KC.RCTL, TG_STCK,
-        KC.Z,    KC.C,    KC.G,    KC.M,    KC.DOT,  KC.RSFT, KC.MB_RMB,
+        KC.LCTL, KC.LWIN, KC.SPC,  KC.N,    KC_RFC,  KC.RALT, CSFT_R,
+        KC.LALT, CSFT_L,  KC.B,    KC_RFA,  KC_RFB,  KC.RCTL, TG_STCK,
+        KC.Z,    KC.C,    KC.G,    KC.M,    KC.DOT,  KC.RSFT,  KC.MB_RMB,
         KC.A,    KC.D,    KC.T,    KC.J,    KC.L,    KC.ENT,  KC.MB_LMB,
         KC.Q,    KC.E,    KC.ESC,  KC.U,    KC.O,    KC.BKSP, KC.MB_MMB
     ],
@@ -602,12 +615,12 @@ keyboard.keymap = [
     [
         KC.LANG5,KC.SLCK, KC_DELF, KC.DEL,  KC.INS,  KC.TRNS, IME_OFF,
         KC_CAPS, KC.LANG3,KC.TRNS, KC_SEL1, KC.UP,   KC.TRNS, KC.HENK,
-        KC_FSFT, KC.TRNS, KC_CTAV, KC_DUP,  KC.DOWN, KC.TRNS, IME_ON,
+        KC.TRNS, KC.TRNS, KC_CTAV, KC_DUP,  KC.DOWN, KC.TRNS, IME_ON,
         KC.TRNS, KC.TRNS, KC.MHEN, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
-        KC.TRNS, KC_CTAC, KC.PSCR, KC.LEFT, KC.RGHT, KC_FSFT, KC.TRNS,
+        KC.TRNS, KC_CTAC, KC.PSCR, KC.LEFT, KC.RGHT, KC.TRNS, KC.TRNS,
         KC.LANG4,KC.KANA, KC_DELB, KC.END,  KC.PGDN, KC.TRNS, KC.TRNS,
-        KC.PAUS, KC_DEL1, KC.TRNS, KC.HOME, KC.PGUP, KC.TRNS, KC.TRNS
+        KC.PAUS, KC_DEL1, KC.TRNS, KC.HOME, KC.PGUP, KC.DEL,  KC.TRNS
     ],
 
     # Layer 3: RfC Layer
@@ -648,14 +661,26 @@ keyboard.keymap = [
 
     # Layer 6: 日本語 Base Layer
     [
-        KC.TAB,  jp.KA,   jp.KO,   KC.DEL,  jp.KU,   KC.COMM, KC_LOY,
-        KC_STAB, jp.SI,   jp.KE,   jp.RA,   jp.KI,   KC_NN,   KC.SPC,
-        KC_FSFT, jp.HI,   jp.HU,   jp.HA,   jp.NE,   KC.SLSH, KC_ROY,
-        KC_FCTL, KC_FWIN, KC.TRNS, jp.ME,   KC_FFC,  KC_FALT, KC.SPC,
-        KC_FALT, KC.LSFT, jp.HE,   KC.TRNS, KC.RSFT, KC_FCTL, KC.TRNS,
-        jp.ZDOT, jp.SU,   jp.SE,   jp.SO,   jp.HO,   KC_FSFT, KC.MB_RMB,
-        KC.U,    jp.TE,   jp.SA,   jp.TO,   KC.I,    KC.ENT,  KC.MB_LMB,
-        jp.QDOT, jp.TA,   KC.ESC,  jp.TI,   jp.TU,   KC.BKSP, KC.MB_MMB
+        KC.TRNS, jp.KA,   jp.KO,   KC.TRNS, jp.KU,   KC.COMM, KC.TRNS,
+        KC.TRNS, jp.SI,   jp.KE,   jp.RA,   jp.KI,   KC_NN,   KC.TRNS,
+        KC_HNDK, jp.HI,   jp.HU,   jp.HA,   jp.NE,   KC.TRNS, KC.TRNS,
+        KC_FCTL, KC_FWIN, KC.TRNS, jp.ME,   KC_FFC,  KC_FALT, KC.TRNS,
+        KC_FALT, KC.TRNS, jp.HE,   KC.TRNS, KC.TRNS, KC_FCTL, KC.TRNS,
+        jp.ZDOT, jp.SU,   jp.SE,   jp.SO,   jp.HO,   KC_HNDK, KC.TRNS,
+        KC.U,    jp.TE,   jp.SA,   jp.TO,   KC.I,    KC.TRNS, KC.TRNS,
+        jp.QDOT, jp.TA,   KC.ESC,  jp.TI,   jp.TU,   KC.TRNS, KC.TRNS
+    ],
+
+    # Layer 7: 半濁音 Layer
+    [
+        KC.TRNS, KC.W,    KC.R,    KC.TRNS, KC.I,    KC.P,    KC.TRNS,
+        KC.TRNS, KC.S,    KC.F,    KC.Y,    KC.K,    KC.SCLN, KC.TRNS,
+        KC.TRNS, jp.PI,   jp.PU,   jp.PA,   KC.COMM, KC.SLSH, KC.TRNS,
+        KC.LCTL, KC.TRNS, KC.TRNS, KC.N,    KC.NO,   KC.RALT, KC.TRNS,
+        KC.LALT, KC.TRNS, jp.PE,   KC.TRNS, KC.NO,   KC.RCTL, KC.TRNS,
+        KC.Z,    KC.C,    KC.G,    KC.M,    jp.PO,   KC.TRNS, KC.TRNS,
+        KC.A,    KC.D,    KC.T,    KC.J,    KC.L,    KC.TRNS, KC.TRNS,
+        KC.Q,    KC.E,    KC.TRNS, KC.U,    KC.O,    KC.TRNS, KC.TRNS
     ]
 ]
 

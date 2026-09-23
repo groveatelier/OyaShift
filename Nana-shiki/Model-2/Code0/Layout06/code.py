@@ -334,14 +334,14 @@ stick_x = analogio.AnalogIn(board.GP26)
 stick_y = analogio.AnalogIn(board.GP27)
 is_dragging = False
 
-deadzone = 200
+deadzone = 300
 ave_sense = 1225
-an_center_x = 33232
-an_center_y = 31575
-x_max = 45000
-y_max = 45000
-x_min = 13000
-y_min = 13000
+an_center_x = 33000
+an_center_y = 32400
+x_max = 38000
+y_max = 38000
+x_min = 20000
+y_min = 20000
 
 # アナログステック調整ルーチン
 def analog_adjust():
@@ -382,6 +382,7 @@ def analog_calibration():
     an_center_x = int(x_bre/2 + cx_min)
     an_center_y = int(y_bre/2 + cy_min)
     deadzone = x_bre if x_bre > y_bre else y_bre
+    deadzone += 128  # マージン追加
     print(f'center x/y, deadzone: {an_center_x}/{an_center_y}, {deadzone}')
     analog_adjust()
     imeled.blue_led.value = False # LED 操作
@@ -400,6 +401,9 @@ def analog_minmax(xval, yval):
     elif yval < y_min:
         y_min = int((y_min + yval)/2)
         analog_adjust()
+
+def move_value(move_xy):
+    return move_xy - 1 if move_xy >= 2 else (move_xy + 1 if move_xy <= -2 else move_xy)
 
 def _analog_calib(*args, **kwargs):
     analog_calibration()
@@ -420,7 +424,7 @@ boost_sw.pull = digitalio.Pull.UP
 # 2. 高速入力処理ループ
 # -------------------------------------------------------------------
 def process_controls():
-    global last_encoder_pos, is_dragging, gc_count, boost_sw, stick_md
+    global last_encoder_pos, is_dragging, gc_count, boost_sw, stick_md   #, abs_px, abs_py
 
     fast = boost_sw.value is False  # Boost SW on なら
 
@@ -449,28 +453,31 @@ def process_controls():
         y_val = an_center_y - stick_y.value     #CENTER_VAL
         move_x = 0
         move_y = 0
+        abs_x = abs(x_val)
+        abs_y = abs(y_val)
 
-        if abs(x_val) > deadzone:
+        if abs_x > deadzone:
             move_x = int((x_val - (deadzone if x_val > 0 else -deadzone)) / ave_sense)
-        if abs(y_val) > deadzone:
+            move_x = move_value( move_x )
+        if abs_y > deadzone:
             move_y = int((y_val - (deadzone if y_val > 0 else -deadzone)) / ave_sense)
+            move_y = move_value( move_y )
  
         if stick_md:
             if KC.MB_LMB in keyboard.keys_pressed:
                 if not is_dragging:
                     mouse.press(1)  # 1: mouse LBTN
                     is_dragging = True
-            else:
-                if is_dragging:
-                    mouse.release(1) 
-                    is_dragging = False
+            elif is_dragging:
+                mouse.release(1) 
+                is_dragging = False
 
             # --- C. マウス操作の送信 ---
             # アナログ移動がある時のみ送信
             if move_x != 0 or move_y != 0:
                 if fast: # 逓倍
-                    if abs(x_val) >= 2: move_x = int(move_x/2)
-                    if abs(y_val) >= 2: move_y = int(move_y/2) 
+                    if abs_x >= 2: move_x = int(move_x/2)
+                    if abs_y >= 2: move_y = int(move_y/2) 
                 mouse.move(x=move_x, y=move_y)
         else:
             if abs(move_x) > 2:

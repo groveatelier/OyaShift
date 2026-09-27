@@ -10,8 +10,8 @@
 | 0 | Tab  | w    | r    | y    | i    | p    | LOya |  
 | 1 | 1A   | s    | f    | h    | k    | ;    | R-Btn |  
 | 2 | LShift | x  | v    | n    | ,    | /    | CSpc |  
-| 3 | LCtrl| meta | LSpc | RFnA | RFnC | RAlt | L-Btn | 
-| 4 | LAlt | ESC  | LCSF | RCSF | (RFn) | RCtrl | ROya | 
+| 3 | LCtrl| meta | LSpc | RCSF | RFnC | RAlt | L-Btn | 
+| 4 | LAlt | ESC  | LCSF | RFnA | (RFn) | RCtrl | ROya | 
 | 5 | z    | c    | b    | m    | .    | RShift | M-Btn | 
 | 6 | a    | d    | g    | j    | l    | Enter | D-Btn |
 | 7 | q    | e    | t    | u    | o    | BS | DEL |

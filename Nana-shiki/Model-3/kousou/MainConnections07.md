@@ -5,16 +5,16 @@
 ラッピング工具で結線していくので、作業の容易性を優先させる。  
 ダイオードは総のマトリックスキーに挿入する。
 
-| Rows\\Columns  | 1(8) | 2(9) | 3(10) | 4(11) | 5(12) | 6(13) | 7(14) |
+| Rows\\Columns  | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
-| 1(0) | Tab  | w    | r    | y    | i    | p    | LOya |  
-| 2(1) | 1A   | s    | f    | h    | k    | ;    | R-Btn |  
-| 3(2) | LShift | x  | v    | n    | ,    | /    | CSpc |  
-| 4(3) | LCtrl| meta | LSpc | RFnA | RFnC | RAlt | L-Btn | 
-| 5(4) | LAlt | ESC  | LCSF | RCSF | (RFn) | RCtrl | ROya | 
-| 6(5) | z    | c    | b    | m    | .    | RShift | M-Btn | 
-| 7(6) | a    | d    | g    | j    | l    | Enter | D-Btn |
-| 8(7) | q    | e    | t    | u    | o    | BS | DEL |
+| 0 | Tab  | w    | r    | y    | i    | p    | LOya |  
+| 1 | 1A   | s    | f    | h    | k    | ;    | R-Btn |  
+| 2 | LShift | x  | v    | n    | ,    | /    | CSpc |  
+| 3 | LCtrl| meta | LSpc | RFnA | RFnC | RAlt | L-Btn | 
+| 4 | LAlt | ESC  | LCSF | RCSF | (RFn) | RCtrl | ROya | 
+| 5 | z    | c    | b    | m    | .    | RShift | M-Btn | 
+| 6 | a    | d    | g    | j    | l    | Enter | D-Btn |
+| 7 | q    | e    | t    | u    | o    | BS | DEL |
 
 ---
 

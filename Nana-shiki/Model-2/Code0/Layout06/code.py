@@ -240,17 +240,19 @@ cc = ConsumerControl(usb_hid.devices)  # 音量制御用
 imeled = ime_manager(rgb, lock_status)
 
 # --- カスタムキー定義 ---
-def send_jp(key, keyboard, *args):
+jp_code_sending = None
+
+def send_jp(key, keyboard):
     for char in key.jp:
         key_code = getattr(KC, char, None)
         if key_code:
             keyboard.tap_key(key_code)
-            yield False
-    return True
+            yield   # KMK側に処理を渡す(2ループ分)
+            yield
 
 def send_string(key, keyboard, *args):
-    for is_continuing in send_jp(key, keyboard, *args):
-        pass
+    global jp_code_sending
+    jp_code_sending = send_jp(key, keyboard)
 
 class JPkeys:
     def __init__(self):
@@ -429,7 +431,7 @@ boost_sw.pull = digitalio.Pull.UP
 # 2. 高速入力処理ループ
 # -------------------------------------------------------------------
 def process_controls():
-    global last_encoder_pos, is_dragging, gc_count, boost_sw, stick_md   #, abs_px, abs_py
+    global last_encoder_pos, is_dragging, gc_count, boost_sw, stick_md, jp_code_sending
 
     fast = boost_sw.value is False  # Boost SW on なら
 
@@ -497,6 +499,13 @@ def process_controls():
         analog_minmax(x_val, y_val)
     # IMEとLEDの制御
     imeled.layer_led()
+
+    # jp codeの送出(必要なら)
+    if jp_code_sending is not None:
+        try:
+            next(jp_code_sending)
+        except StopIteration:
+            jp_code_sending = None
 
 keyboard.before_matrix_scan = process_controls
 

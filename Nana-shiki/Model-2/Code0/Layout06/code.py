@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/9/23 [Layout06] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/9/28 [Layout06] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -240,12 +240,17 @@ cc = ConsumerControl(usb_hid.devices)  # 音量制御用
 imeled = ime_manager(rgb, lock_status)
 
 # --- カスタムキー定義 ---
-def send_string(key, keyboard, *args):
+def send_jp(key, keyboard, *args):
     for char in key.jp:
         key_code = getattr(KC, char, None)
         if key_code:
             keyboard.tap_key(key_code)
-            time.sleep(0.02)
+            yield False
+    return True
+
+def send_string(key, keyboard, *args):
+    for is_continuing in send_jp(key, keyboard, *args):
+        pass
 
 class JPkeys:
     def __init__(self):

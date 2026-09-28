@@ -43,10 +43,10 @@
 | 段 | 列1 | 2 | 3 | 4 | 5 | 6 |\|| 7 | 8 | 9 | 10 | 11 | 12 |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
 | 3 | Boot | F1 | F2 | F3 | F4 | F10 | (OS) | F11 | F12 | App1 | (prev) | Bri.up | Relaod |
-| 2 | Sft+tab | Analog Calib. | Sleep | Ctl+Alt +Del  |  |  |\||  |  | App2 | (next) | Bri.<br/>down | Enter |
-| 1 | LSft |  |  |  |  | Ctrl+ Break |\||  |  | mute | vol.<br/>down | vol.<br/>up | RSft |
+| 2 | Sft+tab | Analog Calib. | Sleep |  |  |  |\||  |  | App2 | (next) | Bri.<br/>down | Enter |
+| 1 | LSft | Ctl+Alt +Del |  |  |  | Ctrl+ Break |\||  |  | mute | vol.<br/>down | vol.<br/>up | RSft |
 | 0 | ctrl | alt | meta | IME<br/>SW | Spc | 左親 |\|| 右親 | fnA | **_fnC_** | fnA | alt | ctrl |
-| -1 | ||||| bar | Spc | bar |||||
+| -1 | ||||| LSft | Spc | RSft |||||
 ||
 
 **レイヤー 肆** : 左親 (LOY)
@@ -88,7 +88,7 @@
 | 段 | 列1 | 2 | 3 | 4 | 5 | 6 |\|| 7 | 8 | 9 | 10 | 11 | 12 |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
 | 3 | tab | 。 | か | た | こ | さ | (DEL) | ら | ち | く | つ | 、 | BS |
-| 2 | Sft+tab | う | し | て | け | せ |\|| は | と | き | い | ん | Enter |
+| 2 | Sft+tab | う | し | て | け | せ |\|| は | と | き | い | ん | Sft+Enter |
 | 1 | 半濁音 | 。 | ぴ | す | ぷ | ぺ |\|| め | そ | ね | ぽ | ・ | 半濁音 |
 | 0 | ctrl0 | alt0 | meta0 | ESC | Spc | 左親 |\|| 右親 | fnA | fnC | fnA | alt0 | ctrl0 |
 | -1 | ||||| sft0 | Spc | sft0 |||||

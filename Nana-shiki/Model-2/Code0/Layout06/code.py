@@ -700,7 +700,7 @@ keyboard.keymap = [
         KC.LCTL, KC.TRNS, KC.TRNS, KC.N,    KC.NO,   KC.RALT, KC.TRNS,
         KC.LALT, KC.TRNS, jp.PE,   KC.TRNS, KC.NO,   KC.RCTL, KC.TRNS,
         KC.Z,    KC.C,    KC.G,    KC.M,    jp.PO,   KC.TRNS, KC.TRNS,
-        KC.A,    KC.D,    KC.T,    KC.J,    KC.L,    KC.TRNS, KC.TRNS,
+        KC.A,    KC.D,    KC.T,    KC.J,    KC.L,    KC.LSFT(KC.ENT), KC.TRNS,
         KC.Q,    KC.E,    KC.TRNS, KC.U,    KC.O,    KC.TRNS, KC.TRNS
     ]
 ]

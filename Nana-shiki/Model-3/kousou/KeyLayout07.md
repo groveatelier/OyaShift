@@ -22,7 +22,7 @@
 | 3 | tab | ? |  |  | " | ' | (DEL) | ^ | 7 | 8 | 9 | 0 | BS |
 | 2 | Sft+tab |  |  |  | ( | ) |\|| - | 4 | 5 | 6 | + | Enter |
 | 1 | LSft | . | , |  | _ | = |\|| * | 1 | 2 | 3 | / | RSft |
-| 0 | ctrl | alt | meta | ESC | Spc | 左親 |\|| 右親 |  | 0 | . | = | num lock |
+| 0 | ctrl | alt | meta | ESC | Spc | 左親 |\|| **右親** | fnA | 0 | . | = | **num lock** |
 | -1 | ||||| LSft<br/>IME ON | Spc | RSft<br/>IME OFF |||||
 ||
 

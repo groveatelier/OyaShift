@@ -344,7 +344,7 @@ IME_OFF = make_key(names='imeof', on_press=_ime_off_press)
 TG_STCK = make_key(names='stk', on_press=_toggle_stick_mode)
 CSFT_R = KC.HT(IME_ON, KC_FSFT, tap_time=220)
 CSFT_L = KC.HT(IME_OFF, KC_FSFT, tap_time=220)
-KC_IMET make_key(names='imetgl', on_press=_ime_tgl_press)
+KC_IMET = make_key(names='imetgl', on_press=_ime_tgl_press)
 
 # アナログスティック (GP26, GP27) 予備PIN GP28, GP29
 stick_x = analogio.AnalogIn(board.GP26)
@@ -547,7 +547,7 @@ KC_CTAC = KC.MACRO(Tap(KC.LCTL(KC.A)), Tap(KC.LCTL(KC.C)))
 # 全ペースト
 KC_CTAV = KC.MACRO(Tap(KC.LCTL(KC.A)), Tap(KC.LCTL(KC.V)))
 # Ctrl+Alt+Del
-KC_CADL = KC.LCTL(KC.ALT(KC.DEL))
+KC_CADL = KC.LCTL(KC.LALT(KC.DEL))
 # Ctrl+Break
 KC_CBRK = KC.LCTL(KC.PAUS)
 
@@ -630,7 +630,7 @@ keyboard.keymap = [
         KC.LCTL, KC.LWIN, KC.SPC,  CSFT_R,  KC_RFC,  KC.RALT, KC.MB_LMB,
         KC.LALT, KC.ESC,  CSFT_L,  KC_RFA,  KC_RFB,  KC.RCTL, KC_ROY,
         KC.Z,    KC.C,    KC.B,    KC.M,    KC.DOT,  KC.RSFT, KC.MB_MMB,
-        KC.A,    KC.D,    KC.G,    KC.J,    KC.L,    KC.ENT,  G_STCK,
+        KC.A,    KC.D,    KC.G,    KC.J,    KC.L,    KC.ENT,  TG_STCK,
         KC.Q,    KC.E,    KC.T,    KC.U,    KC.O,    KC.BKSP, KC.DEL
     ],
 
@@ -703,7 +703,7 @@ keyboard.keymap = [
         KC_FALT, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC_FCTL, KC.TRNS,
         jp.ZDOT, jp.SU,   jp.HE,   jp.SO,   jp.HO,   KC_HNDK, KC.TRNS,
         KC.U,    jp.TE,   jp.SE,   jp.TO,   KC.I,    KC.TRNS, KC.TRNS,
-        jp.QDOT, jp.TA,   jo.SA,   jp.TI,   jp.TU,   KC.TRNS, KC.TRNS
+        jp.QDOT, jp.TA,   jp.SA,   jp.TI,   jp.TU,   KC.TRNS, KC.TRNS
     ],
 
     # Layer 7: 半濁音 Layer

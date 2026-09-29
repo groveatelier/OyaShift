@@ -50,11 +50,7 @@ class ime_manager():
         self.ime_off = (KC.LANG2, KC.MHEN)
         self.idle_time = time.monotonic()
         self.gc_executed = False
-        # --- GPIO OS切り替えピンの設定 (内部プルアップ) ---
-        self.os_switch = digitalio.DigitalInOut(board.GP15)
-        self.os_switch.direction = digitalio.Direction.INPUT
-        self.os_switch.pull = digitalio.Pull.UP
-        self.os = not self.os_switch.value
+        self.os = False
         # --- GP25 青色LEDの設定 (デジタル出力) ---
         self.blue_led = digitalio.DigitalInOut(microcontroller.pin.GPIO25)
         self.blue_led.direction = digitalio.Direction.OUTPUT
@@ -63,12 +59,6 @@ class ime_manager():
     def is_state_change(self):
         trans = False
         current_layer = keyboard.active_layers[0]
-        # OS スイッチの変更確認
-        current_os = self.os_switch.value
-        if current_os != self.os:
-            self.os = current_os
-            self.release_stack()
-            trans = True
         # Layer遷移の確認
         if self.layer != current_layer:
             self.layer = current_layer
@@ -179,6 +169,11 @@ class ime_manager():
             self.IME_OFF()
         else:
             self.IME_ON()
+
+    def OS_tggle(self):
+        self.os = not self.os
+        self.release_stack()
+        self.color_led()
 
 # -------------------------------------------------------------------
 # 1. 基本設定
@@ -306,6 +301,9 @@ def _ime_off_press(*args, **kwargs):
 def _ime_tgl_press(*args, **kwargs):
     imeled.IME_tggle()
 
+def _os_tgl_press(*args, **kwargs):
+    imeled.OS_tggle()
+
 def _ime_enadis_press(*args, **kwargs):
     imeled.IME_switch()
 
@@ -345,6 +343,7 @@ TG_STCK = make_key(names='stk', on_press=_toggle_stick_mode)
 CSFT_R = KC.HT(IME_ON, KC_FSFT, tap_time=220)
 CSFT_L = KC.HT(IME_OFF, KC_FSFT, tap_time=220)
 KC_IMET = make_key(names='imetgl', on_press=_ime_tgl_press)
+KC_OST = make_key(names='ostgl', on_press=_os_tgl_press)
 
 # アナログスティック (GP26, GP27) 予備PIN GP28, GP29
 stick_x = analogio.AnalogIn(board.GP26)
@@ -353,12 +352,12 @@ is_dragging = False
 
 deadzone = 300
 ave_sense = 1225
-an_center_x = 33000
-an_center_y = 32400
-x_max = 38000
-y_max = 38000
-x_min = 20000
-y_min = 20000
+an_center_x = 33684
+an_center_y = 33400
+x_max = 36000
+y_max = 36000
+x_min = 22000
+y_min = 22000
 
 # アナログステック調整ルーチン
 def analog_adjust():
@@ -625,9 +624,9 @@ keyboard.keymap = [
     # Layer 0: Base Layer
     [
         KC.TAB,  KC.W,    KC.R,    KC.Y,    KC.I,    KC.P,    KC_LOY,
-        KC_STAB, KC.S,    KC.F,    KC.H,    KC.K,    KC.SCLN, KC.MB_RMB,
+        KC_STAB, KC.S,    KC.F,    KC.H,    KC.K,    KC.SCLN, KC.MB_LMB,
         KC.LSFT, KC.X,    KC.V,    KC.N,    KC.COMM, KC.SLSH, KC.SPC,
-        KC.LCTL, KC.LWIN, KC.SPC,  CSFT_R,  KC_RFC,  KC.RALT, KC.MB_LMB,
+        KC.LCTL, KC.LWIN, KC.SPC,  CSFT_R,  KC_RFC,  KC.RALT, KC.MB_RMB,
         KC.LALT, KC.ESC,  CSFT_L,  KC_RFA,  KC_RFB,  KC.RCTL, KC_ROY,
         KC.Z,    KC.C,    KC.B,    KC.M,    KC.DOT,  KC.RSFT, KC.MB_MMB,
         KC.A,    KC.D,    KC.G,    KC.J,    KC.L,    KC.ENT,  TG_STCK,
@@ -667,7 +666,7 @@ keyboard.keymap = [
         KC.TRNS, IME_SW,  KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
         KC_CADL, KC.TRNS, KC.TRNS, KC.TRNS, KC.VOLD, KC.TRNS, KC.TRNS,
         ANACAL,  KC.TRNS, KC_CBRK, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
-        KC.F1,   KC.F3,   KC.F10,  KC.F12,  KC.TRNS, KC.RELOAD, KC.TRNS
+        KC.F1,   KC.F3,   KC.F10,  KC.F12,  KC.TRNS, KC.RELOAD, KC_OST 
     ],
 
     # Layer 4: LOY Layer
@@ -691,7 +690,7 @@ keyboard.keymap = [
         KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.DOT, KC.TG(1),KC.TRNS,
         KC.DOT,  KC.TRNS, KC.EQL,  KC.N1,   KC.N3,  KC.TRNS, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.RPRN, KC.N4,   KC.N6,  KC.TRNS, KC.TRNS,
-        KC.QUES, KC.TRNS, KC.QUOT, KC.N7,   KC.N9,  KC.TRNS, KC.TRNS
+        KC.QUES, KC.TRNS, KC.QUOT, KC.N7,   KC.N9,  KC.TRNS, KC_OST
     ],
 
     # Layer 6: 日本語 Base Layer

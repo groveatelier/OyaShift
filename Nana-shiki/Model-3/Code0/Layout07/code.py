@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/9/29 [Layout07] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/9/30 [Layout07] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -531,7 +531,7 @@ KC_NN = KC.MACRO(Tap(KC.N), Tap(KC.N))
 ACT_SEL1 = (Tap(KC.HOME),Tap(KC.HOME),Press(KC.RSFT),Tap(KC.DOWN),Release(KC.RSFT))
 KC_SEL1 = KC.MACRO(*ACT_SEL1)
 # 一行削除
-KC_DEL1 = KC.MACRO(*ACT_SEL1,Tap(KC.DEL))
+KC_DEL1 = KC.LCTL(KC.X)
 # 前方削除
 ACT_RSDEL = (Release(KC.RSFT),Tap(KC.DEL))
 KC_DELF = KC.MACRO(Press(KC.RSFT),Tap(KC.HOME),Tap(KC.HOME),*ACT_RSDEL)
@@ -708,8 +708,8 @@ keyboard.keymap = [
     # Layer 7: 半濁音 Layer
     [
         KC.TRNS, KC.W,    KC.R,    KC.Y,    KC.I,    KC.P,    KC.TRNS,
-        KC.TRNS, KC.S,    KC.F,    jp.PA,   KC.K,    KC.SCLN, KC.TRNS,
-        KC.TRNS, jp.PI,   jp.PU,   KC.N,    KC.COMM, KC.SLSH, KC.TRNS,
+        KC.TRNS, KC.S,    KC.F,    jp.PA,   KC.K,    KC.COLN, KC.TRNS,
+        KC.TRNS, jp.PI,   jp.PU,   KC.N,    KC.COMM, KC.QUES, KC.TRNS,
         KC.LCTL, KC.TRNS, KC.TRNS, KC.TRNS, KC.NO,   KC.RALT, KC.TRNS,
         KC.LALT, KC.TRNS, KC.TRNS, KC.TRNS, KC.NO,   KC.RCTL, KC.TRNS,
         KC.Z,    KC.C,    jp.PE,   KC.M,    jp.PO,   KC.TRNS, KC.TRNS,

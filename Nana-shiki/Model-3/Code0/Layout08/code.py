@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/10/2 [Layout07] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/10/2 [Layout08] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -627,7 +627,7 @@ keyboard.keymap = [
     # Layer 0: Base Layer
     [
         KC.TAB,  KC.W,    KC.R,    KC.Y,    KC.I,    KC.P,    KC_LOY,
-        KC_STAB, KC.S,    KC.F,    KC.H,    KC.K,    KC.SCLN, KC.MB_LMB,
+        KC.TAB,  KC.S,    KC.F,    KC.H,    KC.K,    KC.SCLN, KC.MB_LMB,
         KC.LSFT, KC.X,    KC.V,    KC.N,    KC.COMM, KC.SLSH, KC.SPC,
         KC.LCTL, KC.LWIN, KC.SPC,  CSFT_R,  KC_RFC,  KC.RALT, KC.MB_RMB,
         KC.LALT, KC.ESC,  CSFT_L,  KC_RFA,  KC_RFB,  KC.RCTL, KC_ROY,
@@ -655,8 +655,8 @@ keyboard.keymap = [
         KC.TRNS, KC.TRNS, KC_CTAV, KC.TRNS, KC.DOWN, KC.TRNS, KC.HENK,
         KC.TRNS, KC.TRNS, KC_IMET, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.MHEN, KC.TRNS, KC.TRNS, KC.TRNS, IME_ON,
-        KC.TRNS, KC_CTAC, KC.TRNS, KC.LEFT, KC.RGHT, KC.ESC,  KC.TRNS,
-        KC.LANG4,KC.KANA, KC.PSCR, KC.END,  KC.PGDN, KC.TRNS, KC.TRNS,
+        KC.TRNS, KC_CTAC, KC.TRNS, KC.LEFT, KC.RGHT, KC.TRNS, KC.TRNS,
+        KC.LANG4,KC.KANA, KC.PSCR, KC.END,  KC.PGDN, KC_SENT, KC.TRNS,
         KC.PAUS, KC_DEL1, KC_DELB, KC.HOME, KC.PGUP, KC.DEL,  KC.BKSP
     ],
 
@@ -674,26 +674,26 @@ keyboard.keymap = [
 
     # Layer 4: LOY Layer
     [
-        KC.TILD, KC.AT,   KC.DLR,  KC.CIRC, KC.ASTR, KC.RPRN, KC.TRNS,
-        KC.GRV,  KC.F6,   KC.F8,   KC.LBRC, KC.TRNS, KC.COLN, KC.TRNS,
-        KC.TRNS, KC.TRNS, KC.UNDS, KC.LCBR, KC.TRNS, KC.RO,   KC.TRNS,
-        KC_CAPS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
-        KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, IME_ON,
-        KC.TRNS, KC.TRNS, KC.EQL,  KC.RCBR, KC.PIPE, KC.TRNS, KC.TRNS,
-        KC.F5,   KC.F7,   KC.F9,   KC.RBRC, KC.JYEN, KC.TRNS, KC.TRNS,
-        KC.EXLM, KC.HASH, KC.PERC, KC.AMPR, KC.LPRN, KC.TRNS, KC.TRNS
+        KC.ESC,  KC.AT,   KC.DLR,  KC.CIRC, KC.ASTR, KC.RPRN, KC.TRNS,
+        KC_STAB, KC.F6,   KC.F8,   KC.LBRC, KC.TRNS, KC.COLN, KC.TRNS,
+        KC.TRNS, KC.GRV,  KC.UNDS, KC.LCBR, KC.TRNS, KC.RO,   KC_SSPC,
+        KC_CAPS, KC.TRNS, KC_SSPC, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
+        KC.TRNS, KC_OST,  KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, IME_ON,
+        KC.TILD, KC.TRNS, KC.EQL,  KC.RCBR, KC.PIPE, KC.TRNS, KC.TRNS,
+        KC.F5,   KC.F7,   KC.F9,   KC.RBRC, KC.JYEN, KC_SENT, KC.TRNS,
+        KC.EXLM, KC.HASH, KC.PERC, KC.AMPR, KC.LPRN, KC.DEL,  KC.BKSP
     ],
 
     # Layer 5: ROY Layer
     [
-        KC.TRNS, KC.TRNS, KC.DQUO, KC.CIRC, KC.N8,  KC.N0,   IME_OFF,
-        KC.TRNS, KC.TRNS, KC.LPRN, KC.MINS, KC.N5,  KC.PLUS, KC.TRNS,
-        KC.TRNS, KC.COMM, KC.UNDS, KC.ASTR, KC.N2,  KC.SLSH, KC.TRNS,
-        KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.N0,  KC.EQL,  KC.TRNS,
-        KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.DOT, KC.TG(1),KC.TRNS,
+        KC_STAB, KC.TRNS, KC.DQUO, KC.CIRC, KC.N8,  KC.N0,   IME_OFF,
+        KC_STAB, KC.TRNS, KC.LPRN, KC.MINS, KC.N5,  KC.PLUS, KC.TRNS,
+        KC.TRNS, KC.COMM, KC.UNDS, KC.ASTR, KC.N2,  KC.SLSH, KC_SSPC,
+        KC.TRNS, KC.TRNS, KC_SSPC, KC.TRNS, KC.N0,  KC.EQL,  KC.TRNS,
+        KC.TRNS, KC_OST,  KC.TRNS, KC.TRNS, KC.DOT, KC.TG(1),KC.TRNS,
         KC.DOT,  KC.TRNS, KC.EQL,  KC.N1,   KC.N3,  KC.TRNS, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.RPRN, KC.N4,   KC.N6,  KC_SENT, KC.TRNS,
-        KC.QUES, KC.TRNS, KC.QUOT, KC.N7,   KC.N9,  KC.TRNS, KC_OST
+        KC.QUES, KC.TRNS, KC.QUOT, KC.N7,   KC.N9,  KC.TRNS, KC.BKSP
     ],
 
     # Layer 6: 日本語 Base Layer
@@ -717,7 +717,7 @@ keyboard.keymap = [
         KC.LALT, KC.TRNS, KC.TRNS, KC.TRNS, KC.NO,   KC.RCTL, KC.TRNS,
         KC.Z,    KC.C,    jp.PE,   KC.M,    jp.PO,   KC.TRNS, KC.TRNS,
         KC.A,    KC.D,    KC.G,    KC.J,    KC.L,    KC_SENT, KC.TRNS,
-        KC.QUES, KC.E,    KC.T,    KC.U,    KC.O,    KC.TRNS, KC.TRNS
+        KC.QUES, KC.E,    KC.T,    KC.U,    KC.O,    KC.DEL,  KC.BKSP
     ]
 ]
 

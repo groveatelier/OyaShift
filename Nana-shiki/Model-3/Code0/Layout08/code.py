@@ -693,7 +693,7 @@ keyboard.keymap = [
         KC.TRNS, KC_OST,  KC.TRNS, KC.TRNS, KC.DOT, KC.TG(1),KC.TRNS,
         KC.DOT,  KC.TRNS, KC.EQL,  KC.N1,   KC.N3,  KC.TRNS, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.RPRN, KC.N4,   KC.N6,  KC_SENT, KC.TRNS,
-        KC.QUES, KC.TRNS, KC.QUOT, KC.N7,   KC.N9,  KC.TRNS, KC.BKSP
+        KC.QUES, KC.TRNS, KC.QUOT, KC.N7,   KC.N9,  KC.DEL,  KC.BKSP
     ],
 
     # Layer 6: 日本語 Base Layer

@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/10/2 [Layout08] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/10/3 [Layout08] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -357,6 +357,8 @@ x_max = 36000
 y_max = 36000
 x_min = 22000
 y_min = 22000
+lim_xy = [0, 0]
+move_lim = 4
 
 # アナログステック調整ルーチン
 def analog_adjust():
@@ -439,7 +441,7 @@ boost_sw.pull = digitalio.Pull.UP
 # 2. 高速入力処理ループ
 # -------------------------------------------------------------------
 def process_controls():
-    global last_encoder_pos, is_dragging, gc_count, boost_sw, stick_md, jp_code_sending
+    global last_encoder_pos, is_dragging, gc_count, boost_sw, stick_md, jp_code_sending, lim_xy
 
     fast = boost_sw.value is False  # Boost SW on なら
 
@@ -472,9 +474,21 @@ def process_controls():
         abs_y = abs(y_val)
 
         if abs_x > deadzone:
+            if x_val > 0 and lim_xy[0] > 0 and x_val > lim_xy[0]:
+                x_val = lim_xy[0]
+                lim_xy[0] += move_lim
+            elif x_val < 0 and lim_xy[0] < 0 and x_val < lim_xy[0]:
+                x_val = lim_xy[0]
+                lim_xy[0] -= move_lim
             move_x = int((x_val - (deadzone if x_val > 0 else -deadzone)) / ave_sense)
             move_x = move_value( move_x )
         if abs_y > deadzone:
+            if y_val > 0 and lim_xy[1] > 0 and y_val > lim_xy[1]:
+                y_val = lim_xy[1]
+                lim_xy[1] += move_lim
+            elif y_val < 0 and lim_xy[1] < 0 and y_val < lim_xy[1]:
+                y_val = lim_xy[1]
+                lim_xy[1] -= move_lim
             move_y = int((y_val - (deadzone if y_val > 0 else -deadzone)) / ave_sense)
             move_y = move_value( move_y )
  
@@ -677,7 +691,7 @@ keyboard.keymap = [
         KC.ESC,  KC.AT,   KC.DLR,  KC.CIRC, KC.ASTR, KC.RPRN, KC.TRNS,
         KC_STAB, KC.F6,   KC.F8,   KC.LBRC, KC.TRNS, KC.COLN, KC.TRNS,
         KC.TRNS, KC.GRV,  KC.UNDS, KC.LCBR, KC.TRNS, KC.RO,   KC_SSPC,
-        KC_CAPS, KC.TRNS, KC_SSPC, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
+        KC_CAPS, KC_OST,  KC_SSPC, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
         KC.TRNS, KC_OST,  KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, IME_ON,
         KC.TILD, KC.TRNS, KC.EQL,  KC.RCBR, KC.PIPE, KC.TRNS, KC.TRNS,
         KC.F5,   KC.F7,   KC.F9,   KC.RBRC, KC.JYEN, KC_SENT, KC.TRNS,
@@ -689,7 +703,7 @@ keyboard.keymap = [
         KC_STAB, KC.TRNS, KC.DQUO, KC.CIRC, KC.N8,  KC.N0,   IME_OFF,
         KC_STAB, KC.TRNS, KC.LPRN, KC.MINS, KC.N5,  KC.PLUS, KC.TRNS,
         KC.TRNS, KC.COMM, KC.UNDS, KC.ASTR, KC.N2,  KC.SLSH, KC_SSPC,
-        KC.TRNS, KC.TRNS, KC_SSPC, KC.TRNS, KC.N0,  KC.EQL,  KC.TRNS,
+        KC.TRNS, KC_OST,  KC_SSPC, KC.TRNS, KC.N0,  KC.EQL,  KC.TRNS,
         KC.TRNS, KC_OST,  KC.TRNS, KC.TRNS, KC.DOT, KC.TG(1),KC.TRNS,
         KC.DOT,  KC.TRNS, KC.EQL,  KC.N1,   KC.N3,  KC.TRNS, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.RPRN, KC.N4,   KC.N6,  KC_SENT, KC.TRNS,

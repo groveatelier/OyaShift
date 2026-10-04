@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/10/3 [Layout08] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/10/4 [Layout08] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -166,9 +166,9 @@ class ime_manager():
     
     def IME_tggle(self):
         if 6 in keyboard.active_layers:
-            self.IME_OFF()
+            self.IME_off()
         else:
-            self.IME_ON()
+            self.IME_on()
 
     def OS_tggle(self):
         self.os = not self.os
@@ -358,7 +358,7 @@ y_max = 36000
 x_min = 22000
 y_min = 22000
 lim_xy = [0, 0]
-move_lim = 4
+move_lim = 2
 
 # アナログステック調整ルーチン
 def analog_adjust():

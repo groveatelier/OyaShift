@@ -57,7 +57,7 @@
 | 2 | Sft+Tab | F5 | F6 | F7 | F8 | F9 |\|| [ | ] |  | IntlYen | : | Sft+Enter |
 | 1 | LSft | ~ | ` |  |  _ | = |\|| { | } |  | \| | IntlRo | RSft |
 | 0 | Caps | alt | OS | OS | Sft+Spc | **_左親_** |\|| IME ON | fnA | fnC | fnA | alt | ctrl |
-| -1 | ||||| LSft | Sft+Spc | RSft |||||
+| -1 | ||||| DEL | Sft+Spc | RSft |||||
 ||
 
 **レイヤー 伍** : 右親 (ROY)
@@ -68,7 +68,7 @@
 | 2 | Sft+tab |  |  |  | ( | ) |\|| - | 4 | 5 | 6 | + | Sft+Enter |
 | 1 | LSft | . | , |  | _ | = |\|| * | 1 | 2 | 3 | / | RSft |
 | 0 | ctrl | alt | OS | OS | Sft+Spc | IME OFF |\|| **_右親_** |  | 0 | . | = | num lock |
-| -1 | ||||| LSft | Sft+Spc | RSft |||||
+| -1 | ||||| DEL | Sft+Spc | RSft |||||
 ||
 
 

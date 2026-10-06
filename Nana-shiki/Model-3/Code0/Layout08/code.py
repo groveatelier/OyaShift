@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/10/4 [Layout08] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/10/6 [Layout08] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -393,13 +393,13 @@ def analog_calibration():
         cy_max = ay if ay > cy_max else cy_max
         cy_min = ay if ay < cy_min else cy_min
         time.sleep(0.08)
-    print(f'cx min/max, cy min/max: {cx_min}/{cx_max}, {cy_min}/{cy_max}')
     x_bre = (cx_max - cx_min)
     y_bre = (cy_max - cy_min)
     an_center_x = int(x_bre/2 + cx_min)
     an_center_y = int(y_bre/2 + cy_min)
     deadzone = x_bre if x_bre > y_bre else y_bre
     deadzone += 128  # マージン追加
+    print(f'cx max-min, cy max-min: {x_bre}, {y_bre}')
     print(f'center x/y, deadzone: {an_center_x}/{an_center_y}, {deadzone}')
     analog_adjust()
     imeled.blue_led.value = False # LED 操作
@@ -441,7 +441,7 @@ boost_sw.pull = digitalio.Pull.UP
 # 2. 高速入力処理ループ
 # -------------------------------------------------------------------
 def process_controls():
-    global last_encoder_pos, is_dragging, gc_count, boost_sw, stick_md, jp_code_sending, lim_xy
+    global last_encoder_pos, is_dragging, gc_count, boost_sw, stick_md, jp_code_sending, lim_xy, deadzone
 
     fast = boost_sw.value is False  # Boost SW on なら
 

@@ -344,86 +344,114 @@ CSFT_L = KC.HT(IME_OFF, KC_FSFT, tap_time=220)
 KC_IMET = make_key(names='imetgl', on_press=_ime_tgl_press)
 KC_OST = make_key(names='ostgl', on_press=_os_tgl_press)
 
-# アナログスティック (GP26, GP27) 予備PIN GP28, GP29
-stick_x = analogio.AnalogIn(board.GP26)
-stick_y = analogio.AnalogIn(board.GP27)
+class AnalogStick:
+    def __init__(self):
+        # アナログスティック (GP26, GP27) 予備PIN GP28, GP29
+        self.stick_x = analogio.AnalogIn(board.GP26)
+        self.stick_y = analogio.AnalogIn(board.GP27)
+        self.deadzone = [1800,1800]
+        self.asense = [1200,1200]
+        self.amid = [33684,33400]
+        self.amax = [36000,36000]
+        self.amin = [22000,22000]
+        self.tenlim = [0,0]
+        self.mlimit = 2
+
+    def get_value(self):
+        x_val = self.amid[0] - self.stick_x.value
+        y_val = self.amid[1] - self.stick_y.value
+        return x_val, y_val
+
+    # アナログステック調整ルーチン
+    def analog_adjust(self):
+        def cal_maxmin(xy):
+            return int((self.amax[xy] - self.amid[xy] - self.deadzone[xy])/18), int((self.amid[xy] - self.amin[xy] - self.deadzone[xy])/18)
+        x_sense = cal_maxmin(0)
+        y_sense = cal_maxmin(1)
+        self.asense = [int((x_sense[0]+x_sense[1])/2), int((y_sense[0]+y_sense[1])/2)]
+        print(f'ave sense: {self.asense}')
+
+    # Calibration
+    def analog_calibration(self):
+        imeled.blue_led.value = True # LED 操作
+        time.sleep(0.5)
+        # 最小最大値のリセット
+        self.amax = [36000,36000]
+        self.amin = [22000,22000]
+        # 中心値の計測
+        ax = self.stick_x.value
+        ay = self.stick_y.value
+        cmax = [ ax, ay ]
+        cmin = [ ax, ay ]
+        for _ in range(64):
+            ax = self.stick_x.value
+            ay = self.stick_y.value
+            cmax[0] = ax if ax > cmax[0] else cmax[0]
+            cmax[1] = ay if ay > cmax[1] else cmax[1]
+            cmin[0] = ax if ax < cmin[0] else cmin[0]
+            cmin[1] = ay if ay < cmin[1] else cmin[1]
+            time.sleep(0.08)
+        x_bre = cmax[0] - cmin[0]
+        y_bre = cmax[1] - cmin[1]
+        self.amid = [int(x_bre/2 + cmin[0]), int(y_bre/2 + cmin[1])]
+        self.deadzone = [x_bre+1600, y_bre+1600]
+        print(f'cx max-min, cy max-min: {x_bre}, {y_bre}')
+        print(f'center, deadzone: {self.amid}, {self.deadzone}')
+        self.analog_adjust()
+        imeled.blue_led.value = False # LED 操作
+
+    # 最大最小値の更新
+    def analog_minmax(self, xval, yval):
+        if xval > self.amax[0]:
+            self.amax[0] = int((self.amax[0] + xval)/2)
+            self.analog_adjust()
+        elif xval < self.amin[0]:
+            self.amin[0] = int((self.amin[0] + xval)/2)
+            self.analog_adjust()
+        if yval > self.amax[1]:
+            self.amax[1] = int((self.amax[1] + yval)/2)
+            self.analog_adjust()
+        elif yval < self.amin[1]:
+            self.amin[1] = int((self.amin[1] + yval)/2)
+            self.analog_adjust()
+
+    def get_move_value(self):
+        def cal_value(cv, xy):
+            if cv > 0 and self.tenlim[xy] > 0 and cval[xy] > self.tenlim[xy]:
+                cv = self.tenlim[xy]
+                self.tenlim[xy] += self.mlimit
+            elif cv < 0 and self.tenlim[xy] < 0 and cval[xy] < self.tenlim[xy]:
+                cv = self.tenlim[xy]
+                self.tenlim[xy] -= self.mlimit
+            else:
+                self.tenlim[xy] = 0
+            ccv = int((cv - (self.deadzone[xy] if cv > 0 else - self.deadzone[xy])) / self.asense[xy])
+            ccv = ccv - 1 if ccv >= 2 else (ccv + 1 if ccv <= -2 else ccv)
+            return ccv           
+
+        xval, yval = self.get_value()
+        xx = 0
+        yy = 0
+        absx = abs( xval )
+        absy = abs( yval )
+        moved = False
+
+        if absx > self.deadzone[0]:
+            #print(f'absx:{absx} > {self.deadzone[0]}')
+            xx = cal_value( xval, 0 )
+        if absy > self.deadzone[1]:
+            #print(f'absx:{absy} > {self.deadzone[1]}')
+            yy = cal_value( yval, 1 )
+        if xx != 0 or yy != 0:
+            moved  = True
+            self.analog_minmax( xval, yval )
+        return moved, xx, yy
+
+ast = AnalogStick()
 is_dragging = False
 
-deadzone = 300
-ave_sense = 1225
-an_center_x = 33684
-an_center_y = 33400
-x_max = 36000
-y_max = 36000
-x_min = 22000
-y_min = 22000
-lim_xy = [0, 0]
-move_lim = 2
-
-# アナログステック調整ルーチン
-def analog_adjust():
-    x_sense_p = int((x_max - an_center_x - deadzone)/16)
-    x_sense_m = int((an_center_x - x_min - deadzone)/16)
-    y_sense_p = int((y_max - an_center_y - deadzone)/16)
-    y_sense_m = int((an_center_y - y_min - deadzone)/16)
-    ave_sense = int((x_sense_m + x_sense_p + y_sense_m + y_sense_p)/4)
-    print(f'ave sense: {ave_sense}')
-
-def analog_calibration():
-    global an_center_x, an_center_y
-    imeled.blue_led.value = True # LED 操作
-    time.sleep(0.5)
-    # 最小最大値のリセット
-    x_max = 45000
-    y_max = 45000
-    x_min = 13000
-    y_min = 13000
-    # 中心値の計測
-    an_center_x = stick_x.value
-    an_center_y = stick_y.value
-    cx_max = an_center_x
-    cx_min = an_center_x
-    cy_max = an_center_y
-    cy_min = an_center_y
-    for _ in range(64):
-        ax = stick_x.value
-        ay = stick_y.value
-        cx_max = ax if ax > cx_max else cx_max
-        cx_min = ax if ax < cx_min else cx_min
-        cy_max = ay if ay > cy_max else cy_max
-        cy_min = ay if ay < cy_min else cy_min
-        time.sleep(0.08)
-    x_bre = (cx_max - cx_min)
-    y_bre = (cy_max - cy_min)
-    an_center_x = int(x_bre/2 + cx_min)
-    an_center_y = int(y_bre/2 + cy_min)
-    deadzone = x_bre if x_bre > y_bre else y_bre
-    deadzone += 128  # マージン追加
-    print(f'cx max-min, cy max-min: {x_bre}, {y_bre}')
-    print(f'center x/y, deadzone: {an_center_x}/{an_center_y}, {deadzone}')
-    analog_adjust()
-    imeled.blue_led.value = False # LED 操作
-
-def analog_minmax(xval, yval):
-    global x_max, x_min, y_max, y_min
-    if xval > x_max:
-        x_max = int((x_max + xval)/2)
-        analog_adjust()
-    elif xval < x_min:
-        x_min = int((x_min + xval)/2)
-        analog_adjust()
-    if yval > y_max:
-        y_max = int((y_max + yval)/2)
-        analog_adjust()
-    elif yval < y_min:
-        y_min = int((y_min + yval)/2)
-        analog_adjust()
-
-def move_value(move_xy):
-    return move_xy - 1 if move_xy >= 2 else (move_xy + 1 if move_xy <= -2 else move_xy)
-
 def _analog_calib(*args, **kwargs):
-    analog_calibration()
+    ast.analog_calibration()
 
 ANACAL = make_key(names='calib', on_press=_analog_calib)
 
@@ -441,7 +469,8 @@ boost_sw.pull = digitalio.Pull.UP
 # 2. 高速入力処理ループ
 # -------------------------------------------------------------------
 def process_controls():
-    global last_encoder_pos, is_dragging, gc_count, boost_sw, stick_md, jp_code_sending, lim_xy, deadzone
+    #global last_encoder_pos, is_dragging, gc_count, boost_sw, stick_md, jp_code_sending, lim_xy, deadzone, ave_sense, move_lim
+    global last_encoder_pos, is_dragging, gc_count, boost_sw, stick_md, jp_code_sending
 
     fast = boost_sw.value is False  # Boost SW on なら
 
@@ -466,59 +495,36 @@ def process_controls():
 
     else:
     # --- B. アナログスティックの計算 ---
-        x_val = an_center_x - stick_x.value     #CENTER_VAL
-        y_val = an_center_y - stick_y.value     #CENTER_VAL
-        move_x = 0
-        move_y = 0
-        abs_x = abs(x_val)
-        abs_y = abs(y_val)
+        moved, move_x, move_y = ast.get_move_value()
 
-        if abs_x > deadzone:
-            if x_val > 0 and lim_xy[0] > 0 and x_val > lim_xy[0]:
-                x_val = lim_xy[0]
-                lim_xy[0] += move_lim
-            elif x_val < 0 and lim_xy[0] < 0 and x_val < lim_xy[0]:
-                x_val = lim_xy[0]
-                lim_xy[0] -= move_lim
-            move_x = int((x_val - (deadzone if x_val > 0 else -deadzone)) / ave_sense)
-            move_x = move_value( move_x )
-        if abs_y > deadzone:
-            if y_val > 0 and lim_xy[1] > 0 and y_val > lim_xy[1]:
-                y_val = lim_xy[1]
-                lim_xy[1] += move_lim
-            elif y_val < 0 and lim_xy[1] < 0 and y_val < lim_xy[1]:
-                y_val = lim_xy[1]
-                lim_xy[1] -= move_lim
-            move_y = int((y_val - (deadzone if y_val > 0 else -deadzone)) / ave_sense)
-            move_y = move_value( move_y )
- 
-        if stick_md:
-            if KC.MB_LMB in keyboard.keys_pressed:
-                if not is_dragging:
-                    mouse.press(1)  # 1: mouse LBTN
-                    is_dragging = True
-            elif is_dragging:
-                mouse.release(1) 
-                is_dragging = False
+        if moved is True:
+            if stick_md:
+                if KC.MB_LMB in keyboard.keys_pressed:
+                    if not is_dragging:
+                        mouse.press(1)  # 1: mouse LBTN
+                        is_dragging = True
+                elif is_dragging:
+                    mouse.release(1) 
+                    is_dragging = False
 
-            # --- C. マウス操作の送信 ---
-            # アナログ移動がある時のみ送信
-            if move_x != 0 or move_y != 0:
+                # --- C. マウス操作の送信 ---
+                # アナログ移動がある時のみ送信
+                #if move_x != 0 or move_y != 0:
                 if fast: # 逓倍
                     if abs_x >= 2: move_x = int(move_x/2)
                     if abs_y >= 2: move_y = int(move_y/2) 
                 mouse.move(x=move_x, y=move_y)
-        else:
-            if abs(move_x) > 2:
-                key_to_tap = KC.RIGHT if move_x > 0 else KC.LEFT
-                keyboard.tap_key(key_to_tap)
-                time.sleep(0.12)
-            if abs(move_y) > 2:
-                key_to_tap = KC.DOWN if move_y > 0 else KC.UP
-                keyboard.tap_key(key_to_tap)
-                time.sleep(0.12)
+            else:
+                if abs(move_x) > 2:
+                    key_to_tap = KC.RIGHT if move_x > 0 else KC.LEFT
+                    keyboard.tap_key(key_to_tap)
+                    time.sleep(0.12)
+                if abs(move_y) > 2:
+                    key_to_tap = KC.DOWN if move_y > 0 else KC.UP
+                    keyboard.tap_key(key_to_tap)
+                    time.sleep(0.12)
         
-        analog_minmax(x_val, y_val)
+        #analog_minmax(x_val, y_val)
     # IMEとLEDの制御
     imeled.layer_led()
 

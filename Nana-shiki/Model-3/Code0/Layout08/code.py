@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/10/6 [Layout08] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/10/9 [Layout08] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -511,8 +511,8 @@ def process_controls():
                 # アナログ移動がある時のみ送信
                 #if move_x != 0 or move_y != 0:
                 if fast: # 逓倍
-                    if abs_x >= 2: move_x = int(move_x/2)
-                    if abs_y >= 2: move_y = int(move_y/2) 
+                    if abs(move_x) >= 2: move_x = int(move_x/2)
+                    if abs(move_y) >= 2: move_y = int(move_y/2) 
                 mouse.move(x=move_x, y=move_y)
             else:
                 if abs(move_x) > 2:

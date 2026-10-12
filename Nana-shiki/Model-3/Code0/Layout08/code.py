@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/10/9 [Layout08] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/10/12 [Layout08] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -647,9 +647,9 @@ keyboard.keymap = [
     # Layer 0: Base Layer
     [
         KC.TAB,  KC.W,    KC.R,    KC.Y,    KC.I,    KC.P,    KC_LOY,
-        KC.TAB,  KC.S,    KC.F,    KC.H,    KC.K,    KC.SCLN, KC.MB_LMB,
+        KC.TAB,  KC.S,    KC.F,    KC.H,    KC.K,    KC.SCLN, KC.MB_RMB,
         KC.LSFT, KC.X,    KC.V,    KC.N,    KC.COMM, KC.SLSH, KC.SPC,
-        KC.LCTL, KC.LWIN, KC.SPC,  CSFT_R,  KC_RFC,  KC.RALT, KC.MB_RMB,
+        KC.LCTL, KC.LWIN, KC.SPC,  CSFT_R,  KC_RFC,  KC.RALT, KC.MB_LMB,
         KC.LALT, KC.ESC,  CSFT_L,  KC_RFA,  KC_RFB,  KC.RCTL, KC_ROY,
         KC.Z,    KC.C,    KC.B,    KC.M,    KC.DOT,  KC.RSFT, KC.MB_MMB,
         KC.A,    KC.D,    KC.G,    KC.J,    KC.L,    KC.ENT,  TG_STCK,

@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/10/12 [Layout08] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/10/14 [Layout08] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -564,6 +564,8 @@ KC_CAPS = KC.RSFT(KC.CAPS)
 KC_CTAC = KC.MACRO(Tap(KC.LCTL(KC.A)), Tap(KC.LCTL(KC.C)))
 # 全ペースト
 KC_CTAV = KC.MACRO(Tap(KC.LCTL(KC.A)), Tap(KC.LCTL(KC.V)))
+# インデント
+KC_INDT = KC.MACRO(Tap(KC.HOME), Tap(KC.TAB))
 # Ctrl+Alt+Del
 KC_CADL = KC.LCTL(KC.LALT(KC.DEL))
 # Ctrl+Break
@@ -671,7 +673,7 @@ keyboard.keymap = [
     # Layer 2: RfA Layer
     [
         KC.LANG5,KC.SLCK, KC_DELF, KC_SEL1, KC.INS,  KC.TRNS, IME_OFF,
-        KC.TRNS, KC.LANG3,KC.TRNS, KC_DUP,  KC.UP,   KC.TRNS, KC.TRNS,
+        KC_INDT, KC.LANG3,KC.TRNS, KC_DUP,  KC.UP,   KC.TRNS, KC.TRNS,
         KC.TRNS, KC.TRNS, KC_CTAV, KC.TRNS, KC.DOWN, KC.TRNS, KC.HENK,
         KC.TRNS, KC.TRNS, KC_IMET, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.MHEN, KC.TRNS, KC.TRNS, KC.TRNS, IME_ON,

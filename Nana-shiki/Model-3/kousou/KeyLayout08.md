@@ -31,7 +31,7 @@
 | 段 | 列1 | 2 | 3 | 4 | 5 | 6 |\|| 7 | 8 | 9 | 10 | 11 | 12 |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
 | 3 | 全角<br/>半角 | Pause<br/>Break | Scroll<br/>Lock | DEL<br/>1L | BS 2<br/>Top | DEL 2<br/>End | (BS) | SEL1L | Home | Ins | Page<br/>Up |  | DEL |
-| 2 |  | ひらがな | カタカナ | かな |  | Print<br/>Screen  |\|| DUP | End | Up | Page<br/>Down |  | Sft+Enter |
+| 2 | インデント | ひらがな | カタカナ | かな |  | Print<br/>Screen  |\|| DUP | End | Up | Page<br/>Down |  | Sft+Enter |
 | 1 | LSft |  |  | Ctl+AC | Ctl+AV |  |\||  | Left | Down | Right |  | RSft |
 | 0 | ctrl | alt | meta | ESC | IME TGL | 左親 |\|| 右親 | **_fnA_** | fnC | **_fnA_** | alt | ctrl |
 | -1 | ||||| 無変換 | 変換 | RSft |||||

@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/10/22 [Layout09] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/10/24 [Layout09] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -138,6 +138,7 @@ class ime_manager():
             self.idle_time = time.monotonic()
             self.gc_executed = False  # 入力があったのでGC実行済みフラグをリセット
             return
+
         # キーが押されていない場合、経過時間を判定
         current_time = time.monotonic()
         if not self.gc_executed and (current_time - self.idle_time >= 1):
@@ -149,6 +150,14 @@ class ime_manager():
             print(f"[GC] {mem_before} -> {mem_after}")
             self.gc_executed = True  # 再び入力があるまで連投しないようにフラグを立てる
             self.color_led()
+            # レイヤーがUS/JP/NumLock以外の場合はレイヤーキーを監視
+            if not keyboard.active_layers[0] in [0,1,6]:
+                for key in keyboard.keys_pressed:
+                    # KMKのレイヤーキーは meta プロパティに layer 情報を持っています
+                    if hasattr(key, 'meta') and isinstance(key.meta, dict) and 'layer' in key.meta:
+                        self.release_stack()
+                        print('Layer control error!')
+                        break
             self.blue_led.value = False
 
     def IME_switch(self):
@@ -471,7 +480,6 @@ boost_sw.pull = digitalio.Pull.UP
 # 2. 高速入力処理ループ
 # -------------------------------------------------------------------
 def process_controls():
-    #global last_encoder_pos, is_dragging, gc_count, boost_sw, stick_md, jp_code_sending, lim_xy, deadzone, ave_sense, move_lim
     global last_encoder_pos, is_dragging, gc_count, boost_sw, stick_md, jp_code_sending
 
     fast = boost_sw.value is False  # Boost SW on なら
@@ -537,7 +545,8 @@ def process_controls():
         except StopIteration:
             jp_code_sending = None
 
-keyboard.before_matrix_scan = process_controls
+#keyboard.before_matrix_scan = process_controls
+keyboard.after_matrix_scan = process_controls
 
 # -------------------------------------------------------------------
 # 3. ローマ字出力用マクロの定義
@@ -662,7 +671,7 @@ keyboard.keymap = [
 
     # Layer 1: Num Lock
     [
-        KC.TRNS, KC.TRNS, KC.DQUO, KC.CIRC, KC.N8,  KC.N0,   IME_OFF,
+        KC.TRNS, KC.TRNS, KC.DQUO, KC.CIRC, KC.N8,  KC.N0,   KC.TRNS,
         KC.TRNS, KC.TRNS, KC.LPRN, KC.MINS, KC.N5,  KC.PLUS, KC.TRNS,
         KC.TRNS, KC.COMM, KC.UNDS, KC.ASTR, KC.N2,  KC.SLSH, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.N0,  KC.EQL,  KC.TRNS,
@@ -676,10 +685,10 @@ keyboard.keymap = [
     [
         KC.LANG5,KC.SLCK, KC_DELF, KC_SEL1, KC.INS,  KC.TRNS, IME_OFF,
         KC_INDT, KC.LANG3,KC.TRNS, KC_DUP,  KC.UP,   KC.TRNS, KC.TRNS,
-        KC.TRNS, KC.TRNS, KC_CTAV, KC.TRNS, KC.DOWN, KC.TRNS, KC.HENK,
+        KC.TRNS, KC.HENK, KC_CTAV, KC.TRNS, KC.DOWN, KC.TRNS, IME_ON,
         KC.TRNS, KC.TRNS, KC_IMET, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
-        KC.TRNS, KC.TRNS, KC.MHEN, KC.TRNS, KC.TRNS, KC.TRNS, IME_ON,
-        KC.TRNS, KC_CTAC, KC.TRNS, KC.LEFT, KC.RGHT, KC.TRNS, KC.TRNS,
+        KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
+        KC.MHEN, KC_CTAC, KC.TRNS, KC.LEFT, KC.RGHT, KC.TRNS, KC.TRNS,
         KC.LANG4,KC.KANA, KC.PSCR, KC.END,  KC.PGDN, KC_SENT, KC.TRNS,
         KC.PAUS, KC_DEL1, KC_DELB, KC.HOME, KC.PGUP, KC.DEL,  KC.BKSP
     ],
@@ -689,7 +698,7 @@ keyboard.keymap = [
         KC_RIPL, KC.F2,   KC.F4,   KC.F11,  KC_APP1, KC.BRIU, KC.TRNS,
         KC.TRNS, KC_SLEP, KC.TRNS, KC.TRNS, KC_APP2, KC.BRID, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.MUTE, KC.VOLU, KC.TRNS,
-        KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
+        KC.TRNS, IME_SW,  KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
         KC.TRNS, IME_SW,  KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
         KC_CADL, KC.TRNS, KC.TRNS, KC.TRNS, KC.VOLD, KC.TRNS, KC.TRNS,
         ANACAL,  KC.TRNS, KC_CBRK, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
@@ -699,9 +708,9 @@ keyboard.keymap = [
     # Layer 4: LOY Layer
     [
         KC.ESC,  KC.AT,   KC.DLR,  KC.CIRC, KC.ASTR, KC.RPRN, KC.TRNS,
-        KC_STAB, KC.F6,   KC.F8,   KC.LBRC, KC.TRNS, KC.COLN, IME_ON,
+        KC_STAB, KC.F6,   KC.F8,   KC.LBRC, KC.TRNS, KC.COLN, KC.TRNS,
         KC.TRNS, KC.GRV,  KC.UNDS, KC.LCBR, KC.TRNS, KC.RO,   KC_SSPC,
-        KC_CAPS, KC_OST,  KC_SSPC, KC.TRNS, KC.TRNS, KC.TRNS, IME_OFF,
+        KC_CAPS, KC_OST,  KC_SSPC, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
         KC.TRNS, KC_OST,  KC.DEL,  KC.TRNS, KC.TRNS, KC.TRNS, IME_ON,
         KC.TILD, KC.TRNS, KC.EQL,  KC.RCBR, KC.PIPE, KC.TRNS, KC.TRNS,
         KC.F5,   KC.F7,   KC.F9,   KC.RBRC, KC.JYEN, KC_SENT, KC.TRNS,
@@ -711,9 +720,9 @@ keyboard.keymap = [
     # Layer 5: ROY Layer
     [
         KC_STAB, KC.TRNS, KC.DQUO, KC.CIRC, KC.N8,  KC.N0,   IME_OFF,
-        KC_STAB, KC.TRNS, KC.LPRN, KC.MINS, KC.N5,  KC.PLUS, IME_ON,
+        KC_STAB, KC.TRNS, KC.LPRN, KC.MINS, KC.N5,  KC.PLUS, KC.TRNS,
         KC.TRNS, KC.COMM, KC.UNDS, KC.ASTR, KC.N2,  KC.SLSH, KC_SSPC,
-        KC.TRNS, KC_OST,  KC_SSPC, KC.TRNS, KC.N0,  KC.EQL,  IME_OFF,
+        KC.TRNS, KC_OST,  KC_SSPC, KC.TRNS, KC.N0,  KC.EQL,  KC.TRNS,
         KC.TRNS, KC_OST,  KC.DEL,  KC.TRNS, KC.DOT, KC.TG(1),KC.TRNS,
         KC.DOT,  KC.TRNS, KC.EQL,  KC.N1,   KC.N3,  KC.TRNS, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.RPRN, KC.N4,   KC.N6,  KC_SENT, KC.TRNS,

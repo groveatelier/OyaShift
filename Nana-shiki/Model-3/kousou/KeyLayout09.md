@@ -10,33 +10,33 @@
 
 | 段 | 列1 | 2 | 3 | 4 | 5 | 6 |\|| 7 | 8 | 9 | 10 | 11 | 12 |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
-| 3 | tab | q | w | e | r | t | (DEL) | y | u | i | o | p | BS |
+| 3 | tab | q | w | e | r | t |\|| y | u | i | o | p | BS |
 | 2 | tab | a | s | d | f | g |\|| h | j | k | l | ; | Enter |
 | 1 | LSft | z | x | c | v | b |\|| n | m | , | . | / | RSft |
-| 0 | ctrl | alt | meta | ESC | Spc | 左親 |\|| 右親 | fnA | fnC | fnA | alt | ctrl |
-| -1 | ||||| LSft<br/>IME ON | Spc/LSft | RSft<br/>IME OFF |||||
+| 0 | ctrl | alt | meta |  | Spc | 左親 |\|| 右親 | fnA | fnC | fnA | alt | ctrl |
+| -1 | ||||| L-BTN | Spc/LSft | R-BTN |||||
 ||
 
 **レイヤー 壱** : Num Lock
 
 | 段 | 列1 | 2 | 3 | 4 | 5 | 6 |\|| 7 | 8 | 9 | 10 | 11 | 12 |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
-| 3 | tab | ? |  |  | " | ' | (DEL) | ^ | 7 | 8 | 9 | 0 | BS |
+| 3 | tab | ? |  |  | " | ' | \|| ^ | 7 | 8 | 9 | 0 | BS |
 | 2 | tab |  |  |  | ( | ) |\|| - | 4 | 5 | 6 | + | Enter |
 | 1 | LSft | . | , |  | _ | = |\|| * | 1 | 2 | 3 | / | RSft |
-| 0 | ctrl | alt | meta | ESC | Spc | 左親 |\|| **右親** | fnA | 0 | . | = | **num lock** |
-| -1 | ||||| LSft<br/>IME ON | Spc | RSft<br/>IME OFF |||||
+| 0 | ctrl | alt | meta |  | Spc | 左親 |\|| **右親** | fnA | 0 | . | = | **num lock** |
+| -1 | ||||| L-BTN | Spc | R-BTN |||||
 ||
 
 **レイヤー 弐** : FnA
 
 | 段 | 列1 | 2 | 3 | 4 | 5 | 6 |\|| 7 | 8 | 9 | 10 | 11 | 12 |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
-| 3 | 全角<br/>半角 | Pause<br/>Break | Scroll<br/>Lock | DEL<br/>1L | BS 2<br/>Top | DEL 2<br/>End | (BS) | SEL1L | Home | Ins | Page<br/>Up |  | DEL |
+| 3 | 全角<br/>半角 | Pause<br/>Break | Scroll<br/>Lock | DEL<br/>1L | BS 2<br/>Top | DEL 2<br/>End | \|| SEL1L | Home | Ins | Page<br/>Up |  | DEL |
 | 2 | インデント | ひらがな | カタカナ | かな |  | Print<br/>Screen  |\|| DUP | End | Up | Page<br/>Down |  | Sft+Enter |
-| 1 | LSft |  |  | Ctl+AC | Ctl+AV |  |\||  | Left | Down | Right |  | RSft |
-| 0 | ctrl | alt | meta | ESC | IME TGL | 左親 |\|| 右親 | **_fnA_** | fnC | **_fnA_** | alt | ctrl |
-| -1 | ||||| 無変換 | 変換 | RSft |||||
+| 1 | LSft | 無変換 | 変換 | Ctl+AC | Ctl+AV |  |\||  | Left | Down | Right |  | RSft |
+| 0 | ctrl | alt | meta |  | IME TGL | IME OFF |\|| 右親 | **_fnA_** | fnC | **_fnA_** | alt | ctrl |
+| -1 | ||||| L-BTN | IME ON | R-BTN |||||
 ||
 
 
@@ -44,33 +44,33 @@
 
 | 段 | 列1 | 2 | 3 | 4 | 5 | 6 |\|| 7 | 8 | 9 | 10 | 11 | 12 |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
-| 3 | Boot | F1 | F2 | F3 | F4 | F10 | (OS) | F11 | F12 | App1 | (prev) | Bri.up | Relaod |
+| 3 | Boot | F1 | F2 | F3 | F4 | F10 | \|| F11 | F12 | App1 | (prev) | Bri.up | Relaod |
 | 2 |  | Analog Calib. | Sleep |  |  |  |\||  |  | App2 | (next) | Bri.<br/>down | Enter |
-| 1 | LSft | Ctl+Alt +Del |  |  |  | Ctrl+ Break |\||  |  | mute | vol.<br/>down | vol.<br/>up | RSft |
-| 0 | ctrl | alt | meta | IME<br/>SW | Spc | 左親 |\|| 右親 | fnA | **_fnC_** | fnA | alt | ctrl |
-| -1 | ||||| LSft | Spc | RSft |||||
+| 1 | LSft | Ctl+Alt<br/> +Del |  |  |  | Ctrl+<br/> Break |\||  |  | mute | vol.<br/>down | vol.<br/>up | RSft |
+| 0 | ctrl | alt | IME<br/>SW | | Spc | 左親 |\|| 右親 | fnA | **_fnC_** | fnA | alt | ctrl |
+| -1 | ||||| L-BTN | Spc | R-RTN |||||
 ||
 
 **レイヤー 肆** : 左親 (LOY)
 
 | 段 | 列1 | 2 | 3 | 4 | 5 | 6 |\|| 7 | 8 | 9 | 10 | 11 | 12 |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
-| 3 | ESC | ! | @ | # | $ | % | (BS) | ^ | & | * | ( | ) | DEL |
+| 3 | ESC | ! | @ | # | $ | % |\|| ^ | & | * | ( | ) | DEL |
 | 2 | Sft+Tab | F5 | F6 | F7 | F8 | F9 |\|| [ | ] |  | IntlYen | : | Sft+Enter |
 | 1 | LSft | ~ | ` |  |  _ | = |\|| { | } |  | \| | IntlRo | RSft |
-| 0 | Caps | alt | OS | OS | Sft+Spc | **_左親_** |\|| IME ON | fnA | fnC | fnA | alt | ctrl |
-| -1 | ||||| DEL | Sft+Spc | RSft |||||
+| 0 | Caps | alt | OS |  | Sft+Spc | **_左親_** |\|| IME ON | fnA | fnC | fnA | alt | ctrl |
+| -1 | ||||| L-BTN | Sft+Spc | R-BTN |||||
 ||
 
 **レイヤー 伍** : 右親 (ROY)
 
 | 段 | 列1 | 2 | 3 | 4 | 5 | 6 |\|| 7 | 8 | 9 | 10 | 11 | 12 |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
-| 3 | Sft+tab | ? |  |  | " | ' | (BS) | ^ | 7 | 8 | 9 | 0 | DEL |
+| 3 | Sft+tab | ? |  |  | " | ' |\|| ^ | 7 | 8 | 9 | 0 | DEL |
 | 2 | Sft+tab |  |  |  | ( | ) |\|| - | 4 | 5 | 6 | + | Sft+Enter |
 | 1 | LSft | . | , |  | _ | = |\|| * | 1 | 2 | 3 | / | RSft |
-| 0 | ctrl | alt | OS | OS | Sft+Spc | IME OFF |\|| **_右親_** |  | 0 | . | = | num lock |
-| -1 | ||||| DEL | Sft+Spc | RSft |||||
+| 0 | ctrl | alt | OS |  | Sft+Spc | IME OFF |\|| **_右親_** |  | 0 | . | = | num lock |
+| -1 | ||||| L-BTN | Sft+Spc | R-BTN |||||
 ||
 
 
@@ -78,22 +78,22 @@
 
 | 段 | 列1 | 2 | 3 | 4 | 5 | 6 |\|| 7 | 8 | 9 | 10 | 11 | 12 |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
-| 3 | tab | 。 | か | た | こ | さ | (DEL) | ら | ち | く | つ | 、 | BS |
+| 3 | tab | 。 | か | た | こ | さ | \| | ら | ち | く | つ | 、 | BS |
 | 2 | tab | う | し | て | け | せ |\|| は | と | き | い | ん | Enter |
-| 1 | LSft | 。 | ひ | す | ふ | へ |\|| め | そ | ね | ほ | ・ | RSft |
-| 0 | ctrl0 | alt0 | meta0 | ESC | Spc | 左親 |\|| 右親 | fnA | fnC | fnA | alt0 | ctrl0 |
-| -1 | ||||| sft0 | 半濁音 | sft0 |||||
+| 1 | sft0 | 。 | ひ | す | ふ | へ |\|| め | そ | ね | ほ | ・ | sft0 |
+| 0 | ctrl0 | alt0 | meta0 |  | Spc | 左親 |\|| 右親 | fnA | fnC | fnA | alt0 | ctrl0 |
+| -1 | ||||| L-BTN | 半濁音 | R-BTN |||||
 ||
 
 **レイヤー 漆** : 半濁音レイヤー
 
 | 段 | 列1 | 2 | 3 | 4 | 5 | 6 |\|| 7 | 8 | 9 | 10 | 11 | 12 |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
-| 3 | Sft+tab | ? | か | た | こ | さ | (BS) | ら | ち | く | つ | 、 | DEL |
+| 3 | Sft+tab | ? | か | た | こ | さ |\| | ら | ち | く | つ | 、 | DEL |
 | 2 | Sft+tab | う | し | て | け | せ |\|| は | と | き | い | ん | Sft+Enter |
 | 1 |  | 。 | ぴ | す | ぷ | ぺ |\|| め | そ | ね | ぽ | ? |  |
-| 0 | ctrl0 | alt0 | meta0 | ESC | Sft+Spc | 左親 |\|| 右親 | fnA | fnC | fnA | alt0 | ctrl0 |
-| -1 | ||||| sft0 | 半濁音 | sft0 |||||
+| 0 | ctrl0 | alt0 | meta0 |  | Sft+Spc | 左親 |\|| 右親 | fnA | fnC | fnA | alt0 | ctrl0 |
+| -1 | ||||| L-BTN | 半濁音 | R-BTN |||||
 ||
 
 **コンボ** : 左親シフトコンボ（変換後表記）

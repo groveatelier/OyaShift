@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/10/24 [Layout09] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/11/06 [Layout09] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -150,14 +150,6 @@ class ime_manager():
             print(f"[GC] {mem_before} -> {mem_after}")
             self.gc_executed = True  # 再び入力があるまで連投しないようにフラグを立てる
             self.color_led()
-            # レイヤーがUS/JP/NumLock以外の場合はレイヤーキーを監視
-            if not keyboard.active_layers[0] in [0,1,6]:
-                for key in keyboard.keys_pressed:
-                    # KMKのレイヤーキーは meta プロパティに layer 情報を持っています
-                    if hasattr(key, 'meta') and isinstance(key.meta, dict) and 'layer' in key.meta:
-                        self.release_stack()
-                        print('Layer control error!')
-                        break
             self.blue_led.value = False
 
     def IME_switch(self):
@@ -545,8 +537,7 @@ def process_controls():
         except StopIteration:
             jp_code_sending = None
 
-#keyboard.before_matrix_scan = process_controls
-keyboard.after_matrix_scan = process_controls
+keyboard.before_matrix_scan = process_controls
 
 # -------------------------------------------------------------------
 # 3. ローマ字出力用マクロの定義
@@ -707,7 +698,7 @@ keyboard.keymap = [
 
     # Layer 4: LOY Layer
     [
-        KC.ESC,  KC.AT,   KC.DLR,  KC.CIRC, KC.ASTR, KC.RPRN, KC.TRNS,
+        KC.ESC,  KC.AT,   KC.DLR,  KC.CIRC, KC.ASTR, KC.RPRN, KC.NO,
         KC_STAB, KC.F6,   KC.F8,   KC.LBRC, KC.TRNS, KC.COLN, KC.TRNS,
         KC.TRNS, KC.GRV,  KC.UNDS, KC.LCBR, KC.TRNS, KC.RO,   KC_SSPC,
         KC_CAPS, KC_OST,  KC_SSPC, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
@@ -723,7 +714,7 @@ keyboard.keymap = [
         KC_STAB, KC.TRNS, KC.LPRN, KC.MINS, KC.N5,  KC.PLUS, KC.TRNS,
         KC.TRNS, KC.COMM, KC.UNDS, KC.ASTR, KC.N2,  KC.SLSH, KC_SSPC,
         KC.TRNS, KC_OST,  KC_SSPC, KC.TRNS, KC.N0,  KC.EQL,  KC.TRNS,
-        KC.TRNS, KC_OST,  KC.DEL,  KC.TRNS, KC.DOT, KC.TG(1),KC.TRNS,
+        KC.TRNS, KC_OST,  KC.DEL,  KC.TRNS, KC.DOT, KC.TG(1),KC.NO,
         KC.DOT,  KC.TRNS, KC.EQL,  KC.N1,   KC.N3,  KC.TRNS, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.RPRN, KC.N4,   KC.N6,  KC_SENT, KC.TRNS,
         KC.QUES, KC.TRNS, KC.QUOT, KC.N7,   KC.N9,  KC.DEL,  KC.BKSP

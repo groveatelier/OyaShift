@@ -41,6 +41,7 @@ class NanaKeyboard(KMKKeyboard):
         self.lock_status = None
         self.prev_color = None
         self.os = False # False - win, True - Chrome
+        self.cycle_count = 0
         # --- GPIO OS切り替えピンの設定 (内部プルアップ) ---
         self.os_switch = digitalio.DigitalInOut(board.GP15)
         self.os_switch.direction = digitalio.Direction.INPUT
@@ -75,6 +76,8 @@ class NanaKeyboard(KMKKeyboard):
         self.key_idle_check()
 
     def key_idle_check(self):
+        self.cycle_count += 1
+        self.cycle_count &= 0xffff
         # OS スイッチの変更確認
         current_os = self.os_switch.value
         if current_os != self.os:
@@ -366,10 +369,9 @@ class AnalogStick:
         self.deadzone = [1800,1800]
         self.asense = [1200,1200]
         self.amid = [33684,33400]
-        self.amax = [36000,36000]
-        self.amin = [22000,22000]
-        self.tenlim = [0,0]
-        self.mlimit = 2
+        self.amax = [35000,35000]
+        self.amin = [24000,24000]
+        self.move_cycle = 32
 
     def get_value(self):
         x_val = self.amid[0] - self.stick_x.value
@@ -387,7 +389,7 @@ class AnalogStick:
 
     # Calibration
     def analog_calibration(self):
-        imeled.blue_led.value = True # LED 操作
+        Nana.blue_led.value = True # LED 操作
         time.sleep(0.5)
         # 最小最大値のリセット
         self.amax = [36000,36000]
@@ -412,7 +414,7 @@ class AnalogStick:
         print(f'cx max-min, cy max-min: {x_bre}, {y_bre}')
         print(f'center, deadzone: {self.amid}, {self.deadzone}')
         self.analog_adjust()
-        imeled.blue_led.value = False # LED 操作
+        Nana.blue_led.value = False # LED 操作
 
     # 最大最小値の更新
     def analog_minmax(self, xval, yval):
@@ -431,14 +433,6 @@ class AnalogStick:
 
     def get_move_value(self):
         def cal_value(cv, xy):
-            if cv > 0 and self.tenlim[xy] > 0 and cval[xy] > self.tenlim[xy]:
-                cv = self.tenlim[xy]
-                self.tenlim[xy] += self.mlimit
-            elif cv < 0 and self.tenlim[xy] < 0 and cval[xy] < self.tenlim[xy]:
-                cv = self.tenlim[xy]
-                self.tenlim[xy] -= self.mlimit
-            else:
-                self.tenlim[xy] = 0
             ccv = int((cv - (self.deadzone[xy] if cv > 0 else - self.deadzone[xy])) / self.asense[xy])
             ccv = ccv - 1 if ccv >= 2 else (ccv + 1 if ccv <= -2 else ccv)
             return ccv           
@@ -457,8 +451,13 @@ class AnalogStick:
             #print(f'absx:{absy} > {self.deadzone[1]}')
             yy = cal_value( yval, 1 )
         if xx != 0 or yy != 0:
-            moved  = True
-            self.analog_minmax( xval, yval )
+            if Nana.cycle_count % (self.move_cycle >> 1) == 0:
+                if self.move_cycle >= 4:
+                    self.move_cycle -= 1
+                moved  = True
+                self.analog_minmax( xval, yval )
+        else:
+            self.move_cycle = 32
         return moved, xx, yy
 
 ast = AnalogStick()

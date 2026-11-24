@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/9/28 [Layout06] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/11/24 [Layout06] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -30,26 +30,17 @@ from kmk.modules.holdtap import HoldTap
 from kmk.modules.combos import Combos, Chord
 from kmk.modules.macros import Macros, Press, Release, Tap, Delay
 
-# キーボード本体のインスタンス化
-keyboard = KMKKeyboard()
-
-# keymap_jp を読む前に International 拡張を登録する
-keyboard.extensions.append(International())
-import kmk.extensions.keymap_extras.keymap_jp
-
-# ===================================================================
-# IME状態管理クラス (LED制御付き)
-# ===================================================================
-class ime_manager():
-    def __init__(self, rgb_ext, lock_ext):
-        self.disable = False
-        self.layer = 0
-        self.rgb = rgb_ext
-        self.lock = lock_ext
-        self.ime_on = (KC.LANG1, KC.HENK)
-        self.ime_off = (KC.LANG2, KC.MHEN)
-        self.idle_time = time.monotonic()
-        self.gc_executed = False
+# Hookの為だけの継承クラス
+class NanaKeyboard(KMKKeyboard):
+    def __init__(self) -> None:
+        super().__init__()
+        self.key_time = -1
+        self.prev_layer = 0
+        self.gc_exec = False
+        self.stick_md = True
+        self.lock_status = None
+        self.prev_color = None
+        self.os = False # False - win, True - Chrome
         # --- GPIO OS切り替えピンの設定 (内部プルアップ) ---
         self.os_switch = digitalio.DigitalInOut(board.GP15)
         self.os_switch.direction = digitalio.Direction.INPUT
@@ -59,72 +50,73 @@ class ime_manager():
         self.blue_led = digitalio.DigitalInOut(microcontroller.pin.GPIO25)
         self.blue_led.direction = digitalio.Direction.OUTPUT
         self.blue_led.value = False  # 初期状態は消灯
+        # YD-RP2040 オンボードRGB LEDの設定 (GP23)
+        self.rgb = RGB(
+            pixel_pin=board.GP23,
+            num_pixels=1,
+            val_limit=100,  # 明るさの上限 (0〜255) ※直視で眩しすぎないよう100程度に抑制
+            animation_mode=AnimationModes.STATIC,
+        )
 
-    def is_state_change(self):
-        trans = False
-        current_layer = keyboard.active_layers[0]
+    def process_key(
+        self, key: Key, is_pressed: bool, int_coord: Optional[int] = None
+    ) -> None:
+        if is_pressed is False:
+            self.key_time = -1
+            self.gc_exec = False
+        return super().process_key(
+            key,
+            is_pressed,
+            int_coord
+    )
+
+    def _main_loop(self) -> None:
+        super()._main_loop()
+        self.key_idle_check()
+
+    def key_idle_check(self):
         # OS スイッチの変更確認
         current_os = self.os_switch.value
         if current_os != self.os:
-            self.os = current_os
-            self.release_stack()
-            trans = True
-        # Layer遷移の確認
-        if self.layer != current_layer:
-            self.layer = current_layer
-            trans = True
-        return trans
-
-    def set_ime(self, kanamode):
-        if kanamode:
-            combos.combos = combos_roma # Comboはローマ字入力
-            keyboard.tap_key(self.ime_on[self.os])
-        else:
-            combos.combos = () # Comboは空に
-            keyboard.tap_key(self.ime_off[self.os])
-
-    def color_led(self):
-        global stick_md
-        # Layer及びOS情報をもとにLEDを設定
-        cur_rgb = [0,0,0]
-        cur_layer = keyboard.active_layers[0] if keyboard.active_layers else 0
-        if cur_layer == 0:
-            if self.os:
-                cur_rgb[1] = 8
-            else:
-                cur_rgb[0] = 64 if self.lock.get_caps_lock() else 8
-                cur_rgb[2] = 64 if self.lock.get_scroll_lock() else 0
-        else:
-            cur_layer += 1  # 色調整
-            if cur_layer & 1:
-                cur_rgb[2] = 32
-            if cur_layer & 2:
-                cur_rgb[1] = 24      
-            if cur_layer & 4:
-                cur_rgb[0] = 32
-        if not stick_md:
-            cur_rgb[2] += 48
-        target_color = tuple(cur_rgb)
-        self.last_color = target_color
-        self.rgb.set_rgb_fill(target_color)
-        self.rgb.show()
-
-    def layer_led(self):
-        if not self.is_state_change():  # 無変化の場合はGC確認
-            self.check_gc()
+            self.OS_tggle()
+        # Layer が異なるなら、RGB LED処理へ
+        if self.active_layers[0] != self.prev_layer:
+            self.prev_layer = self.active_layers[0]
+            self.key_time = -1
+            self.color_led()
             return
-        # --- 青色&RGB LEDの制御 ---
-        self.blue_led.value = self.disable
-        self.color_led()
+        # key_time が初期化なら終了
+        if self.key_time < 0:
+            self.key_time = time.monotonic()
+            return
+
+        # 経過時間を算出
+        spend_time = time.monotonic() - self.key_time
+
+        # GC 実施要か判断
+        if self.gc_exec is False and spend_time > 1:
+            self.blue_led.value = True
+            # 時間経過した時の処理
+            mem_before = gc.mem_free()
+            gc.collect()
+            mem_after = gc.mem_free()
+            print(f"[GC] {mem_before} -> {mem_after}")
+            self.gc_exec = True  # GC実施フラグ
+            self.blue_led.value = False
+            return
+
+        # Layer 固定判断
+        if spend_time > 5 and self.prev_layer > 1 and self.prev_layer != 6:
+            self.blue_led.value = True
+            self.release_stack()
+            self.blue_led.value = False
 
     def release_stack(self):
         print('- reset macro/combos -')
-        # 1. PCへ送信中のHIDキーコードリストをクリア
-        keyboard.keys_pressed.clear()
-        # 2. マクロキー等がスタックしていたマトリックス状態をクリア
-        keyboard._coordkeys_pressed.clear()
-        # 3. 各モジュールの内部状態をリセット
-        for module in keyboard.modules:
+        self.keys_pressed.clear()   # PCへ送信中のHIDキーコードリストをクリア
+        self._coordkeys_pressed.clear() # マクロキー等スタック状態をクリア
+        # 各モジュールの内部状態をリセット
+        for module in self.modules:
             # Combos モジュールの記憶リセット（安全な属性直接クリア）
             if hasattr(module, 'active_combos') and isinstance(module.active_combos, (dict, list, set)):
                 module.active_combos.clear()
@@ -139,46 +131,84 @@ class ime_manager():
             # HoldTap / Layers モジュールの状態クリア
             if hasattr(module, 'key_states') and isinstance(module.key_states, (dict, list, set)):
                 module.key_states.clear()
-        # 4. レイヤーを基本（0番）に強制リセット
-        keyboard.active_layers = [0]
+        # レイヤーを基本（0番）に強制リセット
+        self.active_layers = [0]
 
-    def check_gc(self):
-        # 現在物理的に押されているキーがあるか確認
-        if keyboard.keys_pressed:
-            self.idle_time = time.monotonic()
-            self.gc_executed = False  # 入力があったのでGC実行済みフラグをリセット
-            return
-        # キーが押されていない場合、経過時間を判定
-        current_time = time.monotonic()
-        if not self.gc_executed and (current_time - self.idle_time >= 1):
-            self.blue_led.value = True
-            # 時間経過した時の処理
-            mem_before = gc.mem_free()
-            gc.collect()
-            mem_after = gc.mem_free()
-            print(f"[GC] {mem_before} -> {mem_after}")
-            self.gc_executed = True  # 再び入力があるまで連投しないようにフラグを立てる
-            self.color_led()
-            self.blue_led.value = False
+    def color_led(self):
+        # Layer及びOS情報をもとにLEDを設定
+        cur_rgb = [0,0,0]
+        cur_layer = self.active_layers[0] if self.active_layers else 0
+        if cur_layer == 0:
+            if self.os:
+                cur_rgb[1] = 8
+            elif self.lock_status is not None:
+                cur_rgb[0] = 64 if self.lock_status.get_caps_lock() else 8
+                cur_rgb[2] = 64 if self.lock_status.get_scroll_lock() else 0
+        else:
+            cur_layer += 1  # 色調整
+            if cur_layer & 1:
+                cur_rgb[2] = 32
+            if cur_layer & 2:
+                cur_rgb[1] = 24      
+            if cur_layer & 4:
+                cur_rgb[0] = 32
+        if not self.stick_md:
+            cur_rgb[2] += 48
+        target_color = tuple(cur_rgb)
+        if self.prev_color != target_color:
+            self.prev_color = target_color
+            self.rgb.set_rgb_fill(target_color)
+            self.rgb.show()
+
+    def OS_tggle(self):
+        self.os = not self.os
+        self.release_stack()
+        self.color_led()
+
+# キーボード本体のインスタンス化
+Nana = NanaKeyboard()
+
+# keymap_jp を読む前に International 拡張を登録する
+Nana.extensions.append(International())
+import kmk.extensions.keymap_extras.keymap_jp
+
+# ===================================================================
+# IME状態管理クラス (LED制御付き)
+# ===================================================================
+class ime_manager():
+    def __init__(self, combo):
+        self.disable = False
+        self.com = combo
+        self.ime_on = (KC.LANG1, KC.HENK)
+        self.ime_off = (KC.LANG2, KC.MHEN)
+
+    def set_ime(self, kanamode):
+        global combos_roma
+        if kanamode:
+            self.com.combos = combos_roma # Comboはローマ字入力
+            Nana.tap_key(self.ime_on[Nana.os])
+        else:
+            self.com.combos = () # Comboは空に
+            Nana.tap_key(self.ime_off[Nana.os])
 
     def IME_switch(self):
         self.disable = not self.disable
 
     def IME_on(self):
-        if self.disable is False and 6 not in keyboard.active_layers:
-            keyboard.active_layers.insert(0, 6)
+        if self.disable is False and 6 not in Nana.active_layers:
+            Nana.active_layers.insert(0, 6)
         self.set_ime(True)
 
     def IME_off(self):
-        if 6 in keyboard.active_layers:
-            keyboard.active_layers.remove(6)
+        if 6 in Nana.active_layers:
+            Nana.active_layers.remove(6)
         self.set_ime(False)
 
 # -------------------------------------------------------------------
 # 1. 基本設定
 # -------------------------------------------------------------------
 # 行（Rows）ピンの指定: Pin0 〜 Pin7
-keyboard.row_pins = (
+Nana.row_pins = (
     board.GP0,
     board.GP1,
     board.GP2,
@@ -189,7 +219,7 @@ keyboard.row_pins = (
     board.GP7,
 )
 # 列（Columns）ピンの指定: Pin8 〜 Pin14
-keyboard.col_pins = (
+Nana.col_pins = (
     board.GP8,
     board.GP9,
     board.GP10,
@@ -200,44 +230,37 @@ keyboard.col_pins = (
 )
 # ダイオードの向きを指定
 # COL2ROW: カソード(アノード側がスイッチ)がROW側に向いている
-keyboard.diode_orientation = DiodeOrientation.COL2ROW
+Nana.diode_orientation = DiodeOrientation.COL2ROW
 
 # レイヤーモジュールの有効化
 layers_ext = Layers()
-keyboard.modules.append(layers_ext)
+Nana.modules.append(layers_ext)
 
 # キーボード定義拡張 
-keyboard.extensions.append(MediaKeys())
+Nana.extensions.append(MediaKeys())
 
 # HoldTap & Combos を先頭に追加(時間監視処理優先の為)
 holdtap = HoldTap()
 combos = Combos()
 combos.timeout_ms = 45  # 同時押し判定時間（45ミリ秒）
-keyboard.modules = [combos, holdtap] + keyboard.modules  # 先頭へ追加
+Nana.modules = [combos, holdtap] + Nana.modules  # 先頭へ追加
 
 # OSからの要求 (Caps Lock / Num Lock等) を取得する拡張機能
-lock_status = LockStatus()
-keyboard.extensions.append(lock_status)
-
-# YD-RP2040 オンボードRGB LEDの設定 (GP23)
-rgb = RGB(
-    pixel_pin=board.GP23,
-    num_pixels=1,
-    val_limit=100,  # 明るさの上限 (0〜255) ※直視で眩しすぎないよう100程度に抑制
-    animation_mode=AnimationModes.STATIC,
-)
-keyboard.extensions.append(rgb)
+Nana.lock_status = LockStatus()
+Nana.extensions.append(Nana.lock_status)
+# RGB extentionの設定
+Nana.extensions.append(Nana.rgb)
 
 # マクロモジュールを有効化
 macros = Macros()
-keyboard.modules.append(macros)
+Nana.modules.append(macros)
 mouse_keys = MouseKeys()
-keyboard.modules.append(mouse_keys)
+Nana.modules.append(mouse_keys)
 mouse = Mouse(usb_hid.devices)
 cc = ConsumerControl(usb_hid.devices)  # 音量制御用
 
 # IME/LED 制御用モジュール
-imeled = ime_manager(rgb, lock_status)
+imeled = ime_manager(combos)
 
 # --- カスタムキー定義 ---
 jp_code_sending = None
@@ -246,7 +269,7 @@ def send_jp(key, keyboard):
     for char in key.jp:
         key_code = getattr(KC, char, None)
         if key_code:
-            keyboard.tap_key(key_code)
+            Nana.tap_key(key_code)
             yield   # KMK側に処理を渡す(2ループ分)
             yield
 
@@ -285,7 +308,7 @@ def send_app2_fn(keyboard):
     cc.send(0x0192)  # 0x0192: AL Calculator (電卓 / APP2)
 def send_sleep_fn(keyboard):
     if ime_manager.os == 1:
-        keyboard.tap_key(KC.LWIN(KC.L)) # chrome OSの場合
+        Nana.tap_key(KC.LWIN(KC.L)) # chrome OSの場合
     else:
         cc.send(0x0224)  # 0x0224: AC Sleep
 def mcu_reset_fn(keyboard):
@@ -301,13 +324,11 @@ def _ime_enadis_press(*args, **kwargs):
     imeled.IME_switch()
 
 def _layer_reset(*args, **kwargs):
-    keyboard.active_layers = [0]
+    Nana.active_layers = [0]
 
-stick_md = True
 def _toggle_stick_mode(*args, **kwargs):
-    global stick_md
-    stick_md = not stick_md
-    imeled.color_led()
+    Nana.stick_md = not Nana.stick_md
+    Nana.color_led()
 
 # 独自キー
 L_OYA = make_key(names='loya')
@@ -336,84 +357,115 @@ TG_STCK = make_key(names='stk', on_press=_toggle_stick_mode)
 CSFT_R = KC.HT(IME_ON, KC_FSFT, tap_time=220)
 CSFT_L = KC.HT(IME_OFF, KC_FSFT, tap_time=220)
 
-# アナログスティック (GP26, GP27) 予備PIN GP28, GP29
-stick_x = analogio.AnalogIn(board.GP26)
-stick_y = analogio.AnalogIn(board.GP27)
+
+class AnalogStick:
+    def __init__(self):
+        # アナログスティック (GP26, GP27) 予備PIN GP28, GP29
+        self.stick_x = analogio.AnalogIn(board.GP26)
+        self.stick_y = analogio.AnalogIn(board.GP27)
+        self.deadzone = [1800,1800]
+        self.asense = [1200,1200]
+        self.amid = [33684,33400]
+        self.amax = [36000,36000]
+        self.amin = [22000,22000]
+        self.tenlim = [0,0]
+        self.mlimit = 2
+
+    def get_value(self):
+        x_val = self.amid[0] - self.stick_x.value
+        y_val = self.amid[1] - self.stick_y.value
+        return x_val, y_val
+
+    # アナログステック調整ルーチン
+    def analog_adjust(self):
+        def cal_maxmin(xy):
+            return int((self.amax[xy] - self.amid[xy] - self.deadzone[xy])/18), int((self.amid[xy] - self.amin[xy] - self.deadzone[xy])/18)
+        x_sense = cal_maxmin(0)
+        y_sense = cal_maxmin(1)
+        self.asense = [int((x_sense[0]+x_sense[1])/2), int((y_sense[0]+y_sense[1])/2)]
+        print(f'ave sense: {self.asense}')
+
+    # Calibration
+    def analog_calibration(self):
+        imeled.blue_led.value = True # LED 操作
+        time.sleep(0.5)
+        # 最小最大値のリセット
+        self.amax = [36000,36000]
+        self.amin = [22000,22000]
+        # 中心値の計測
+        ax = self.stick_x.value
+        ay = self.stick_y.value
+        cmax = [ ax, ay ]
+        cmin = [ ax, ay ]
+        for _ in range(64):
+            ax = self.stick_x.value
+            ay = self.stick_y.value
+            cmax[0] = ax if ax > cmax[0] else cmax[0]
+            cmax[1] = ay if ay > cmax[1] else cmax[1]
+            cmin[0] = ax if ax < cmin[0] else cmin[0]
+            cmin[1] = ay if ay < cmin[1] else cmin[1]
+            time.sleep(0.08)
+        x_bre = cmax[0] - cmin[0]
+        y_bre = cmax[1] - cmin[1]
+        self.amid = [int(x_bre/2 + cmin[0]), int(y_bre/2 + cmin[1])]
+        self.deadzone = [x_bre+1600, y_bre+1600]
+        print(f'cx max-min, cy max-min: {x_bre}, {y_bre}')
+        print(f'center, deadzone: {self.amid}, {self.deadzone}')
+        self.analog_adjust()
+        imeled.blue_led.value = False # LED 操作
+
+    # 最大最小値の更新
+    def analog_minmax(self, xval, yval):
+        if xval > self.amax[0]:
+            self.amax[0] = int((self.amax[0] + xval)/2)
+            self.analog_adjust()
+        elif xval < self.amin[0]:
+            self.amin[0] = int((self.amin[0] + xval)/2)
+            self.analog_adjust()
+        if yval > self.amax[1]:
+            self.amax[1] = int((self.amax[1] + yval)/2)
+            self.analog_adjust()
+        elif yval < self.amin[1]:
+            self.amin[1] = int((self.amin[1] + yval)/2)
+            self.analog_adjust()
+
+    def get_move_value(self):
+        def cal_value(cv, xy):
+            if cv > 0 and self.tenlim[xy] > 0 and cval[xy] > self.tenlim[xy]:
+                cv = self.tenlim[xy]
+                self.tenlim[xy] += self.mlimit
+            elif cv < 0 and self.tenlim[xy] < 0 and cval[xy] < self.tenlim[xy]:
+                cv = self.tenlim[xy]
+                self.tenlim[xy] -= self.mlimit
+            else:
+                self.tenlim[xy] = 0
+            ccv = int((cv - (self.deadzone[xy] if cv > 0 else - self.deadzone[xy])) / self.asense[xy])
+            ccv = ccv - 1 if ccv >= 2 else (ccv + 1 if ccv <= -2 else ccv)
+            return ccv           
+
+        xval, yval = self.get_value()
+        xx = 0
+        yy = 0
+        absx = abs( xval )
+        absy = abs( yval )
+        moved = False
+
+        if absx > self.deadzone[0]:
+            #print(f'absx:{absx} > {self.deadzone[0]}')
+            xx = cal_value( xval, 0 )
+        if absy > self.deadzone[1]:
+            #print(f'absx:{absy} > {self.deadzone[1]}')
+            yy = cal_value( yval, 1 )
+        if xx != 0 or yy != 0:
+            moved  = True
+            self.analog_minmax( xval, yval )
+        return moved, xx, yy
+
+ast = AnalogStick()
 is_dragging = False
 
-deadzone = 300
-ave_sense = 1225
-an_center_x = 33000
-an_center_y = 32400
-x_max = 38000
-y_max = 38000
-x_min = 20000
-y_min = 20000
-
-# アナログステック調整ルーチン
-def analog_adjust():
-    x_sense_p = int((x_max - an_center_x - deadzone)/16)
-    x_sense_m = int((an_center_x - x_min - deadzone)/16)
-    y_sense_p = int((y_max - an_center_y - deadzone)/16)
-    y_sense_m = int((an_center_y - y_min - deadzone)/16)
-    ave_sense = int((x_sense_m + x_sense_p + y_sense_m + y_sense_p)/4)
-    print(f'ave sense: {ave_sense}')
-
-def analog_calibration():
-    global an_center_x, an_center_y
-    imeled.blue_led.value = True # LED 操作
-    time.sleep(0.5)
-    # 最小最大値のリセット
-    x_max = 45000
-    y_max = 45000
-    x_min = 13000
-    y_min = 13000
-    # 中心値の計測
-    an_center_x = stick_x.value
-    an_center_y = stick_y.value
-    cx_max = an_center_x
-    cx_min = an_center_x
-    cy_max = an_center_y
-    cy_min = an_center_y
-    for _ in range(64):
-        ax = stick_x.value
-        ay = stick_y.value
-        cx_max = ax if ax > cx_max else cx_max
-        cx_min = ax if ax < cx_min else cx_min
-        cy_max = ay if ay > cy_max else cy_max
-        cy_min = ay if ay < cy_min else cy_min
-        time.sleep(0.08)
-    print(f'cx min/max, cy min/max: {cx_min}/{cx_max}, {cy_min}/{cy_max}')
-    x_bre = (cx_max - cx_min)
-    y_bre = (cy_max - cy_min)
-    an_center_x = int(x_bre/2 + cx_min)
-    an_center_y = int(y_bre/2 + cy_min)
-    deadzone = x_bre if x_bre > y_bre else y_bre
-    deadzone += 128  # マージン追加
-    print(f'center x/y, deadzone: {an_center_x}/{an_center_y}, {deadzone}')
-    analog_adjust()
-    imeled.blue_led.value = False # LED 操作
-
-def analog_minmax(xval, yval):
-    global x_max, x_min, y_max, y_min
-    if xval > x_max:
-        x_max = int((x_max + xval)/2)
-        analog_adjust()
-    elif xval < x_min:
-        x_min = int((x_min + xval)/2)
-        analog_adjust()
-    if yval > y_max:
-        y_max = int((y_max + yval)/2)
-        analog_adjust()
-    elif yval < y_min:
-        y_min = int((y_min + yval)/2)
-        analog_adjust()
-
-def move_value(move_xy):
-    return move_xy - 1 if move_xy >= 2 else (move_xy + 1 if move_xy <= -2 else move_xy)
-
 def _analog_calib(*args, **kwargs):
-    analog_calibration()
+    ast.analog_calibration()
 
 ANACAL = make_key(names='calib', on_press=_analog_calib)
 
@@ -431,7 +483,7 @@ boost_sw.pull = digitalio.Pull.UP
 # 2. 高速入力処理ループ
 # -------------------------------------------------------------------
 def process_controls():
-    global last_encoder_pos, is_dragging, gc_count, boost_sw, stick_md, jp_code_sending
+    global last_encoder_pos, is_dragging, boost_sw, jp_code_sending
 
     fast = boost_sw.value is False  # Boost SW on なら
 
@@ -445,7 +497,7 @@ def process_controls():
             raw_diff *= 2   # 倍速
 
         # 右親 押下なら 音量制御
-        if 5 in keyboard.active_layers:
+        if 5 in Nana.active_layers:
             if raw_diff > 0:
                 cc.send(ConsumerControlCode.VOLUME_INCREMENT) # 音量UP
             else:
@@ -456,50 +508,33 @@ def process_controls():
 
     else:
     # --- B. アナログスティックの計算 ---
-        x_val = an_center_x - stick_x.value     #CENTER_VAL
-        y_val = an_center_y - stick_y.value     #CENTER_VAL
-        move_x = 0
-        move_y = 0
-        abs_x = abs(x_val)
-        abs_y = abs(y_val)
+        moved, move_x, move_y = ast.get_move_value()
 
-        if abs_x > deadzone:
-            move_x = int((x_val - (deadzone if x_val > 0 else -deadzone)) / ave_sense)
-            move_x = move_value( move_x )
-        if abs_y > deadzone:
-            move_y = int((y_val - (deadzone if y_val > 0 else -deadzone)) / ave_sense)
-            move_y = move_value( move_y )
- 
-        if stick_md:
-            if KC.MB_LMB in keyboard.keys_pressed:
-                if not is_dragging:
-                    mouse.press(1)  # 1: mouse LBTN
-                    is_dragging = True
-            elif is_dragging:
-                mouse.release(1) 
-                is_dragging = False
+        if moved is True:
+            if Nana.stick_md:
+                if KC.MB_LMB in Nana.keys_pressed:
+                    if not is_dragging:
+                        mouse.press(1)  # 1: mouse LBTN
+                        is_dragging = True
+                elif is_dragging:
+                    mouse.release(1) 
+                    is_dragging = False
 
-            # --- C. マウス操作の送信 ---
-            # アナログ移動がある時のみ送信
-            if move_x != 0 or move_y != 0:
+                # --- C. マウス操作の送信 ---
                 if fast: # 逓倍
-                    if abs_x >= 2: move_x = int(move_x/2)
-                    if abs_y >= 2: move_y = int(move_y/2) 
+                    if abs(move_x) >= 2: move_x = int(move_x/2)
+                    if abs(move_y) >= 2: move_y = int(move_y/2) 
                 mouse.move(x=move_x, y=move_y)
-        else:
-            if abs(move_x) > 2:
-                key_to_tap = KC.RIGHT if move_x > 0 else KC.LEFT
-                keyboard.tap_key(key_to_tap)
-                time.sleep(0.12)
-            if abs(move_y) > 2:
-                key_to_tap = KC.DOWN if move_y > 0 else KC.UP
-                keyboard.tap_key(key_to_tap)
-                time.sleep(0.12)
+            else:
+                if abs(move_x) > 2:
+                    key_to_tap = KC.RIGHT if move_x > 0 else KC.LEFT
+                    Nana.tap_key(key_to_tap)
+                    time.sleep(0.12)
+                if abs(move_y) > 2:
+                    key_to_tap = KC.DOWN if move_y > 0 else KC.UP
+                    Nana.tap_key(key_to_tap)
+                    time.sleep(0.12)
         
-        analog_minmax(x_val, y_val)
-    # IMEとLEDの制御
-    imeled.layer_led()
-
     # jp codeの送出(必要なら)
     if jp_code_sending is not None:
         try:
@@ -507,7 +542,7 @@ def process_controls():
         except StopIteration:
             jp_code_sending = None
 
-keyboard.before_matrix_scan = process_controls
+Nana.before_matrix_scan = process_controls
 
 # -------------------------------------------------------------------
 # 3. ローマ字出力用マクロの定義
@@ -516,22 +551,22 @@ jp = JPkeys()
 KC_NN = KC.MACRO(Tap(KC.N), Tap(KC.N))
 
 # -------------------------------------------------------------------
-# 4. 特殊系マクロの定義
+# 4. 特殊系マクロ/エイリアスの定義
 # -------------------------------------------------------------------
 # 一行選択
 ACT_SEL1 = (Tap(KC.HOME),Tap(KC.HOME),Press(KC.RSFT),Tap(KC.DOWN),Release(KC.RSFT))
 KC_SEL1 = KC.MACRO(*ACT_SEL1)
 # 一行削除
-KC_DEL1 = KC.MACRO(*ACT_SEL1,Tap(KC.DEL))
+KC_DEL1 = KC.LCTL(KC.X)
 # 前方削除
 ACT_RSDEL = (Release(KC.RSFT),Tap(KC.DEL))
 KC_DELF = KC.MACRO(Press(KC.RSFT),Tap(KC.HOME),Tap(KC.HOME),*ACT_RSDEL)
 # 後方削除
 KC_DELB = KC.MACRO(Press(KC.RSFT),Tap(KC.END),*ACT_RSDEL)
 # 一行複写
-KC_DUP = KC.MACRO(Tap(KC.HOME), Tap(KC.LCTL(KC.C)), Tap(KC.LCTL(KC.V)))
+KC_DUP = KC.MACRO(Tap(KC.LCTL(KC.C)), Tap(KC.LCTL(KC.V)))
 # caps lock Windows/chrome で処理を合わせる為
-KC_CAPS = KC.MACRO(Press(KC.RSFT),Tap(KC.CAPS),Release(KC.RSFT))
+KC_CAPS = KC.RSFT(KC.CAPS)
 # 全コピー
 KC_CTAC = KC.MACRO(Tap(KC.LCTL(KC.A)), Tap(KC.LCTL(KC.C)))
 # 全ペースト
@@ -607,7 +642,7 @@ combos_roma = [
 # 6. キーマップ
 # -------------------------------------------------------------------
 # キーマップの定義 (8行 × 7列 の例)
-keyboard.keymap = [
+Nana.keymap = [
     # Layer 0: Base Layer
     [
         KC.TAB,  KC.W,    KC.R,    KC.DEL,  KC.I,    KC.P,    KC_LOY,
@@ -706,4 +741,4 @@ keyboard.keymap = [
 ]
 
 if __name__ == '__main__':
-    keyboard.go()
+    Nana.go()

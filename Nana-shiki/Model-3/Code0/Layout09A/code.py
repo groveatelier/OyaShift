@@ -527,8 +527,6 @@ def process_controls():
                     is_dragging = False
 
                 # --- C. マウス操作の送信 ---
-                # アナログ移動がある時のみ送信
-                #if move_x != 0 or move_y != 0:
                 if fast: # 逓倍
                     if abs(move_x) >= 2: move_x = int(move_x/2)
                     if abs(move_y) >= 2: move_y = int(move_y/2) 

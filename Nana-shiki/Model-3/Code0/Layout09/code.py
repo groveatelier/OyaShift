@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/11/24  [Layout09A] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/11/24  [Layout09] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -41,6 +41,7 @@ class NanaKeyboard(KMKKeyboard):
         self.lock_status = None
         self.prev_color = None
         self.os = False # False - win, True - Chrome
+        self.cycle_count = 0
         # --- GP25 青色LEDの設定 (デジタル出力) ---
         self.blue_led = digitalio.DigitalInOut(microcontroller.pin.GPIO25)
         self.blue_led.direction = digitalio.Direction.OUTPUT
@@ -70,6 +71,8 @@ class NanaKeyboard(KMKKeyboard):
         self.key_idle_check()
 
     def key_idle_check(self):
+        self.cycle_count += 1
+        self.cycle_count &= 0xffff
         # Layer が異なるなら、RGB LED処理へ
         if self.active_layers[0] != self.prev_layer:
             self.prev_layer = self.active_layers[0]
@@ -356,8 +359,6 @@ IME_SW = make_key(names='imesw', on_press=_ime_enadis_press)
 IME_ON = make_key(names='imeon', on_press=_ime_on_press)
 IME_OFF = make_key(names='imeof', on_press=_ime_off_press)
 TG_STCK = make_key(names='stk', on_press=_toggle_stick_mode)
-#CSFT_R = KC.HT(IME_ON, KC_FSFT, tap_time=220)
-#CSFT_L = KC.HT(IME_OFF, KC_FSFT, tap_time=220)
 KC_IMET = make_key(names='imetgl', on_press=_ime_tgl_press)
 KC_OST = make_key(names='ostgl', on_press=_os_tgl_press)
 KC_USPC = KC.HT(KC.SPC, KC.LSFT, tap_time=220)
@@ -372,10 +373,9 @@ class AnalogStick:
         self.deadzone = [1800,1800]
         self.asense = [1200,1200]
         self.amid = [33684,33400]
-        self.amax = [36000,36000]
-        self.amin = [22000,22000]
-        self.tenlim = [0,0]
-        self.mlimit = 1
+        self.amax = [35000,35000]
+        self.amin = [24000,24000]
+        self.move_cycle = 32
 
     def get_value(self):
         x_val = self.amid[0] - self.stick_x.value
@@ -393,7 +393,7 @@ class AnalogStick:
 
     # Calibration
     def analog_calibration(self):
-        imeled.blue_led.value = True # LED 操作
+        Nana.blue_led.value = True # LED 操作
         time.sleep(0.5)
         # 最小最大値のリセット
         self.amax = [36000,36000]
@@ -418,7 +418,7 @@ class AnalogStick:
         print(f'cx max-min, cy max-min: {x_bre}, {y_bre}')
         print(f'center, deadzone: {self.amid}, {self.deadzone}')
         self.analog_adjust()
-        imeled.blue_led.value = False # LED 操作
+        Nana.blue_led.value = False # LED 操作
 
     # 最大最小値の更新
     def analog_minmax(self, xval, yval):
@@ -437,14 +437,6 @@ class AnalogStick:
 
     def get_move_value(self):
         def cal_value(cv, xy):
-            if cv > 0 and self.tenlim[xy] > 0 and cval[xy] > self.tenlim[xy]:
-                cv = self.tenlim[xy]
-                self.tenlim[xy] += self.mlimit
-            elif cv < 0 and self.tenlim[xy] < 0 and cval[xy] < self.tenlim[xy]:
-                cv = self.tenlim[xy]
-                self.tenlim[xy] -= self.mlimit
-            else:
-                self.tenlim[xy] = 0
             ccv = int((cv - (self.deadzone[xy] if cv > 0 else - self.deadzone[xy])) / self.asense[xy])
             ccv = ccv - 1 if ccv >= 2 else (ccv + 1 if ccv <= -2 else ccv)
             return ccv           
@@ -463,8 +455,13 @@ class AnalogStick:
             #print(f'absx:{absy} > {self.deadzone[1]}')
             yy = cal_value( yval, 1 )
         if xx != 0 or yy != 0:
-            moved  = True
-            self.analog_minmax( xval, yval )
+            if Nana.cycle_count % (self.move_cycle >> 1) == 0:
+                if self.move_cycle >= 4:
+                    self.move_cycle -= 1
+                moved  = True
+                self.analog_minmax( xval, yval )
+        else:
+            self.move_cycle = 32
         return moved, xx, yy
 
 ast = AnalogStick()

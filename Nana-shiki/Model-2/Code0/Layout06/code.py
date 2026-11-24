@@ -42,6 +42,7 @@ class NanaKeyboard(KMKKeyboard):
         self.prev_color = None
         self.os = False # False - win, True - Chrome
         self.cycle_count = 0
+        self.ime_mode = 0
         # --- GPIO OS切り替えピンの設定 (内部プルアップ) ---
         self.os_switch = digitalio.DigitalInOut(board.GP15)
         self.os_switch.direction = digitalio.Direction.INPUT
@@ -62,7 +63,16 @@ class NanaKeyboard(KMKKeyboard):
     def process_key(
         self, key: Key, is_pressed: bool, int_coord: Optional[int] = None
     ) -> None:
-        if is_pressed is False:
+        if is_pressed:
+            if int_coord == 6:  # LOY
+                self.ime_mode -= 1
+            elif int_coord == 20:   # ROY
+                self.ime_mode += 1
+            elif int_coord == None:
+                pass
+            else:
+                self.ime_mode = 0
+        else:
             self.key_time = -1
             self.gc_exec = False
         return super().process_key(
@@ -76,6 +86,7 @@ class NanaKeyboard(KMKKeyboard):
         self.key_idle_check()
 
     def key_idle_check(self):
+        global IME_ON, IME_OFF
         self.cycle_count += 1
         self.cycle_count &= 0xffff
         # OS スイッチの変更確認
@@ -105,6 +116,7 @@ class NanaKeyboard(KMKKeyboard):
             mem_after = gc.mem_free()
             print(f"[GC] {mem_before} -> {mem_after}")
             self.gc_exec = True  # GC実施フラグ
+            self.ime_mode = 0   # ついでにここで初期化
             self.blue_led.value = False
             return
 
@@ -113,6 +125,14 @@ class NanaKeyboard(KMKKeyboard):
             self.blue_led.value = True
             self.release_stack()
             self.blue_led.value = False
+        
+        # IME mode 設定
+        if self.ime_mode >= 2:
+            self.ime_mode = 0
+            self.tap_key(IME_ON)
+        elif self.ime_mode <= -2:
+            self.tap_key(IME_OFF)
+            self.ime_mode = 0
 
     def release_stack(self):
         print('- reset macro/combos -')
@@ -359,7 +379,8 @@ IME_OFF = make_key(names='imeof', on_press=_ime_off_press)
 TG_STCK = make_key(names='stk', on_press=_toggle_stick_mode)
 CSFT_R = KC.HT(IME_ON, KC_FSFT, tap_time=220)
 CSFT_L = KC.HT(IME_OFF, KC_FSFT, tap_time=220)
-
+KC_USPC = KC.HT(KC.SPC, KC.LSFT, tap_time=220)
+KC_JSPC = KC.HT(KC.SPC, KC_HNDK, tap_time=220)
 
 class AnalogStick:
     def __init__(self):
@@ -645,7 +666,7 @@ Nana.keymap = [
     # Layer 0: Base Layer
     [
         KC.TAB,  KC.W,    KC.R,    KC.DEL,  KC.I,    KC.P,    KC_LOY,
-        KC_STAB, KC.S,    KC.F,    KC.Y,    KC.K,    KC.SCLN, KC.SPC,
+        KC_STAB, KC.S,    KC.F,    KC.Y,    KC.K,    KC.SCLN, KC_USPC,
         KC.LSFT, KC.X,    KC.V,    KC.H,    KC.COMM, KC.SLSH, KC_ROY,
         KC.LCTL, KC.LWIN, KC.SPC,  KC.N,    KC_RFC,  KC.RALT, CSFT_R,
         KC.LALT, CSFT_L,  KC.B,    KC_RFA,  KC_RFB,  KC.RCTL, TG_STCK,
@@ -717,11 +738,11 @@ Nana.keymap = [
     # Layer 6: 日本語 Base Layer
     [
         KC.TRNS, jp.KA,   jp.KO,   KC.TRNS, jp.KU,   KC.COMM, KC.TRNS,
-        KC.TRNS, jp.SI,   jp.KE,   jp.RA,   jp.KI,   KC_NN,   KC.TRNS,
-        KC_HNDK, jp.HI,   jp.HU,   jp.HA,   jp.NE,   KC.TRNS, KC.TRNS,
+        KC.TRNS, jp.SI,   jp.KE,   jp.RA,   jp.KI,   KC_NN,   KC_JSPC,
+        KC_FSFT, jp.HI,   jp.HU,   jp.HA,   jp.NE,   KC.TRNS, KC.TRNS,
         KC_FCTL, KC_FWIN, KC.TRNS, jp.ME,   KC_FFC,  KC_FALT, KC.TRNS,
         KC_FALT, KC.TRNS, jp.HE,   KC.TRNS, KC.TRNS, KC_FCTL, KC.TRNS,
-        jp.ZDOT, jp.SU,   jp.SE,   jp.SO,   jp.HO,   KC_HNDK, KC.TRNS,
+        jp.ZDOT, jp.SU,   jp.SE,   jp.SO,   jp.HO,   KC_FSFT, KC.TRNS,
         KC.U,    jp.TE,   jp.SA,   jp.TO,   KC.I,    KC.TRNS, KC.TRNS,
         jp.QDOT, jp.TA,   KC.ESC,  jp.TI,   jp.TU,   KC.TRNS, KC.TRNS
     ],

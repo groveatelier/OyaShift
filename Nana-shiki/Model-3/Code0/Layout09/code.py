@@ -42,6 +42,7 @@ class NanaKeyboard(KMKKeyboard):
         self.prev_color = None
         self.os = False # False - win, True - Chrome
         self.cycle_count = 0
+        self.ime_mode = 0
         # --- GP25 青色LEDの設定 (デジタル出力) ---
         self.blue_led = digitalio.DigitalInOut(microcontroller.pin.GPIO25)
         self.blue_led.direction = digitalio.Direction.OUTPUT
@@ -57,7 +58,16 @@ class NanaKeyboard(KMKKeyboard):
     def process_key(
         self, key: Key, is_pressed: bool, int_coord: Optional[int] = None
     ) -> None:
-        if is_pressed is False:
+        if is_pressed:
+            if int_coord == 6:  # LOY
+                self.ime_mode -= 1
+            elif int_coord == 34:   # ROY
+                self.ime_mode += 1
+            elif int_coord == None:
+                pass
+            else:
+                self.ime_mode = 0
+        else:
             self.key_time = -1
             self.gc_exec = False
         return super().process_key(
@@ -71,6 +81,7 @@ class NanaKeyboard(KMKKeyboard):
         self.key_idle_check()
 
     def key_idle_check(self):
+        global IME_ON, IME_OFF
         self.cycle_count += 1
         self.cycle_count &= 0xffff
         # Layer が異なるなら、RGB LED処理へ
@@ -96,6 +107,7 @@ class NanaKeyboard(KMKKeyboard):
             mem_after = gc.mem_free()
             print(f"[GC] {mem_before} -> {mem_after}")
             self.gc_exec = True  # GC実施フラグ
+            self.ime_mode = 0   # ついでにここで初期化
             self.blue_led.value = False
             return
 
@@ -104,6 +116,14 @@ class NanaKeyboard(KMKKeyboard):
             self.blue_led.value = True
             self.release_stack()
             self.blue_led.value = False
+        
+        # IME mode 設定
+        if self.ime_mode >= 2:
+            self.ime_mode = 0
+            self.tap_key(IME_ON)
+        elif self.ime_mode <= -2:
+            self.tap_key(IME_OFF)
+            self.ime_mode = 0
 
     def release_stack(self):
         print('- reset macro/combos -')

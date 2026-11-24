@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/11/23 [Layout09A] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/11/24  [Layout09A] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -41,6 +41,7 @@ class NanaKeyboard(KMKKeyboard):
         self.lock_status = None
         self.prev_color = None
         self.os = False # False - win, True - Chrome
+        self.cycle_count = 0
         # --- GP25 青色LEDの設定 (デジタル出力) ---
         self.blue_led = digitalio.DigitalInOut(microcontroller.pin.GPIO25)
         self.blue_led.direction = digitalio.Direction.OUTPUT
@@ -70,6 +71,8 @@ class NanaKeyboard(KMKKeyboard):
         self.key_idle_check()
 
     def key_idle_check(self):
+        self.cycle_count += 1
+        self.cycle_count &= 0xffff
         # Layer が異なるなら、RGB LED処理へ
         if self.active_layers[0] != self.prev_layer:
             self.prev_layer = self.active_layers[0]
@@ -375,7 +378,8 @@ class AnalogStick:
         self.amax = [36000,36000]
         self.amin = [22000,22000]
         self.tenlim = [0,0]
-        self.mlimit = 2
+        self.mlimit = 4
+        self.move_cycle = 24
 
     def get_value(self):
         x_val = self.amid[0] - self.stick_x.value
@@ -463,8 +467,13 @@ class AnalogStick:
             #print(f'absx:{absy} > {self.deadzone[1]}')
             yy = cal_value( yval, 1 )
         if xx != 0 or yy != 0:
-            moved  = True
-            self.analog_minmax( xval, yval )
+            if Nana.cycle_count % self.move_cycle == 0:
+                if self.move_cycle >= 2:
+                    self.move_cycle -= 1
+                moved  = True
+                self.analog_minmax( xval, yval )
+        else:
+            self.move_cycle = 24
         return moved, xx, yy
 
 ast = AnalogStick()
@@ -517,6 +526,7 @@ def process_controls():
         moved, move_x, move_y = ast.get_move_value()
 
         if moved is True:
+            
             if Nana.stick_md:
                 if KC.MB_LMB in Nana.keys_pressed:
                     if not is_dragging:

@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/11/24  [Layout09] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/11/25  [Layout09] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -60,21 +60,21 @@ class NanaKeyboard(KMKKeyboard):
     ) -> None:
         if is_pressed:
             if int_coord == 6:  # LOY
-                self.ime_mode -= 1
+                self.ime_mode = 128 if self.ime_mode != 0 else 1
             elif int_coord == 34:   # ROY
-                self.ime_mode += 1
+                self.ime_mode = 256 if self.ime_mode != 0 else 2
             elif int_coord == None:
                 pass
             else:
                 self.ime_mode = 0
         else:
-            self.key_time = -1
             self.gc_exec = False
+        self.key_time = -1
         return super().process_key(
             key,
             is_pressed,
             int_coord
-    )
+        )
 
     def _main_loop(self) -> None:
         super()._main_loop()
@@ -107,7 +107,6 @@ class NanaKeyboard(KMKKeyboard):
             mem_after = gc.mem_free()
             print(f"[GC] {mem_before} -> {mem_after}")
             self.gc_exec = True  # GC実施フラグ
-            self.ime_mode = 0   # ついでにここで初期化
             self.blue_led.value = False
             return
 
@@ -118,12 +117,16 @@ class NanaKeyboard(KMKKeyboard):
             self.blue_led.value = False
         
         # IME mode 設定
-        if self.ime_mode >= 2:
+        def send_ime_key(key):
+            self.tap_key(key)
             self.ime_mode = 0
-            self.tap_key(IME_ON)
-        elif self.ime_mode <= -2:
-            self.tap_key(IME_OFF)
-            self.ime_mode = 0
+        if self.ime_mode != 0:
+            if self.ime_mode == 256:
+                send_ime_key(IME_ON)
+            elif self.ime_mode == 128:
+                send_ime_key(IME_OFF)
+            elif spend_time > 0.5:
+                self.ime_mode = 0
 
     def release_stack(self):
         print('- reset macro/combos -')
@@ -263,7 +266,7 @@ Nana.extensions.append(MediaKeys())
 holdtap = HoldTap()
 combos = Combos()
 combos.timeout_ms = 45  # 同時押し判定時間（45ミリ秒）
-Nana.modules = [combos, holdtap] + Nana.modules  # 先頭へ追加
+Nana.modules = [holdtap, combos] + Nana.modules  # 先頭へ追加
 
 # OSからの要求 (Caps Lock / Num Lock等) を取得する拡張機能
 Nana.lock_status = LockStatus()
@@ -359,8 +362,8 @@ def _toggle_stick_mode(*args, **kwargs):
 # 独自キー
 L_OYA = make_key(names='loya')
 R_OYA = make_key(names='roya')
-KC_LOY = KC.LT(4, L_OYA, tap_time=120)
-KC_ROY = KC.LT(5, R_OYA, tap_time=120)
+KC_LOY = KC.LT(4, L_OYA, tap_time=180)
+KC_ROY = KC.LT(5, R_OYA, tap_time=180)
 KC_LFA = KC.MO(2)
 KC_RFB = KC.MO(2)
 KC_RFA = KC.MO(2)
@@ -730,7 +733,7 @@ Nana.keymap = [
         KC_STAB, KC.F6,   KC.F8,   KC.LBRC, KC.TRNS, KC.COLN, KC.TRNS,
         KC.TRNS, KC.GRV,  KC.UNDS, KC.LCBR, KC.TRNS, KC.RO,   KC_SSPC,
         KC_CAPS, KC_OST,  KC_SSPC, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
-        KC.TRNS, KC_OST,  KC.DEL,  KC.TRNS, KC.TRNS, KC.TRNS, IME_ON,
+        KC.TRNS, KC_OST,  KC.DEL,  KC.TRNS, KC.TRNS, KC.TRNS, KC.NO,
         KC.TILD, KC.TRNS, KC.EQL,  KC.RCBR, KC.PIPE, KC.TRNS, KC.TRNS,
         KC.F5,   KC.F7,   KC.F9,   KC.RBRC, KC.JYEN, KC_SENT, KC.TRNS,
         KC.EXLM, KC.HASH, KC.PERC, KC.AMPR, KC.LPRN, KC.DEL,  KC.BKSP

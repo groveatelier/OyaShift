@@ -199,27 +199,31 @@ class ime_manager():
         self.ime_on = (KC.LANG1, KC.HENK)
         self.ime_off = (KC.LANG2, KC.MHEN)
 
-    def set_ime(self, kanamode):
+    def remove_kana_layer(self):
+        if 6 in Nana.active_layers:
+            Nana.active_layers.remove(6)
+
+    def set_combos(self, kanamode):
         global combos_roma
+        self.remove_kana_layer()
         if kanamode:
+            Nana.active_layers.insert(0, 6)
             self.com.combos = combos_roma # Comboはローマ字入力
-            Nana.tap_key(self.ime_on[Nana.os])
         else:
             self.com.combos = () # Comboは空に
-            Nana.tap_key(self.ime_off[Nana.os])
 
     def IME_switch(self):
         self.disable = not self.disable
+        if self.disable:
+            self.set_combos(False)
 
     def IME_on(self):
-        if self.disable is False and 6 not in Nana.active_layers:
-            Nana.active_layers.insert(0, 6)
-        self.set_ime(True)
+        self.set_combos(True)
+        Nana.tap_key(self.ime_on[Nana.os])
 
     def IME_off(self):
-        if 6 in Nana.active_layers:
-            Nana.active_layers.remove(6)
-        self.set_ime(False)
+        self.set_combos(False)
+        Nana.tap_key(self.ime_off[Nana.os])
 
 # -------------------------------------------------------------------
 # 1. 基本設定
@@ -353,12 +357,14 @@ def _toggle_stick_mode(*args, **kwargs):
 def _henkan_on_press(*args, **kwargs):
     if Nana.os:
         imeled.IME_on()
-    imeled.set_ime(True)
+    else:
+        Nana.tap_key(KC.HENK)
 
 def _muhenkan_on_press(*args, **kwargs):
     if Nana.os:
         imeled.IME_off()
-    imeled.set_ime(False)
+    else:
+        Nana.tap_key(KC.MHEN)
 
 # 独自キー
 L_OYA = make_key(names='loya')

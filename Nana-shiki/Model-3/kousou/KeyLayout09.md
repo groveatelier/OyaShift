@@ -36,9 +36,9 @@
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
 | 3 | 全角<br/>半角 | Pause<br/>Break | Scroll<br/>Lock | DEL<br/>1L | BS 2<br/>Top | DEL 2<br/>End | \|| SEL1L | Home | Ins | Page<br/>Up |  | DEL |
 | 2 | インデント | ひらがな | カタカナ | かな |  | Print<br/>Screen  |\|| DUP | End | Up | Page<br/>Down |  | Sft+Enter |
-| 1 | LSft | 無変換 | 変換 | Ctl+AC | Ctl+AV |  |\||  | Left | Down | Right |  | RSft |
-| 0 | ctrl | alt | meta |  | IME TGL | IME OFF |\|| 右親 | **_fnA_** | fnC | **_fnA_** | alt | ctrl |
-| -1 | ||||| L-BTN | IME ON | R-BTN |||||
+| 1 | LSft |  |  | Ctl+AC | Ctl+AV |  |\||  | Left | Down | Right |  | RSft |
+| 0 | ctrl | alt | meta |  | 変換 | 無変換 |\|| 右親 | **_fnA_** | Down | **_fnA_** | alt | ctrl |
+| -1 | ||||| L-BTN | Spc | R-BTN |||||
 ||
 
 
@@ -91,9 +91,9 @@
 
 | 段 | 列1 | 2 | 3 | 4 | 5 | 6 |\|| 7 | 8 | 9 | 10 | 11 | 12 |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
-| 3 | Sft+tab | ? | か | た | こ | さ |\| | ら | ち | く | つ | 、 | DEL |
-| 2 | Sft+tab | う | し | て | け | せ |\|| は | と | き | い | ん | Sft+Enter |
-| 1 |  | 。 | ぴ | す | ぷ | ぺ |\|| め | そ | ね | ぽ | ? |  |
+| 3 | Sft+tab | ？ | が | だ | ご | ざ |\| | ぱ | ぢ | ぐ | づ | ぴ | DEL |
+| 2 | Sft+tab | ゔ | じ | で | げ | ぜ |\|| ば | ど | ぎ | ¥ | ん | Sft+Enter |
+| 1 |  | 。 | ぴ | ず | ぷ | ぺ |\|| ぷ | ぞ | ぺ | ぼ | ・ |  |
 | 0 | ctrl0 | alt0 | meta0 |  | Sft+Spc | 左親 |\|| 右親 | fnA | fnC | fnA | alt0 | ctrl0 |
 | -1 | ||||| L-BTN | 半濁音 | R-BTN |||||
 ||

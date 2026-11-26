@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/11/25  [Layout09] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/11/26  [Layout09] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -220,12 +220,6 @@ class ime_manager():
         if 6 in Nana.active_layers:
             Nana.active_layers.remove(6)
         self.set_ime(False)
-    
-    def IME_tggle(self):
-        if 6 in Nana.active_layers:
-            self.IME_off()
-        else:
-            self.IME_on()
 
 # -------------------------------------------------------------------
 # 1. 基本設定
@@ -343,9 +337,6 @@ def _ime_on_press(*args, **kwargs):
 def _ime_off_press(*args, **kwargs):
     imeled.IME_off()
 
-def _ime_tgl_press(*args, **kwargs):
-    imeled.IME_tggle()
-
 def _os_tgl_press(*args, **kwargs):
     Nana.OS_tggle()
 
@@ -358,6 +349,16 @@ def _layer_reset(*args, **kwargs):
 def _toggle_stick_mode(*args, **kwargs):
     Nana.stick_md = not Nana.stick_md
     Nana.color_led()
+
+def _henkan_on_press(*args, **kwargs):
+    if Nana.os:
+        imeled.IME_on()
+    imeled.set_ime(True)
+
+def _muhenkan_on_press(*args, **kwargs):
+    if Nana.os:
+        imeled.IME_off()
+    imeled.set_ime(False)
 
 # 独自キー
 L_OYA = make_key(names='loya')
@@ -382,11 +383,12 @@ IME_SW = make_key(names='imesw', on_press=_ime_enadis_press)
 IME_ON = make_key(names='imeon', on_press=_ime_on_press)
 IME_OFF = make_key(names='imeof', on_press=_ime_off_press)
 TG_STCK = make_key(names='stk', on_press=_toggle_stick_mode)
-KC_IMET = make_key(names='imetgl', on_press=_ime_tgl_press)
 KC_OST = make_key(names='ostgl', on_press=_os_tgl_press)
 KC_USPC = KC.HT(KC.SPC, KC.LSFT, tap_time=220)
 KC_JSPC = KC.HT(KC.SPC, KC_HNDK, tap_time=220)
 LAY_RST = make_key(names='layrst', on_press=_layer_reset)
+KC_HENK = make_key(names='henka', on_press=_henkan_on_press)
+KC_MHEN = make_key(names='muhen', on_press=_muhenkan_on_press)
 
 class AnalogStick:
     def __init__(self):
@@ -684,8 +686,8 @@ Nana.keymap = [
         KC.TAB,  KC.W,    KC.R,    KC.Y,    KC.I,    KC.P,    KC_LOY,
         KC.TAB,  KC.S,    KC.F,    KC.H,    KC.K,    KC.SCLN, KC.MB_LMB,
         KC.LSFT, KC.X,    KC.V,    KC.N,    KC.COMM, KC.SLSH, KC_USPC,
-        KC.LCTL, KC.LWIN, KC.SPC,  KC.MB_RMB, KC_RFC,  KC.RALT, KC.MB_RMB,
-        KC.LALT, KC.ESC,  KC.MB_LMB, KC_RFA,  KC_RFB,  KC.RCTL, KC_ROY,
+        KC.LCTL, KC.LWIN, KC.SPC,  KC.MB_RMB,KC_RFC, KC.RALT, KC.MB_RMB,
+        KC.LALT, KC.ESC,  KC.MB_LMB,KC_RFA, KC_RFB,  KC.RCTL, KC_ROY,
         KC.Z,    KC.C,    KC.B,    KC.M,    KC.DOT,  KC.RSFT, KC.MB_MMB,
         KC.A,    KC.D,    KC.G,    KC.J,    KC.L,    KC.ENT,  TG_STCK,
         KC.Q,    KC.E,    KC.T,    KC.U,    KC.O,    KC.BKSP, KC.DEL
@@ -705,12 +707,12 @@ Nana.keymap = [
 
     # Layer 2: RfA Layer
     [
-        KC.LANG5,KC.SLCK, KC_DELF, KC_SEL1, KC.INS,  KC.TRNS, IME_OFF,
+        KC.LANG5,KC.SLCK, KC_DELF, KC_SEL1, KC.INS,  KC.TRNS, KC_MHEN,
         KC_INDT, KC.LANG3,KC.TRNS, KC_DUP,  KC.UP,   KC.TRNS, KC.TRNS,
-        KC.TRNS, KC.HENK, KC_CTAV, KC.TRNS, KC.DOWN, KC.TRNS, IME_ON,
-        KC.TRNS, KC.TRNS, KC_IMET, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
+        KC.TRNS, KC.TRNS, KC_CTAV, KC.TRNS, KC.DOWN, KC.TRNS, KC.SPC,
+        KC.TRNS, KC.TRNS, KC_HENK, KC.TRNS, KC.DOWN, KC.TRNS, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
-        KC.MHEN, KC_CTAC, KC.TRNS, KC.LEFT, KC.RGHT, KC.TRNS, KC.TRNS,
+        KC.TRNS, KC_CTAC, KC.TRNS, KC.LEFT, KC.RGHT, KC.TRNS, KC.TRNS,
         KC.LANG4,KC.KANA, KC.PSCR, KC.END,  KC.PGDN, KC_SENT, KC.TRNS,
         KC.PAUS, KC_DEL1, KC_DELB, KC.HOME, KC.PGUP, KC.DEL,  KC.BKSP
     ],
@@ -765,14 +767,14 @@ Nana.keymap = [
 
     # Layer 7: 半濁音 Layer
     [
-        KC.TRNS, KC.W,    KC.R,    KC.Y,    KC.I,    KC.P,    KC.TRNS,
-        KC.TRNS, KC.S,    KC.F,    jp.PA,   KC.K,    KC.COLN, KC.TRNS,
-        KC.TRNS, jp.PI,   jp.PU,   KC.N,    KC.COMM, KC.QUES, KC_SSPC,
-        KC.LCTL, KC.TRNS, KC_SSPC, KC.TRNS, KC.NO,   KC.RALT, KC.TRNS,
-        KC.LALT, KC.TRNS, KC.TRNS, KC.TRNS, KC.NO,   KC.RCTL, KC.TRNS,
-        KC.Z,    KC.C,    jp.PE,   KC.M,    jp.PO,   KC.TRNS, KC.TRNS,
-        KC.A,    KC.D,    KC.G,    KC.J,    KC.L,    KC_SENT, KC.TRNS,
-        KC.QUES, KC.E,    KC.T,    KC.U,    KC.O,    KC.DEL,  KC.BKSP
+        KC.TRNS, jp.GA,   jp.GO,   jp.PA,   jp.GU,  jp.PI,   KC.TRNS,
+        KC.TRNS, jp.ZI,   jp.GE,   jp.PA,   jp.GI,  KC.TRNS, KC.TRNS,
+        KC.TRNS, jp.PI,   jp.PU,   jp.PU,   jp.PE,  KC.TRNS, KC.TRNS,
+        KC.TRNS, KC.TRNS, KC_SSPC, KC.TRNS, KC.NO,  KC.TRNS, KC.TRNS,
+        KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.NO,  KC.TRNS, KC.TRNS,
+        KC.TRNS, jp.ZI,   jp.PE,   jp.ZO,   jp.PO,  KC.TRNS, KC.TRNS,
+        jp.VU,   jp.DE,   jp.ZE,   jp.DO,   jp.PO,  KC_SENT, KC.TRNS,
+        KC.QUES, jp.DA,   jp.ZA,   jp.DI,   jp.DU,  KC.DEL,  KC.BKSP
     ]
 ]
 

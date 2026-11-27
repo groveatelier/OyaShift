@@ -1,5 +1,5 @@
 # ===================================================================
-# 七式二型 (KMK_Firmware) 2026/11/26  [Layout09] quietgrobeatelier
+# 七式二型 (KMK_Firmware) 2026/11/27  [Layout09] quietgrobeatelier
 # ===================================================================
 import supervisor
 supervisor.runtime.autoreload = False
@@ -7,7 +7,6 @@ import board
 import analogio
 import digitalio
 import microcontroller
-import rotaryio
 import usb_hid
 import time
 import gc
@@ -30,6 +29,44 @@ from kmk.modules.holdtap import HoldTap
 from kmk.modules.combos import Combos, Chord
 from kmk.modules.macros import Macros, Press, Release, Tap, Delay
 
+# Wheel クラス
+class Wheel():
+    def __init__(self) -> None:
+        # --- wheel GPIO ピンの設定 (内部プルアップ) ---
+        self.arm = digitalio.DigitalInOut(board.GP18)
+        self.arm.direction = digitalio.Direction.INPUT
+        self.arm.pull = digitalio.Pull.UP
+        self.phase = digitalio.DigitalInOut(board.GP19)
+        self.phase.direction = digitalio.Direction.INPUT
+        self.phase.pull = digitalio.Pull.UP
+        self.pos = True
+        self.dir = 0
+        self.chg = False
+        self.life = 0
+
+    def is_rotate(self) -> int:
+        def _get_dir(cur):
+            if self.dir != cur:
+                if self.chg:
+                    self.dir = cur
+                else:
+                    self.chg = True
+            else:
+                self.chg = False
+            return
+        phs = self.phase.value
+        arm = self.arm.value
+        if self.pos is True and arm is False:
+            self.pos = arm
+            _get_dir(1 if phs else -1)
+            return self.dir
+        self.pos = arm
+        self.life += 1
+        if self.life > 512:
+            self.life = 0
+            self.dir = 0
+        return 0
+
 # Hookの為だけの継承クラス
 class NanaKeyboard(KMKKeyboard):
     def __init__(self) -> None:
@@ -43,6 +80,10 @@ class NanaKeyboard(KMKKeyboard):
         self.os = False # False - win, True - Chrome
         self.cycle_count = 0
         self.ime_mode = 0
+        self.copied = False
+        self.keyQueue = []
+        self.winled = 0
+        self.kanaon = True
         # --- GP25 青色LEDの設定 (デジタル出力) ---
         self.blue_led = digitalio.DigitalInOut(microcontroller.pin.GPIO25)
         self.blue_led.direction = digitalio.Direction.OUTPUT
@@ -98,6 +139,43 @@ class NanaKeyboard(KMKKeyboard):
         # 経過時間を算出
         spend_time = time.monotonic() - self.key_time
 
+        # IME mode 設定
+        def send_ime_key(key):
+            self.tap_key(key)
+            self.ime_mode = 0
+        if self.ime_mode != 0 and self.kanaon:
+            if self.ime_mode == 256:
+                send_ime_key(IME_ON)
+            elif self.ime_mode == 128:
+                send_ime_key(IME_OFF)
+            elif spend_time > 0.5:
+                self.ime_mode = 0
+        
+        # key Queue 吐き出し
+        if self.cycle_count & 0x3 == 0 and len(self.keyQueue) != 0:
+            self.tap_key(self.keyQueue[0])
+            self.keyQueue.pop(0)
+            if spend_time > 10:
+                self.copied = False
+
+        # Windows LED 制御
+        if self.winled:
+            subcyl = self.cycle_count & 0x3ff
+            if self.winled & 1:
+                if subcyl == 1:
+                    self.blue_led.value = True
+                elif subcyl == 80:
+                    self.blue_led.value = False
+            if self.winled & 2:
+                if subcyl in (160, 320):
+                    self.bule_led.value = True
+                elif subcyl in (240, 400):
+                    self.blue_led.valye = False
+
+        # 処理間引き
+        if self.cycle_count & 0x1FF != 0:
+            return
+
         # GC 実施要か判断
         if self.gc_exec is False and spend_time > 1:
             self.blue_led.value = True
@@ -110,23 +188,19 @@ class NanaKeyboard(KMKKeyboard):
             self.blue_led.value = False
             return
 
-        # Layer 固定判断
+        # Layer 固着判断
         if spend_time > 5 and self.prev_layer > 1 and self.prev_layer != 6:
             self.blue_led.value = True
             self.release_stack()
             self.blue_led.value = False
-        
-        # IME mode 設定
-        def send_ime_key(key):
-            self.tap_key(key)
-            self.ime_mode = 0
-        if self.ime_mode != 0:
-            if self.ime_mode == 256:
-                send_ime_key(IME_ON)
-            elif self.ime_mode == 128:
-                send_ime_key(IME_OFF)
-            elif spend_time > 0.5:
-                self.ime_mode = 0
+
+        # Power Save 判断
+        if spend_time > 608:
+            self.rgb.set_rgb_fill((0,0,0))
+            self.rgb.show()
+            time.sleep(0.9)
+            self.rgb.set_rgb_fill(self.prev_color)
+            self.rgb.show()
 
     def release_stack(self):
         print('- reset macro/combos -')
@@ -159,16 +233,25 @@ class NanaKeyboard(KMKKeyboard):
             if self.os:
                 cur_rgb[1] = 8
             elif self.lock_status is not None:
-                cur_rgb[0] = 64 if self.lock_status.get_caps_lock() else 8
-                cur_rgb[2] = 64 if self.lock_status.get_scroll_lock() else 0
+                self.winled = 0
+                if self.lock_status.get_caps_lock():
+                    self.winled = 1
+                if self.lock_status.get_scroll_lock():
+                    self.winled += 2
+                cur_rgb[0] = 16
+        elif cur_layer in (4,5,7):
+            if self.kanaon:
+                cur_rgb = [32,24,0]
+            else:
+                cur_rgb = [0,0,0]
+        elif cur_layer == 6:
+            cur_rgb = [32,24,32]
+        elif cur_layer == 2:
+            cur_rgb = [0,24,32]
+        elif cur_layer == 3:
+            cur_rgb = [32,0,32]
         else:
-            cur_layer += 1  # 色調整
-            if cur_layer & 1:
-                cur_rgb[2] = 32
-            if cur_layer & 2:
-                cur_rgb[1] = 24      
-            if cur_layer & 4:
-                cur_rgb[0] = 32
+            cur_rgb = [0,0,32]
         if not self.stick_md:
             cur_rgb[2] += 48
         target_color = tuple(cur_rgb)
@@ -182,6 +265,14 @@ class NanaKeyboard(KMKKeyboard):
         self.release_stack()
         self.color_led()
 
+    def full_copy_past(self, is_copy):
+        if is_copy:
+            self.keyQueue = [KC.LCTL(KC.A), KC.LCTL(KC.C)]
+            self.copied = True
+        elif self.copied:
+            self.keyQueue = [KC.LCTL(KC.A), KC.LCTL(KC.V)]
+            self.copied = False
+
 # キーボード本体のインスタンス化
 Nana = NanaKeyboard()
 
@@ -194,7 +285,6 @@ import kmk.extensions.keymap_extras.keymap_jp
 # ===================================================================
 class ime_manager():
     def __init__(self, combo):
-        self.disable = False
         self.com = combo
         self.ime_on = (KC.LANG1, KC.HENK)
         self.ime_off = (KC.LANG2, KC.MHEN)
@@ -213,8 +303,8 @@ class ime_manager():
             self.com.combos = () # Comboは空に
 
     def IME_switch(self):
-        self.disable = not self.disable
-        if self.disable:
+        Nana.kanaon = not Nana.kanaon
+        if Nana.kanaon is False:
             self.set_combos(False)
 
     def IME_on(self):
@@ -284,19 +374,11 @@ cc = ConsumerControl(usb_hid.devices)  # 音量制御用
 imeled = ime_manager(combos)
 
 # --- カスタムキー定義 ---
-jp_code_sending = None
-
-def send_jp(key, keyboard):
+def send_string(key, keyboard, *args):
     for char in key.jp:
         key_code = getattr(KC, char, None)
         if key_code:
-            Nana.tap_key(key_code)
-            yield   # KMK側に処理を渡す(2ループ分)
-            yield
-
-def send_string(key, keyboard, *args):
-    global jp_code_sending
-    jp_code_sending = send_jp(key, keyboard)
+            Nana.keyQueue.append(key_code)
 
 class JPkeys:
     def __init__(self):
@@ -395,6 +477,15 @@ KC_JSPC = KC.HT(KC.SPC, KC_HNDK, tap_time=220)
 LAY_RST = make_key(names='layrst', on_press=_layer_reset)
 KC_HENK = make_key(names='henka', on_press=_henkan_on_press)
 KC_MHEN = make_key(names='muhen', on_press=_muhenkan_on_press)
+
+# 全コピー
+def _full_copy_on_press(*args, **kwargs):
+    Nana.full_copy_past(True)
+KC_CTAC = make_key(names='muhen', on_press=_full_copy_on_press)
+# 全ペースト
+def _full_past_on_press(*args, **kwargs):
+    Nana.full_copy_past(False)
+KC_CTAV = make_key(names='muhen', on_press=_full_past_on_press)
 
 class AnalogStick:
     def __init__(self):
@@ -504,9 +595,7 @@ def _analog_calib(*args, **kwargs):
 ANACAL = make_key(names='calib', on_press=_analog_calib)
 
 # ホイール (GP18, GP19)
-# divisor=1 で最小単位を監視
-encoder = rotaryio.IncrementalEncoder(board.GP19, board.GP18, divisor=2)
-last_encoder_pos = encoder.position
+encoder = Wheel()
 
 # --- Boost switch GPIO ピンの設定 (内部プルアップ) ---
 boost_sw = digitalio.DigitalInOut(board.GP16)
@@ -517,29 +606,25 @@ boost_sw.pull = digitalio.Pull.UP
 # 2. 高速入力処理ループ
 # -------------------------------------------------------------------
 def process_controls():
-    global last_encoder_pos, is_dragging, boost_sw, jp_code_sending
+    global last_encoder_pos, is_dragging, boost_sw
 
     fast = boost_sw.value is False  # Boost SW on なら
 
     # --- A. ホイール（エンコーダー）の計算 ---
-    current_encoder_pos = encoder.position
-    raw_diff = last_encoder_pos - current_encoder_pos
-    
-    if raw_diff != 0:
-        last_encoder_pos = current_encoder_pos
+    diff = encoder.is_rotate()
+    if diff != 0:
         if fast:
-            raw_diff *= 2   # 倍速
-
+            diff *= 2   # 倍速
         # 右親 押下なら 音量制御
         if 5 in Nana.active_layers:
-            if raw_diff > 0:
+            if diff > 0:
                 cc.send(ConsumerControlCode.VOLUME_INCREMENT) # 音量UP
             else:
                 cc.send(ConsumerControlCode.VOLUME_DECREMENT) # 音量DOWN
         else:
         # 通常は縦スクロール
-            mouse.move(wheel=raw_diff)
-
+            mouse.move(wheel=diff)
+        Nana.key_time = -1
     else:
     # --- B. アナログスティックの計算 ---
         moved, move_x, move_y = ast.get_move_value()
@@ -568,13 +653,7 @@ def process_controls():
                     key_to_tap = KC.DOWN if move_y > 0 else KC.UP
                     Nana.tap_key(key_to_tap)
                     time.sleep(0.12)
-        
-    # jp codeの送出(必要なら)
-    if jp_code_sending is not None:
-        try:
-            next(jp_code_sending)
-        except StopIteration:
-            jp_code_sending = None
+                Nana.key_time = -1
 
 Nana.before_matrix_scan = process_controls
 
@@ -601,10 +680,6 @@ KC_DELB = KC.MACRO(Press(KC.RSFT),Tap(KC.END),*ACT_RSDEL)
 KC_DUP = KC.MACRO(Tap(KC.LCTL(KC.C)), Tap(KC.LCTL(KC.V)))
 # caps lock Windows/chrome で処理を合わせる為
 KC_CAPS = KC.RSFT(KC.CAPS)
-# 全コピー
-KC_CTAC = KC.MACRO(Tap(KC.LCTL(KC.A)), Tap(KC.LCTL(KC.C)))
-# 全ペースト
-KC_CTAV = KC.MACRO(Tap(KC.LCTL(KC.A)), Tap(KC.LCTL(KC.V)))
 # インデント
 KC_INDT = KC.MACRO(Tap(KC.HOME), Tap(KC.TAB))
 # Ctrl+Alt+Del
@@ -689,7 +764,7 @@ combos_roma = [
 Nana.keymap = [
     # Layer 0: Base Layer
     [
-        KC.TAB,  KC.W,    KC.R,    KC.Y,    KC.I,    KC.P,    KC_LOY,
+        KC.DEL,  KC.W,    KC.R,    KC.Y,    KC.I,    KC.P,    KC_LOY,
         KC.TAB,  KC.S,    KC.F,    KC.H,    KC.K,    KC.SCLN, KC.MB_LMB,
         KC.LSFT, KC.X,    KC.V,    KC.N,    KC.COMM, KC.SLSH, KC_USPC,
         KC.LCTL, KC.LWIN, KC.SPC,  KC.MB_RMB,KC_RFC, KC.RALT, KC.MB_RMB,

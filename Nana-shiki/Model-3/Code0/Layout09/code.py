@@ -168,9 +168,9 @@ class NanaKeyboard(KMKKeyboard):
                     self.blue_led.value = False
             if self.winled & 2:
                 if subcyl in (160, 320):
-                    self.bule_led.value = True
+                    self.blue_led.value = True
                 elif subcyl in (240, 400):
-                    self.blue_led.valye = False
+                    self.blue_led.value = False
 
         # 処理間引き
         if self.cycle_count & 0x1FF != 0:
@@ -232,13 +232,13 @@ class NanaKeyboard(KMKKeyboard):
         if cur_layer == 0:
             if self.os:
                 cur_rgb[1] = 8
-            elif self.lock_status is not None:
+            else:
+                cur_rgb[0] = 16
                 self.winled = 0
                 if self.lock_status.get_caps_lock():
                     self.winled = 1
                 if self.lock_status.get_scroll_lock():
                     self.winled += 2
-                cur_rgb[0] = 16
         elif cur_layer in (4,5,7):
             if self.kanaon:
                 cur_rgb = [32,24,0]

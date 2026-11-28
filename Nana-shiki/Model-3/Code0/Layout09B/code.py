@@ -27,7 +27,6 @@ from kmk.modules.mouse_keys import MouseKeys
 from kmk.modules.layers import Layers
 from kmk.modules.holdtap import HoldTap  
 from kmk.modules.combos import Combos, Chord
-from kmk.modules.macros import Macros, Press, Release, Tap, Delay
 
 # Wheel クラス
 class Wheel():
@@ -77,13 +76,15 @@ class NanaKeyboard(KMKKeyboard):
         self.stick_md = True
         self.lock_status = None
         self.prev_color = None
-        self.os = False # False - win, True - Chrome
+        self.os = 0 # 0 - win, 1 - Chrome
         self.cycle_count = 0
         self.ime_mode = 0
         self.copied = False
         self.keyQueue = []
         self.winled = 0
         self.kanaon = True
+        self.kana_on = None
+        self.kana_off = None
         # --- GP25 青色LEDの設定 (デジタル出力) ---
         self.blue_led = digitalio.DigitalInOut(microcontroller.pin.GPIO25)
         self.blue_led.direction = digitalio.Direction.OUTPUT
@@ -122,7 +123,6 @@ class NanaKeyboard(KMKKeyboard):
         self.key_idle_check()
 
     def key_idle_check(self):
-        global IME_ON, IME_OFF
         self.cycle_count += 1
         self.cycle_count &= 0xffff
         # Layer が異なるなら、RGB LED処理へ
@@ -140,14 +140,14 @@ class NanaKeyboard(KMKKeyboard):
         spend_time = time.monotonic() - self.key_time
 
         # IME mode 設定
-        def send_ime_key(key):
-            self.tap_key(key)
+        def set_ime_mode(onoff):
+            self.kana_mode_sw(onoff)
             self.ime_mode = 0
         if self.ime_mode != 0 and self.kanaon:
             if self.ime_mode == 256:
-                send_ime_key(IME_ON)
+                set_ime_mode(True)
             elif self.ime_mode == 128:
-                send_ime_key(IME_OFF)
+                set_ime_mode(False)
             elif spend_time > 0.5:
                 self.ime_mode = 0
         
@@ -172,6 +172,17 @@ class NanaKeyboard(KMKKeyboard):
                 elif subcyl in (240, 400):
                     self.blue_led.value = False
 
+        # 処理間引き1
+        #if self.cycle_count & 0xFF != 0:
+        #    return
+        # Power Save 判断
+        if spend_time > 608:
+            self.rgb.set_rgb_fill((0,0,0))
+            self.rgb.show()
+            time.sleep(0.6)
+            self.rgb.set_rgb_fill(self.prev_color)
+            self.rgb.show()
+
         # 処理間引き
         if self.cycle_count & 0x1FF != 0:
             return
@@ -194,16 +205,8 @@ class NanaKeyboard(KMKKeyboard):
             self.release_stack()
             self.blue_led.value = False
 
-        # Power Save 判断
-        if spend_time > 608:
-            self.rgb.set_rgb_fill((0,0,0))
-            self.rgb.show()
-            time.sleep(0.9)
-            self.rgb.set_rgb_fill(self.prev_color)
-            self.rgb.show()
-
     def release_stack(self):
-        print('- reset macro/combos -')
+        print('- reset TapHold/combos -')
         self.keys_pressed.clear()   # PCへ送信中のHIDキーコードリストをクリア
         self._coordkeys_pressed.clear() # マクロキー等スタック状態をクリア
         # 各モジュールの内部状態をリセット
@@ -213,12 +216,6 @@ class NanaKeyboard(KMKKeyboard):
                 module.active_combos.clear()
             if hasattr(module, 'key_states') and isinstance(module.key_states, (dict, list, set)):
                 module.key_states.clear()
-            # Macros のアクティブ状態解除（List型なので clear() または [] を代入）
-            if hasattr(module, '_active'):
-                if isinstance(module._active, list):
-                    module._active.clear()
-                else:
-                    module._active = []
             # HoldTap / Layers モジュールの状態クリア
             if hasattr(module, 'key_states') and isinstance(module.key_states, (dict, list, set)):
                 module.key_states.clear()
@@ -261,17 +258,28 @@ class NanaKeyboard(KMKKeyboard):
             self.rgb.show()
 
     def OS_tggle(self):
-        self.os = not self.os
+        self.os = 0 if self.os else 1
         self.release_stack()
         self.color_led()
 
-    def full_copy_past(self, is_copy):
-        if is_copy:
-            self.keyQueue = [KC.LCTL(KC.A), KC.LCTL(KC.C)]
-            self.copied = True
-        elif self.copied:
-            self.keyQueue = [KC.LCTL(KC.A), KC.LCTL(KC.V)]
-            self.copied = False
+    def kana_mode_sw(self, kanamode):
+        global combos, combos_roma
+        if 6 in self.active_layers:
+            self.active_layers.remove(6)
+        if kanamode:
+            self.active_layers.insert(0, 6)
+            combos.combos = combos_roma # Comboはローマ字入力
+        else:
+            combos.combos = () # Comboは空に
+        if kanamode:
+            self.keyQueue.append(self.kana_on[self.os])
+        else:
+            self.keyQueue.append(self.kana_off[self.os])
+
+    def toggle_kana_enable(self):
+        self.kanaon = not self.kanaon
+        if self.kanaon is False:
+            self.kana_mode_sw(False)
 
 # キーボード本体のインスタンス化
 Nana = NanaKeyboard()
@@ -279,41 +287,6 @@ Nana = NanaKeyboard()
 # keymap_jp を読む前に International 拡張を登録する
 Nana.extensions.append(International())
 import kmk.extensions.keymap_extras.keymap_jp
-
-# ===================================================================
-# IME状態管理クラス (LED制御付き)
-# ===================================================================
-class ime_manager():
-    def __init__(self, combo):
-        self.com = combo
-        self.ime_on = (KC.LANG1, KC.HENK)
-        self.ime_off = (KC.LANG2, KC.MHEN)
-
-    def remove_kana_layer(self):
-        if 6 in Nana.active_layers:
-            Nana.active_layers.remove(6)
-
-    def set_combos(self, kanamode):
-        global combos_roma
-        self.remove_kana_layer()
-        if kanamode:
-            Nana.active_layers.insert(0, 6)
-            self.com.combos = combos_roma # Comboはローマ字入力
-        else:
-            self.com.combos = () # Comboは空に
-
-    def IME_switch(self):
-        Nana.kanaon = not Nana.kanaon
-        if Nana.kanaon is False:
-            self.set_combos(False)
-
-    def IME_on(self):
-        self.set_combos(True)
-        Nana.tap_key(self.ime_on[Nana.os])
-
-    def IME_off(self):
-        self.set_combos(False)
-        Nana.tap_key(self.ime_off[Nana.os])
 
 # -------------------------------------------------------------------
 # 1. 基本設定
@@ -362,18 +335,15 @@ Nana.extensions.append(Nana.lock_status)
 # RGB extentionの設定
 Nana.extensions.append(Nana.rgb)
 
-# マクロモジュールを有効化
-macros = Macros()
-Nana.modules.append(macros)
+# マウスモジュールを有効化
 mouse_keys = MouseKeys()
 Nana.modules.append(mouse_keys)
 mouse = Mouse(usb_hid.devices)
 cc = ConsumerControl(usb_hid.devices)  # 音量制御用
 
-# IME/LED 制御用モジュール
-imeled = ime_manager(combos)
-
-# --- カスタムキー定義 ---
+# -------------------------------------------------------------------
+# 2. カスタムキー
+# -------------------------------------------------------------------
 def send_string(key, keyboard, *args):
     for char in key.jp:
         key_code = getattr(KC, char, None)
@@ -421,49 +391,80 @@ KC_FALT = KC.LM(0, KC.LALT)
 KC_FCTL = KC.LM(0, KC.LCTL)
 KC_FWIN = KC.LM(0, KC.LWIN)
 KC_FFC = KC.LM(3, KC_RFC)
+KC_USPC = KC.HT(KC.SPC, KC.LSFT, tap_time=220)
+KC_JSPC = KC.HT(KC.SPC, KC_HNDK, tap_time=220)
+KC_SSPC = KC.LSFT(KC.SPC) # Shift付き
+KC_SENT = KC.LSFT(KC.ENT)
+KC_STAB = KC.LSFT(KC.TAB)
+KC_DEL1 = KC.LCTL(KC.X) # 一行削除
+KC_CAPS = KC.RSFT(KC.CAPS) # caps lock Windows/chrome で処理を合わせる為
+KC_CADL = KC.LCTL(KC.LALT(KC.DEL)) # Ctrl+Alt+Del
+KC_CBRK = KC.LCTL(KC.PAUS) # Ctrl+Break
 
-def _app1_press(*args, **kwargs):
+def queue_keys(key_list):
+    for key in key_list:
+        Nana.keyQueue.append(key)
+
+def _app1_on(*args, **kwargs):
     cc.send(0x0194)  # 0x0194: AL Local Machine Browser (マイコンピュータ / APP1)
-def _app2_press(*args, **kwargs):
+def _app2_on(*args, **kwargs):
     cc.send(0x0192)  # 0x0192: AL Calculator (電卓 / APP2)
-def _sleep_press(*args, **kwargs):
+def _sleep_on(*args, **kwargs):
     if Nana.os:
         Nana.keyQueue = [KC.LWIN(KC.L)] # chrome OSの場合
     else:
         cc.send(0x0224)  # 0x0224: AC Sleep
-def _mcu_rst_press(*args, **kwargs):
+def _mcu_rst_on(*args, **kwargs):
     microcontroller.reset() # マイコンリセット関数
-def _ime_on_press(*args, **kwargs):
-    imeled.IME_on()
-def _ime_off_press(*args, **kwargs):
-    imeled.IME_off()
-def _os_tgl_press(*args, **kwargs):
+def _os_tgl_on(*args, **kwargs):
     Nana.OS_tggle()
-def _ime_enadis_press(*args, **kwargs):
-    imeled.IME_switch()
-def _layer_reset(*args, **kwargs):
+def _ime_enadis_on(*args, **kwargs):
+    Nana.toggle_kana_enable()
+def _layer_reset_on(*args, **kwargs):
     Nana.active_layers = [0]
-def _toggle_stick_mode(*args, **kwargs):
+def _toggle_stick_on(*args, **kwargs):
     Nana.stick_md = not Nana.stick_md
     Nana.color_led()
-def _henkan_on_press(*args, **kwargs):
-    if Nana.os:
-        imeled.IME_on()
-    else:
-        Nana.tap_key(KC.HENK)
-def _muhenkan_on_press(*args, **kwargs):
-    if Nana.os:
-        imeled.IME_off()
-    else:
-        Nana.tap_key(KC.MHEN)
+def _henkan_on(*args, **kwargs):
+    if Nana.os == 0:
+        Nana.keyQueue.append(KC.HENK)
+def _muhenkan_on(*args, **kwargs):
+    if Nana.os == 0:
+        Nana.keyQueue.append(KC.MHEN)
+def _full_copy_on(*args, **kwargs):
+    queue_keys([KC.LCTL(KC.A), KC.LCTL(KC.C)]) # 全コピー
+def _full_past_on(*args, **kwargs):
+    queue_keys([KC.LCTL(KC.A), KC.LCTL(KC.V)]) # 全ペースト
+def _sel_one_on(*args, **kwargs):
+    queue_keys([KC.HONE, KC.HOME, KC.RSFT(KC.DOWN)]) # 一行選択
+def _del_fw_on(*args, **kwargs):
+    queue_keys([KC.RSFT(KC.HOME), KC.RSFT(KC.HOME), KC.DEL]) # 前方削除
+def _del_bk_on(*args, **kwargs):
+    queue_keys([KC.RSFT(KC.END), KC.DEL]) # 後方削除
+def _dup_on(*args, **kwargs):
+    queue_keys([KC.LCTL(KC.C), KC.LCTL(KC.V)])
+def _indent_on(*args, **kwargs):
+    queue_keys([KC.HOME, KC.TAB])
 
 # Function handlers
 Func_handlers = {
-    'app1': _app1_press,
-    'app2': _app2_press,
-    'slep': _sleep_press,
-    'ripl': _mcu_rst_press,
-    'imen': _ime_on_press,
+    'app1': _app1_on,
+    'app2': _app2_on,
+    'slep': _sleep_on,
+    'ripl': _mcu_rst_on,
+    'ost': _os_tgl_on,
+    'imsw': _ime_enadis_on,
+    'lyrs': _layer_reset_on,
+    'stck': _toggle_stick_on,
+    'henk': _henkan_on,
+    'mhen': _muhenkan_on,
+    'ctac': _full_copy_on,
+    'ctav': _full_past_on,
+    'sel1': _sel_one_on,
+    'delf': _del_fw_on,
+    'delb': _del_bk_on,
+    'dup': _dup_on,
+    'indt': _indent_on,
 }
 
 # Fucntion Keys
@@ -475,33 +476,17 @@ class FnKeys:
     def make_fnkeys(self):
         global FuncKeys, Func_handlers
         for fname, hndl in Func_handlers.items():
-            print(f'x {fname}:{hndl}')
             key = make_key(names=self.id, on_press=hndl)
-            #key.id = id
             setattr(self, fname, key)
 
+jp = JPkeys()
 fn = FnKeys()
+Nana.kana_on = [KC.LANG1, KC.HENK]
+Nana.kana_off = [KC.LANG2, KC.MHEN]
 
-IME_SW = make_key(names='imesw', on_press=_ime_enadis_press)
-IME_ON = make_key(names='imeon', on_press=_fn.imen_press)
-IME_OFF = make_key(names='imeof', on_press=_ime_off_press)
-TG_STCK = make_key(names='stk', on_press=_toggle_stick_mode)
-KC_OST = make_key(names='ostgl', on_press=_os_tgl_press)
-KC_USPC = KC.HT(KC.SPC, KC.LSFT, tap_time=220)
-KC_JSPC = KC.HT(KC.SPC, KC_HNDK, tap_time=220)
-LAY_RST = make_key(names='layrst', on_press=_layer_reset)
-KC_HENK = make_key(names='henka', on_press=_henkan_on_press)
-KC_MHEN = make_key(names='muhen', on_press=_muhenkan_on_press)
-
-# 全コピー
-def _full_copy_on_press(*args, **kwargs):
-    Nana.full_copy_past(True)
-KC_CTAC = make_key(names='muhen', on_press=_full_copy_on_press)
-# 全ペースト
-def _full_past_on_press(*args, **kwargs):
-    Nana.full_copy_past(False)
-KC_CTAV = make_key(names='muhen', on_press=_full_past_on_press)
-
+# -------------------------------------------------------------------
+# 3. アナログスティック
+# -------------------------------------------------------------------
 class AnalogStick:
     def __init__(self):
         # アナログスティック (GP26, GP27) 予備PIN GP28, GP29
@@ -618,7 +603,7 @@ boost_sw.direction = digitalio.Direction.INPUT
 boost_sw.pull = digitalio.Pull.UP
 
 # -------------------------------------------------------------------
-# 2. 高速入力処理ループ
+# 4. 高速入力処理ループ
 # -------------------------------------------------------------------
 def process_controls():
     global last_encoder_pos, is_dragging, boost_sw
@@ -671,39 +656,6 @@ def process_controls():
                 Nana.key_time = -1
 
 Nana.before_matrix_scan = process_controls
-
-# -------------------------------------------------------------------
-# 3. ローマ字出力用マクロの定義
-# -------------------------------------------------------------------
-jp = JPkeys()
-
-# -------------------------------------------------------------------
-# 4. 特殊系マクロ/エイリアスの定義
-# -------------------------------------------------------------------
-# 一行選択
-ACT_SEL1 = (Tap(KC.HOME),Tap(KC.HOME),Press(KC.RSFT),Tap(KC.DOWN),Release(KC.RSFT))
-KC_SEL1 = KC.MACRO(*ACT_SEL1)
-# 一行削除
-KC_DEL1 = KC.LCTL(KC.X)
-# 前方削除
-ACT_RSDEL = (Release(KC.RSFT),Tap(KC.DEL))
-KC_DELF = KC.MACRO(Press(KC.RSFT),Tap(KC.HOME),Tap(KC.HOME),*ACT_RSDEL)
-# 後方削除
-KC_DELB = KC.MACRO(Press(KC.RSFT),Tap(KC.END),*ACT_RSDEL)
-# 一行複写
-KC_DUP = KC.MACRO(Tap(KC.LCTL(KC.C)), Tap(KC.LCTL(KC.V)))
-# caps lock Windows/chrome で処理を合わせる為
-KC_CAPS = KC.RSFT(KC.CAPS)
-# インデント
-KC_INDT = KC.MACRO(Tap(KC.HOME), Tap(KC.TAB))
-# Ctrl+Alt+Del
-KC_CADL = KC.LCTL(KC.LALT(KC.DEL))
-# Ctrl+Break
-KC_CBRK = KC.LCTL(KC.PAUS)
-# Shift付き
-KC_SSPC = KC.LSFT(KC.SPC)
-KC_SENT = KC.LSFT(KC.ENT)
-KC_STAB = KC.LSFT(KC.TAB)
 
 # -------------------------------------------------------------------
 # 5. コンボ（同時押し）の定義: 初期値は空
@@ -784,14 +736,14 @@ Nana.keymap = [
         KC.LCTL, KC.LWIN, KC.SPC,  KC.MB_RMB,KC_RFC, KC.RCTL, KC.RCTL,
         KC.LALT, KC.ESC,  KC.MB_LMB,KC_RFA, KC_RFB,  KC.RALT, KC_ROY,
         KC.Z,    KC.C,    KC.B,    KC.M,    KC.DOT,  KC.RSFT, KC.MB_MMB,
-        KC.A,    KC.D,    KC.G,    KC.J,    KC.L,    KC.ENT,  TG_STCK,
+        KC.A,    KC.D,    KC.G,    KC.J,    KC.L,    KC.ENT,  fn.stck,
         KC.Q,    KC.E,    KC.T,    KC.U,    KC.O,    KC.BKSP, KC.DEL
     ],
 
     # Layer 1: Num Lock
     [
-        KC.TRNS, LAY_RST, KC.DQUO, KC.CIRC, KC.N8,  KC.N0,   KC.TRNS,
-        KC.TRNS, LAY_RST, KC.LPRN, KC.MINS, KC.N5,  KC.PLUS, KC.TRNS,
+        KC.TRNS, fn.lyrs, KC.DQUO, KC.CIRC, KC.N8,  KC.N0,   KC.TRNS,
+        KC.TRNS, fn.lyrs, KC.LPRN, KC.MINS, KC.N5,  KC.PLUS, KC.TRNS,
         KC.TRNS, KC.COMM, KC.UNDS, KC.ASTR, KC.N2,  KC.SLSH, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.N0,  KC.EQL,  KC.TRNS,
         KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.DOT, KC.TRNS, KC.TRNS,
@@ -802,14 +754,14 @@ Nana.keymap = [
 
     # Layer 2: RfA Layer
     [
-        KC.LANG5,KC.SLCK, KC_DELF, KC_SEL1, KC.INS,  KC.TRNS, KC_MHEN,
-        KC_INDT, KC.LANG3,KC.TRNS, KC_DUP,  KC.UP,   KC.TRNS, KC.TRNS,
-        KC.TRNS, KC.TRNS, KC_CTAV, KC.TRNS, KC.DOWN, KC.TRNS, KC.SPC,
-        KC.TRNS, KC.TRNS, KC_HENK, KC.TRNS, KC.DOWN, KC.TRNS, KC.TRNS,
+        KC.LANG5,KC.SLCK, fn.delf, fn.sel1, KC.INS,  KC.TRNS, fn.mhen,
+        fn.indt, KC.LANG3,KC.TRNS, fn.dup,  KC.UP,   KC.TRNS, KC.TRNS,
+        KC.TRNS, KC.TRNS, fn.ctav, KC.TRNS, KC.DOWN, KC.TRNS, KC.SPC,
+        KC.TRNS, KC.TRNS, fn.henk, KC.TRNS, KC.DOWN, KC.TRNS, KC.TRNS,
         KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
-        KC.TRNS, KC_CTAC, KC.TRNS, KC.LEFT, KC.RGHT, KC.ENT,  KC.TRNS,
+        KC.TRNS, fn.ctac, KC.TRNS, KC.LEFT, KC.RGHT, KC.ENT,  KC.TRNS,
         KC.LANG4,KC.KANA, KC.PSCR, KC.END,  KC.PGDN, KC_SENT, KC.TRNS,
-        KC.PAUS, KC_DEL1, KC_DELB, KC.HOME, KC.PGUP, KC.BKSP, KC.BKSP
+        KC.PAUS, KC_DEL1, fn.delb, KC.HOME, KC.PGUP, KC.BKSP, KC.BKSP
     ],
 
     # Layer 3: RfC Layer
@@ -817,11 +769,11 @@ Nana.keymap = [
         fn.ripl, KC.F2,   KC.F4,   KC.F11,  fn.app1, KC.BRIU, KC.NO,
         KC.NO,   fn.slep, KC.NO,   KC.NO,   fn.app2, KC.BRID, KC.NO,
         KC.NO,   KC.NO,   KC.NO,   KC.NO,   KC.MUTE, KC.VOLU, KC.NO,
-        KC.NO,   IME_SW,  KC.NO,   KC.NO,   KC.TRNS, KC.NO,   KC.NO,
-        KC.NO,   IME_SW,  KC.NO,   KC.NO,   KC.NO,   KC.NO,   KC.NO,
+        KC.NO,   fn.imsw, KC.NO,   KC.NO,   KC.TRNS, KC.NO,   KC.NO,
+        KC.NO,   fn.imsw, KC.NO,   KC.NO,   KC.NO,   KC.NO,   KC.NO,
         KC_CADL, KC.NO,   KC.NO,   KC.NO,   KC.VOLD, KC.NO,   KC.NO,
         ANACAL,  KC.NO,   KC_CBRK, KC.NO,   KC.NO,   KC.NO,   KC.NO,
-        KC.F1,   KC.F3,   KC.F10,  KC.F12,  KC.NO,   KC.RELOAD,KC_OST 
+        KC.F1,   KC.F3,   KC.F10,  KC.F12,  KC.NO,   KC.RELOAD,fn.ost 
     ],
 
     # Layer 4: LOY Layer
@@ -829,8 +781,8 @@ Nana.keymap = [
         KC_STAB, KC.AT,   KC.DLR,  KC.CIRC, KC.ASTR, KC.RPRN, KC.NO,
         KC.ESC,  KC.F6,   KC.F8,   KC.LBRC, KC.TRNS, KC.COLN, KC.TRNS,
         KC.ENT,  KC.GRV,  KC.UNDS, KC.LCBR, KC.TRNS, KC.RO,   KC_SSPC,
-        KC_CAPS, KC_OST,  KC_SSPC, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
-        KC.TRNS, KC_OST,  KC.DEL,  KC.TRNS, KC.TRNS, KC.TRNS, KC.NO,
+        KC_CAPS, fn.ost,  KC_SSPC, KC.TRNS, KC.TRNS, KC.TRNS, KC.TRNS,
+        KC.TRNS, fn.ost,  KC.DEL,  KC.TRNS, KC.TRNS, KC.TRNS, KC.NO,
         KC.TILD, KC.NO,  KC.EQL,  KC.RCBR, KC.PIPE, KC_SENT, KC.TRNS,
         KC.F5,   KC.F7,   KC.F9,   KC.RBRC, KC.JYEN, KC_SENT, KC.TRNS,
         KC.EXLM, KC.HASH, KC.PERC, KC.AMPR, KC.LPRN, KC.BKSP, KC.BKSP
@@ -841,8 +793,8 @@ Nana.keymap = [
         KC_STAB, KC.TRNS, KC.DQUO, KC.CIRC, KC.N8,  KC.N0,   KC.NO,
         KC.ESC,  KC.RABK, KC.LPRN, KC.MINS, KC.N5,  KC.PLUS, KC.TRNS,
         KC_SENT, KC.COMM, KC.UNDS, KC.ASTR, KC.N2,  KC.SLSH, KC_SSPC,
-        KC.TRNS, KC_OST,  KC_SSPC, KC.TRNS, KC.N0,  KC.EQL,  KC.TRNS,
-        KC.TRNS, KC_OST,  KC.DEL,  KC.TRNS, KC.DOT, KC.TG(1),KC.NO,
+        KC.TRNS, fn.ost,  KC_SSPC, KC.TRNS, KC.N0,  KC.EQL,  KC.TRNS,
+        KC.TRNS, fn.ost,  KC.DEL,  KC.TRNS, KC.DOT, KC.TG(1),KC.NO,
         KC.DOT,  KC.NO,   KC.EQL,  KC.N1,   KC.N3,  KC.ENT,  KC.TRNS,
         KC.LABK, KC.PLUS, KC.RPRN, KC.N4,   KC.N6,  KC_SENT, KC.TRNS,
         KC.QUES, KC.TRNS, KC.QUOT, KC.N7,   KC.N9,  KC.BKSP, KC.BKSP
